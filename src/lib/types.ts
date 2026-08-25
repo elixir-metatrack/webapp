@@ -76,6 +76,7 @@ export type MeResponse = {
 export type Member = {
 	memberId: string;
 	role: string;
+	username?: string | null;
 	email?: string | null;
 };
 
