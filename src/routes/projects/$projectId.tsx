@@ -173,7 +173,7 @@ function RouteComponent() {
 				<Card className="pt-2">
 					<Tabs value={activeTab} onValueChange={setActiveTab}>
 						<CardHeader className="pb-0">
-							<TabsList className="w-[300px]">
+							<TabsList className="w-fit">
 								<TabsTrigger
 									value="samples"
 									className="text-lg font-semibold text-gray-500 [&_svg:not([class*='size-'])]:size-5"
