@@ -21,9 +21,14 @@ import { SquarePen } from "lucide-react";
 interface EditAssayDialogProps {
 	assay: Assay;
 	projectId: string;
+	isSubProject?: boolean;
 }
 
-export function EditAssayDialog({ assay, projectId }: EditAssayDialogProps) {
+export function EditAssayDialog({
+	assay,
+	projectId,
+	isSubProject = false,
+}: EditAssayDialogProps) {
 	const [open, setOpen] = useState(false);
 	const [form, setForm] = useState({
 		name: assay.name ?? "Unknown",
@@ -108,13 +113,19 @@ export function EditAssayDialog({ assay, projectId }: EditAssayDialogProps) {
 
 				<DialogFooter className="w-full !justify-between">
 					<div className="mt-4 flex w-full justify-between">
-						<Button
-							variant="destructive"
-							onClick={() => deleteMutation.mutate()}
-							disabled={deleteMutation.isPending}
-						>
-							{deleteMutation.isPending ? "Deleting..." : "Delete Experiment"}
-						</Button>
+						{isSubProject ? (
+							<p className="text-muted-foreground max-w-48 text-sm">
+								Shared experiments can only be deleted in the parent project.
+							</p>
+						) : (
+							<Button
+								variant="destructive"
+								onClick={() => deleteMutation.mutate()}
+								disabled={deleteMutation.isPending}
+							>
+								{deleteMutation.isPending ? "Deleting..." : "Delete Experiment"}
+							</Button>
+						)}
 
 						<div className="flex gap-2">
 							<DialogClose asChild>

@@ -1,6 +1,6 @@
 "use client";
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,7 +28,6 @@ import { EditProjectDialog } from "@/components/dashboard/edit-project-dialog";
 import { AddSubProjectDialog } from "@/components/dashboard/add-subproject";
 import { SubProjectsTable } from "@/components/dashboard/subproject-table";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "@tanstack/react-router";
 import { SquarePen, UserRoundCog } from "lucide-react";
 import { IconMicroscope, IconTestPipe, IconSitemap } from "@tabler/icons-react";
 
@@ -80,7 +79,7 @@ function RouteComponent() {
 	});
 
 	const parentProject = project?.parentProjectId
-		? projects?.find((p) => String(p.id) === project.parentProjectId)
+		? projects?.find((p) => String(p.id) === String(project.parentProjectId))
 		: undefined;
 
 	const [activeAssayTab, setActiveAssayTab] = useState<string | undefined>(
@@ -135,7 +134,7 @@ function RouteComponent() {
 											{" of "}
 											<Link
 												to="/projects/$projectId"
-												params={{ projectId: parentProject.id! }}
+												params={{ projectId: String(parentProject.id) }}
 												className="underline"
 											>
 												{parentProject.name}
@@ -236,7 +235,9 @@ function RouteComponent() {
 												))}
 											</TabsList>
 
-											<AddAssayDialog projectId={projectId}></AddAssayDialog>
+											{!project.parentProjectId && (
+												<AddAssayDialog projectId={projectId} />
+											)}
 										</div>
 
 										{assays.map((assay) => (
@@ -251,7 +252,13 @@ function RouteComponent() {
 									</Tabs>
 								) : (
 									<div className="flex justify-center py-8">
-										<AddAssayDialog projectId={projectId}></AddAssayDialog>
+										{project.parentProjectId ? (
+											<p className="text-muted-foreground">
+												No experiments are linked to this sub-project's samples.
+											</p>
+										) : (
+											<AddAssayDialog projectId={projectId} />
+										)}
 									</div>
 								)}
 							</TabsContent>

@@ -48,8 +48,14 @@ export const DeleteAlertButton = ({
 				}
 
 				if (failed.length > 0) {
-					console.error("Failed to delete:", failed);
+					toast.error(
+						`${failed.length} sample(s) could not be deleted. Check your project permissions; linked samples must be managed in the parent project.`
+					);
 				}
+				if (success.length > 0) {
+					toast.success(`${success.length} sample(s) deleted successfully!`);
+				}
+				return;
 			} else if (entityName === "project") {
 				await deleteProject(projectId!);
 				onDeleted?.([projectId!]);
@@ -58,14 +64,9 @@ export const DeleteAlertButton = ({
 				});
 			}
 
-			toast.success(`${entityName} deleted successfully!`, {
-				action: {
-					label: "Undo",
-					onClick: () => console.log("Undo"),
-				},
-			});
+			toast.success(`${entityName} deleted successfully!`);
 		} catch (error: unknown) {
-			const message = (error as Error)?.message || "Error deleting";
+			const message = error instanceof Error ? error.message : "Error deleting";
 			toast.error(message);
 		}
 	};

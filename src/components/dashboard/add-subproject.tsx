@@ -70,7 +70,7 @@ export function AddSubProjectDialog({
 			reset();
 		},
 		onError: (error: Error) => {
-			toast.error(error?.message || "Failed to create sub-project");
+			toast.error(error.message || "Failed to create sub-project");
 		},
 	});
 
@@ -83,11 +83,12 @@ export function AddSubProjectDialog({
 	};
 
 	const toggleSelectAll = () => {
-		if (selectedSampleIds.length === filteredSamples.length) {
-			setSelectedSampleIds([]);
-		} else {
-			setSelectedSampleIds(filteredSamples.map((s) => s.id));
-		}
+		const visibleIds = filteredSamples.map((sample) => sample.id);
+		setSelectedSampleIds((prev) =>
+			visibleIds.every((id) => prev.includes(id))
+				? prev.filter((id) => !visibleIds.includes(id))
+				: [...new Set([...prev, ...visibleIds])]
+		);
 	};
 
 	const handleCreate = (e: React.FormEvent) => {
@@ -150,10 +151,14 @@ export function AddSubProjectDialog({
 
 						<div className="flex items-center gap-2 border-b pb-2">
 							<Checkbox
+								aria-label="Select all visible samples"
 								checked={
 									filteredSamples.length > 0 &&
-									selectedSampleIds.length === filteredSamples.length
+									filteredSamples.every((sample) =>
+										selectedSampleIds.includes(sample.id)
+									)
 								}
+								disabled={filteredSamples.length === 0}
 								onCheckedChange={toggleSelectAll}
 							/>
 							<span className="text-sm font-medium">Select All</span>
@@ -168,6 +173,7 @@ export function AddSubProjectDialog({
 								filteredSamples.map((sample) => (
 									<div key={sample.id} className="flex items-center gap-2">
 										<Checkbox
+											aria-label={`Select ${sample.name}`}
 											checked={selectedSampleIds.includes(sample.id)}
 											onCheckedChange={() => toggleSample(sample.id)}
 										/>

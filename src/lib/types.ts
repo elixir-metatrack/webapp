@@ -89,7 +89,7 @@ export interface Project {
 	sampleCount?: number;
 	createdOn?: string; // Date
 	modifiedOn?: string;
-	parentProjectId?: string | null;
+	parentProjectId?: number | null;
 }
 
 export interface StatisticsResponse {
