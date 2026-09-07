@@ -617,7 +617,7 @@ export async function getSamplesByDate(
 // ============================================================
 
 export async function downloadSampleTemplate(): Promise<void> {
-	const res = await fetch(`${API_BASE_URL}/templates/templateV1.csv`);
+	const res = await fetch(`${API_BASE_URL}/templates/samples/sample.csv`);
 
 	if (!res.ok) {
 		throw new Error("Failed to download template");
