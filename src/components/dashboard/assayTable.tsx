@@ -72,8 +72,8 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 			assay={assay}
 			showAddButton={
 				<div className="flex gap-2">
+					<DownloadTemplateButton type="experiment" />
 					<EditAssayDialog assay={assay} projectId={project?.id ?? ""} />
-					<DownloadTemplateButton type="assay" />
 					<AddSamplesToAssayDialog
 						projectId={project?.id ?? ""}
 						assayId={assay.id}
