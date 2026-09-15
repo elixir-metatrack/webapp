@@ -44,8 +44,6 @@ export function ChartAreaHomePage() {
 
 	const { data, isLoading, error } = useSampleStats(timeRange);
 
-	console.log("data:", data);
-
 	if (isLoading) {
 		return (
 			<div className="flex h-[250px] items-center justify-center">Loading…</div>

@@ -37,8 +37,6 @@ export function useSampleStats(range: string) {
 
 			const data = await getSamplesByDate();
 
-			console.log("data from getSamplesByDate:", data);
-
 			return data.items
 				.filter((item) => {
 					const date = new Date(`${item.date}T00:00:00`);
