@@ -76,6 +76,7 @@ export type MeResponse = {
 export type Member = {
 	memberId: string;
 	role: string;
+	username?: string | null;
 	email?: string | null;
 };
 
@@ -88,6 +89,7 @@ export interface Project {
 	sampleCount?: number;
 	createdOn?: string; // Date
 	modifiedOn?: string;
+	parentProjectId?: number | null;
 }
 
 export interface StatisticsResponse {

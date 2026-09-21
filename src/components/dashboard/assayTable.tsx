@@ -13,7 +13,8 @@ interface AssayTableProps {
 
 export function AssayTable({ assay, project }: AssayTableProps) {
 	const { data } = useQuery({
-		queryKey: ["assaySamples", assay.id, assay.modifiedOn],
+		queryKey: ["assaySamples", assay.id, String(project?.id), assay.modifiedOn],
+		enabled: !!project?.id,
 		queryFn: async () => {
 			const samples: Sample[] =
 				(await getSamplesInAssay(project?.id ?? "", assay.id)) ?? [];
@@ -72,8 +73,12 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 			assay={assay}
 			showAddButton={
 				<div className="flex gap-2">
+					<EditAssayDialog
+						assay={assay}
+						projectId={project?.id ?? ""}
+						isSubProject={!!project?.parentProjectId}
+					/>
 					<DownloadTemplateButton type="experiment" />
-					<EditAssayDialog assay={assay} projectId={project?.id ?? ""} />
 					<AddSamplesToAssayDialog
 						projectId={project?.id ?? ""}
 						assayId={assay.id}

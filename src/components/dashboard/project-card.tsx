@@ -2,14 +2,18 @@
 
 import * as React from "react";
 import {
-	type ColumnDef,
 	flexRender,
 	getCoreRowModel,
+	getExpandedRowModel,
 	getFilteredRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
-	type SortingState,
 	useReactTable,
+} from "@tanstack/react-table";
+import type {
+	ColumnDef,
+	ExpandedState,
+	SortingState,
 } from "@tanstack/react-table";
 import {
 	Table,
@@ -28,7 +32,13 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FolderOpen, MoreHorizontal, SquarePen } from "lucide-react";
+import {
+	ChevronRight,
+	FolderOpen,
+	GitBranch,
+	MoreHorizontal,
+	SquarePen,
+} from "lucide-react";
 import { AddProjectDialog } from "./add-project";
 import { DataTableColumnHeader } from "../data-table-column-header";
 import { DataTablePagination } from "../data-table-pagination";
@@ -36,6 +46,8 @@ import { DataTableViewOptions } from "../data-table-column-toggle";
 import type { Project } from "@/lib/types";
 import { DeleteAlertButton } from "../delete-alert-button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { Badge } from "../ui/badge";
+import { cn } from "@/lib/utils";
 
 interface DataTableProps {
 	projects: Project[];
@@ -65,25 +77,60 @@ export function ProjectsDataTable({
 }: DataTableProps) {
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [globalFilter, setGlobalFilter] = React.useState("");
+	const [expanded, setExpanded] = React.useState<ExpandedState>({});
+	const [searchExpanded, setSearchExpanded] =
+		React.useState<ExpandedState>(true);
+	const isSearching = globalFilter.trim().length > 0;
+	const { rootProjects, childrenByParent } = React.useMemo(() => {
+		const visibleIds = new Set(
+			projects
+				.filter((project) => project.id != null)
+				.map((project) => String(project.id))
+		);
+		const roots: Project[] = [];
+		const children = new Map<string, Project[]>();
+		for (const project of projects) {
+			const parentId = project.parentProjectId;
+			if (parentId != null && visibleIds.has(String(parentId))) {
+				const siblings = children.get(String(parentId)) ?? [];
+				siblings.push(project);
+				children.set(String(parentId), siblings);
+			} else {
+				// Keep projects visible when the user cannot access their parent.
+				roots.push(project);
+			}
+		}
+		return { rootProjects: roots, childrenByParent: children };
+	}, [projects]);
 
 	const columns: ColumnDef<Project>[] = [
 		{
 			id: "select",
-			header: ({ table }) => (
-				<Checkbox
-					checked={table.getIsAllPageRowsSelected()}
-					onClick={(event) => event.stopPropagation()}
-					onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-					aria-label="Select all"
-					className="border-neutral-900"
-				/>
-			),
+			header: ({ table }) => {
+				const visibleRows = table.getRowModel().rows;
+				const allSelected =
+					visibleRows.length > 0 &&
+					visibleRows.every((row) => row.getIsSelected());
+				const someSelected = visibleRows.some((row) => row.getIsSelected());
+				return (
+					<Checkbox
+						checked={allSelected || (someSelected && "indeterminate")}
+						disabled={visibleRows.length === 0}
+						onClick={(event) => event.stopPropagation()}
+						onCheckedChange={(value) =>
+							table.toggleAllPageRowsSelected(!!value)
+						}
+						aria-label="Select all visible projects"
+						className="border-neutral-900"
+					/>
+				);
+			},
 			cell: ({ row }) => (
 				<Checkbox
 					checked={row.getIsSelected()}
 					onClick={(event) => event.stopPropagation()}
 					onCheckedChange={(value) => row.toggleSelected(!!value)}
-					aria-label="Select row"
+					aria-label={`Select ${row.original.name}`}
 					className="border-neutral-900"
 				/>
 			),
@@ -96,9 +143,43 @@ export function ProjectsDataTable({
 				<DataTableColumnHeader column={column} title="Title" />
 			),
 			cell: ({ row }) => (
-				<span className="cursor-pointer font-medium">
-					{row.getValue("name")}
-				</span>
+				<div
+					className="flex items-center gap-2"
+					style={{ paddingLeft: `${row.depth * 1.5}rem` }}
+				>
+					{row.getCanExpand() ? (
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-7 shrink-0"
+							aria-label={`${row.getIsExpanded() ? "Collapse" : "Expand"} ${row.original.name}`}
+							aria-expanded={row.getIsExpanded()}
+							onClick={(event) => {
+								event.stopPropagation();
+								row.toggleExpanded();
+							}}
+						>
+							<ChevronRight
+								className={cn(
+									"transition-transform",
+									row.getIsExpanded() && "rotate-90"
+								)}
+							/>
+						</Button>
+					) : (
+						<span className="size-7 shrink-0" aria-hidden="true" />
+					)}
+					{row.original.parentProjectId != null && (
+						<GitBranch
+							className="text-muted-foreground size-4 shrink-0"
+							aria-hidden="true"
+						/>
+					)}
+					<span className="font-medium">{row.getValue("name")}</span>
+					{row.original.parentProjectId != null && (
+						<Badge variant="secondary">Sub-project</Badge>
+					)}
+				</div>
 			),
 		},
 		{
@@ -169,7 +250,7 @@ export function ProjectsDataTable({
 
 							<DropdownMenuItem asChild>
 								<DeleteAlertButton
-									projectId={project?.id}
+									projectId={project.id}
 									item={{ id: project.id! }}
 									entityName="project"
 									onDeleted={() => onDelete(project)}
@@ -182,10 +263,15 @@ export function ProjectsDataTable({
 		},
 	];
 
-	// eslint-disable-next-line react-hooks/incompatible-library
 	const table = useReactTable({
-		data: projects,
+		data: rootProjects,
 		columns,
+		getRowId: (project, index) =>
+			project.id != null ? String(project.id) : `project-${index}`,
+		getSubRows: (project) => childrenByParent.get(String(project.id)),
+		enableSubRowSelection: false,
+		filterFromLeafRows: true,
+		paginateExpandedRows: false,
 		initialState: {
 			pagination: {
 				pageSize: 15,
@@ -193,13 +279,16 @@ export function ProjectsDataTable({
 		},
 		state: {
 			sorting,
-			globalFilter,
+			globalFilter: globalFilter.trim(),
+			expanded: isSearching ? searchExpanded : expanded,
 		},
+		onExpandedChange: isSearching ? setSearchExpanded : setExpanded,
 		onSortingChange: setSorting,
 		onGlobalFilterChange: setGlobalFilter,
 		getCoreRowModel: getCoreRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
 		getSortedRowModel: getSortedRowModel(),
+		getExpandedRowModel: getExpandedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
 	});
 
@@ -208,8 +297,11 @@ export function ProjectsDataTable({
 			<div className="flex items-center justify-between space-x-4">
 				<Input
 					placeholder="Filter projects..."
-					value={globalFilter ?? ""}
-					onChange={(e) => setGlobalFilter(e.target.value)}
+					value={globalFilter}
+					onChange={(e) => {
+						setGlobalFilter(e.target.value);
+						setSearchExpanded(true);
+					}}
 					className="max-w-sm"
 				/>
 				<DataTableViewOptions table={table} />
@@ -278,7 +370,7 @@ export function ProjectsDataTable({
 				</Table>
 			</div>
 
-			<DataTablePagination table={table} />
+			<DataTablePagination table={table} pageSizeLabel="Groups per page" />
 		</div>
 	);
 }

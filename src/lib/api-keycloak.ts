@@ -130,6 +130,44 @@ export async function deleteProject(projectId: string): Promise<void> {
 }
 
 // ============================================================
+// Sub-Projects
+// ============================================================
+
+export async function createSubProject(
+	parentProjectId: string,
+	data: { name: string; description?: string; sampleIds: string[] }
+): Promise<Project> {
+	return api<Project>(`projects/${parentProjectId}/subprojects`, {
+		method: "POST",
+		body: JSON.stringify(data),
+	});
+}
+
+export async function getSubProjects(projectId: string): Promise<Project[]> {
+	return api<Project[]>(`projects/${projectId}/subprojects`);
+}
+
+export async function linkSamplesToProject(
+	projectId: string,
+	sampleIds: string[]
+): Promise<void> {
+	await api(`projects/${projectId}/samples/link`, {
+		method: "PUT",
+		body: JSON.stringify({ sampleIds }),
+	});
+}
+
+export async function unlinkSamplesFromProject(
+	projectId: string,
+	sampleIds: string[]
+): Promise<void> {
+	await api(`projects/${projectId}/samples/link`, {
+		method: "DELETE",
+		body: JSON.stringify({ sampleIds }),
+	});
+}
+
+// ============================================================
 // Project Members & Join Requests
 // ============================================================
 

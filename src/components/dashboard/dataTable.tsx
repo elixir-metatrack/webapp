@@ -312,7 +312,7 @@ export function DataTable<T extends object>({
 											sampleName={(row.original as Sample).name}
 										/>
 									) : null}
-									{onDelete && (
+									{onDelete && !project?.parentProjectId && (
 										<DeleteAlertButton
 											projectId={project?.id ?? ""}
 											item={row.original as { id: string }[]}
@@ -625,16 +625,18 @@ export function DataTable<T extends object>({
 									</DropdownMenuItem>
 								))}
 
-								{/* Separator */}
-								<DropdownMenuSeparator />
+								{!project?.parentProjectId && (
+									<>
+										<DropdownMenuSeparator />
 
-								{/* Delete */}
-								<DeleteAlertButton
-									projectId={project?.id ?? ""}
-									item={selectedRows as { id: string }[]}
-									entityName="sample"
-									onDeleted={() => table.resetRowSelection()}
-								/>
+										<DeleteAlertButton
+											projectId={project?.id ?? ""}
+											item={selectedRows as { id: string }[]}
+											entityName="sample"
+											onDeleted={() => table.resetRowSelection()}
+										/>
+									</>
+								)}
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</div>
