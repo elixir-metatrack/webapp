@@ -78,7 +78,7 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 						projectId={project?.id ?? ""}
 						isSubProject={!!project?.parentProjectId}
 					/>
-					<DownloadTemplateButton type="assay" />
+					<DownloadTemplateButton type="experiment" />
 					<AddSamplesToAssayDialog
 						projectId={project?.id ?? ""}
 						assayId={assay.id}

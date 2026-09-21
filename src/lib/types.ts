@@ -157,3 +157,9 @@ export type SampleStatsByDateResponse = {
 	totalElements: number;
 	totalPages: number;
 };
+
+export type TemplateType =
+	| "sample"
+	| "sample_extended"
+	| "sample_virus"
+	| "experiment";

@@ -13,6 +13,7 @@ import type {
 	SampleStatsByDateResponse,
 	StatisticsResponse,
 	Taxon,
+	TemplateType,
 } from "./types";
 import { API_URL, API_BASE_URL } from "./config";
 
@@ -616,20 +617,36 @@ export async function getSamplesByDate(
 // Templates
 // ============================================================
 
-export async function downloadSampleTemplate(): Promise<void> {
-	const res = await fetch(`${API_BASE_URL}/templates/samples/sample.csv`);
+export async function downloadTemplate(type: TemplateType): Promise<void> {
+	const TEMPLATE_PATHS: Record<TemplateType, string> = {
+		sample: "/templates/samples/sample.csv",
+		sample_extended: "/templates/samples/sample_extended.csv",
+		sample_virus: "/templates/samples/sample_virus.csv",
+		experiment: "/templates/experiments/experiment.csv",
+	};
+
+	const TEMPLATE_FILENAMES: Record<TemplateType, string> = {
+		sample: "sample.csv",
+		sample_extended: "sample_extended.csv",
+		sample_virus: "sample_virus.csv",
+		experiment: "experiment.csv",
+	};
+
+	const path = TEMPLATE_PATHS[type];
+	const filename = TEMPLATE_FILENAMES[type];
+
+	const res = await fetch(`${API_BASE_URL}${path}`);
 
 	if (!res.ok) {
-		throw new Error("Failed to download template");
+		throw new Error(`Failed to download ${filename}`);
 	}
 
 	const blob = await res.blob();
 	const url = window.URL.createObjectURL(blob);
 
 	const a = document.createElement("a");
-
 	a.href = url;
-	a.download = "templateV1.csv";
+	a.download = filename;
 
 	document.body.appendChild(a);
 	a.click();

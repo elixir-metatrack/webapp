@@ -145,7 +145,12 @@ export function DataTable<T extends object>({
 	dataType,
 	assay,
 }: DataTableProps<T>) {
-	const [sorting, setSorting] = React.useState<SortingState>([]);
+	const [sorting, setSorting] = React.useState<SortingState>([
+		{
+			id: "name",
+			desc: false,
+		},
+	]);
 	const [globalFilter, setGlobalFilter] = React.useState("");
 	const [initialColumnOrder] = React.useState<string[]>(
 		dataType === "assay"
