@@ -10,12 +10,15 @@ import type {
 	Project,
 	Sample,
 	SampleFile,
+	SampleMetadataField,
+	SampleMetadataFieldType,
 	SampleStatsByDateResponse,
 	StatisticsResponse,
 	Taxon,
 	TemplateType,
 } from "./types";
 import { API_URL, API_BASE_URL } from "./config";
+import { getApiErrorMessage } from "./utils";
 
 // ============================================================
 // API
@@ -46,10 +49,12 @@ export async function api<T = unknown>(
 
 		if (contentType?.includes("application/json")) {
 			const data = await res.json();
-			throw new Error(data?.message || data?.details || "API error");
+
+			throw new Error(getApiErrorMessage(data));
 		}
 
 		const text = await res.text();
+
 		throw new Error(text || "API error");
 	}
 
@@ -301,8 +306,10 @@ export async function uploadSamplesheet(
 
 export async function getSampleMetadataFields(
 	projectId: string
-): Promise<unknown[]> {
-	return api<unknown[]>(`projects/${projectId}/sample-metadata-fields`);
+): Promise<SampleMetadataField[]> {
+	return api<SampleMetadataField[]>(
+		`projects/${projectId}/sample-metadata-fields`
+	);
 }
 
 export async function createSampleMetadataField(
@@ -310,13 +317,16 @@ export async function createSampleMetadataField(
 	data: {
 		key: string;
 		label: string;
-		type: string;
+		type: SampleMetadataFieldType;
 	}
-): Promise<void> {
-	await api(`projects/${projectId}/sample-metadata-fields`, {
-		method: "POST",
-		body: JSON.stringify(data),
-	});
+): Promise<SampleMetadataField> {
+	return api<SampleMetadataField>(
+		`projects/${projectId}/sample-metadata-fields`,
+		{
+			method: "POST",
+			body: JSON.stringify(data),
+		}
+	);
 }
 
 export async function updateSampleMetadataField(
@@ -326,11 +336,14 @@ export async function updateSampleMetadataField(
 		label?: string;
 		archived?: boolean;
 	}
-): Promise<void> {
-	await api(`projects/${projectId}/sample-metadata-fields/${fieldId}`, {
-		method: "PATCH",
-		body: JSON.stringify(data),
-	});
+): Promise<SampleMetadataField> {
+	return api<SampleMetadataField>(
+		`projects/${projectId}/sample-metadata-fields/${fieldId}`,
+		{
+			method: "PATCH",
+			body: JSON.stringify(data),
+		}
+	);
 }
 
 export async function deleteSampleMetadataField(
