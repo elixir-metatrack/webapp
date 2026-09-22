@@ -53,7 +53,7 @@ import {
 } from "../ui/drawer";
 import { Label } from "../ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DeleteAlertButton } from "../delete-alert-button";
 import { toast } from "sonner";
 import type {
@@ -77,6 +77,7 @@ import {
 import { UploadDataDialog } from "./upload-data";
 import {
 	batchEditSamples,
+	getSampleMetadataFields,
 	requestPresignedDownload,
 	updateSample,
 } from "@/lib/api-keycloak";
@@ -101,7 +102,7 @@ const COLUMN_NAMES: Record<string, string> = {
 	alias: "Alias",
 	taxId: "Tax ID",
 	taxonName: "Scientific Name",
-	hostTaxId: "Host Taxonomic Identifier",
+	hostTaxId: "Host Tax ID",
 	hostTaxonName: "Host Scientific Name",
 	mlst: "MLST",
 	isolationSource: "Isolation Source",
@@ -110,6 +111,36 @@ const COLUMN_NAMES: Record<string, string> = {
 	sequencingLab: "Sequencing Lab",
 	institution: "Institution (Data owner)",
 	hostHealthState: "Host Health State",
+	projectTitle: "Project Title",
+	description: "Description",
+	isolate: "Isolate",
+	collectedBy: "Collected By",
+	latitude: "Latitude",
+	longitude: "Longitude",
+	environmentalSample: "Environmental Sample",
+	hostAssociated: "Host Associated",
+	hostCommonName: "Host Common Name",
+	hostSubjectId: "Host Subject ID",
+	collectorName: "Collector Name",
+	collectingInstitution: "Collecting Institution",
+	hostSex: "Host Sex",
+	influenzaTestMethod: "Influenza Test Method",
+	influenzaTestResult: "Influenza Test Result",
+	otherPathogensTested: "Other Pathogens Tested",
+	otherPathogensTestResult: "Other Pathogens Test Result",
+	hostHabitat: "Host Habitat",
+	isolationSourceHostAssociated: "Isolation Source Host Associated",
+	hostBehaviour: "Host Behaviour",
+	isolationSourceNonHostAssociated: "Isolation Source Non-Host Associated",
+	influenzaVirusType: "Influenza Virus Type",
+	influenzaSubType: "Influenza Subtype",
+	serovar: "Serovar",
+	strain: "Strain",
+	hostAge: "Host Age",
+	county: "County",
+	commune: "Commune",
+	hospitalHealthInstitution: "Hospital Health Institution",
+
 	createdOn: "Created On",
 	modifiedOn: "Modified On",
 	files: "FASTQ Files",
@@ -176,6 +207,12 @@ export function DataTable<T extends object>({
 	);
 	const queryClient = useQueryClient();
 
+	const { data: customMetadataFields = [] } = useQuery({
+		queryKey: ["sample-metadata-fields", project?.id],
+		enabled: Boolean(project?.id && dataType === "sample"),
+		queryFn: () => getSampleMetadataFields(project!.id!),
+	});
+
 	const enrichedData = useEnrichedSamples(
 		data as Sample[],
 		dataType !== "assay"
@@ -201,14 +238,47 @@ export function DataTable<T extends object>({
 						},
 					}));
 
+	const customColumns: ColumnDef<T>[] =
+		dataType === "sample"
+			? customMetadataFields
+					.filter((field) => !field.archived)
+					.map((field) => ({
+						id: field.key,
+						accessorFn: (row) => {
+							const sample = row as Sample;
+
+							return sample.customMetadata?.[field.key] ?? "";
+						},
+						enableHiding: true,
+						header: ({ column }) => (
+							<DataTableColumnHeader column={column} title={field.label} />
+						),
+						cell: ({ getValue }) => {
+							const value = getValue();
+
+							return value !== null && value !== undefined ? String(value) : "";
+						},
+						meta: {
+							label: field.label,
+						},
+					}))
+			: [];
+
+	const allDataColumns = [...autoColumns, ...customColumns];
+
 	const orderedColumns: ColumnDef<T>[] =
-		autoColumns.length === 0
+		allDataColumns.length === 0
 			? []
 			: initialColumnOrder.length === 0
-				? autoColumns
-				: (initialColumnOrder
-						.map((id) => autoColumns.find((col) => col.id === id))
-						.filter(Boolean) as ColumnDef<T>[]);
+				? allDataColumns
+				: ([
+						...initialColumnOrder
+							.map((id) => allDataColumns.find((col) => col.id === id))
+							.filter(Boolean),
+						...customColumns.filter(
+							(col) => !initialColumnOrder.includes(String(col.id))
+						),
+					] as ColumnDef<T>[]);
 
 	const enhancedColumns: ColumnDef<T>[] = (() => {
 		const selectionColumn: ColumnDef<T> = {
@@ -378,12 +448,40 @@ export function DataTable<T extends object>({
 			id: false,
 			mlst: false,
 			files: true,
+			isolate: false,
+			collectedBy: false,
+			latitude: false,
+			longitude: false,
+			environmentalSample: false,
+			hostAssociated: false,
+			hostCommonName: false,
+			hostSubjectId: false,
+			collectorName: false,
+			collectingInstitution: false,
+			hostSex: false,
+			influenzaTestMethod: false,
+			influenzaTestResult: false,
+			otherPathogensTested: false,
+			otherPathogensTestResult: false,
+			hostHabitat: false,
+			isolationSourceHostAssociated: false,
+			hostBehaviour: false,
+			isolationSourceNonHostAssociated: false,
+			influenzaVirusType: false,
+			influenzaSubType: false,
+			serovar: false,
+			strain: false,
+			hostAge: false,
+			county: false,
+			commune: false,
+			hospitalHealthInstitution: false,
 		});
 
 	// eslint-disable-next-line react-hooks/incompatible-library
 	const table = useReactTable({
 		data: enrichedData as T[],
 		columns: enhancedColumnsWithDates,
+		getRowId: (row) => String((row as { name: string }).name),
 		state: {
 			sorting,
 			globalFilter,
@@ -438,35 +536,110 @@ export function DataTable<T extends object>({
 
 	const handleBatchUpdate = async (colName: string, value: string) => {
 		try {
-			const sampleData = (selectedRows as unknown as Sample[]).map(
-				(row: Sample) => {
-					return {
-						name: row.name,
-						alias: row.alias,
-						taxId: row.taxId,
-						hostTaxId: row.hostTaxId,
-						mlst: row.mlst,
-						isolationSource: row.isolationSource,
-						collectionDate: row.collectionDate,
-						location: row.location,
-						sequencingLab: row.sequencingLab,
-						institution: row.institution,
-						hostHealthState: row.hostHealthState,
+			if (!project?.id) {
+				toast.error("Project is required");
+				return;
+			}
 
-						[colName]: value,
-					};
-				}
+			const customField = customMetadataFields.find(
+				(field) => !field.archived && field.key === colName
 			);
 
-			await batchEditSamples(project?.id ?? "", { sampleData });
+			const sampleData = (selectedRows as unknown as Sample[]).map((row) => {
+				const sampleData: Record<string, unknown> = {};
+
+				/*
+				 * Copy all editable standard columns dynamically
+				 */
+				Object.keys(row).forEach((field) => {
+					if (field === "id" || field === "alias") {
+						return;
+					}
+
+					sampleData[field] = row[field as keyof Sample];
+				});
+
+				/*
+				 * Update custom metadata
+				 */
+				if (customField) {
+					const customMetadata = {
+						...(row.customMetadata ?? {}),
+					};
+
+					if (value === "") {
+						customMetadata[colName] = null;
+					} else {
+						switch (customField.type) {
+							case "NUMBER": {
+								const numberValue = Number(value);
+
+								customMetadata[colName] = Number.isNaN(numberValue)
+									? null
+									: numberValue;
+
+								break;
+							}
+
+							case "BOOLEAN":
+								customMetadata[colName] = value === "true";
+								break;
+
+							case "DATE":
+							case "TEXT":
+							default:
+								customMetadata[colName] = value;
+								break;
+						}
+					}
+
+					sampleData.customMetadata = customMetadata;
+				} else {
+					/*
+					 * Update standard column
+					 */
+					const originalValue = row[colName as keyof Sample];
+
+					if (value === "") {
+						sampleData[colName] = null;
+					} else if (typeof originalValue === "number") {
+						const numberValue = Number(value);
+
+						sampleData[colName] = Number.isNaN(numberValue)
+							? null
+							: numberValue;
+					} else if (typeof originalValue === "boolean") {
+						sampleData[colName] = value === "true";
+					} else {
+						sampleData[colName] = value;
+					}
+				}
+
+				return sampleData;
+			});
+
+			await batchEditSamples(project.id, {
+				sampleData,
+			});
 
 			toast.success("Samples have been updated");
 
-			queryClient.invalidateQueries({
+			await queryClient.invalidateQueries({
 				queryKey: ["samples"],
 			});
 		} catch (err: unknown) {
-			toast.error((err as Error)?.message ?? "Error updating samples");
+			const message =
+				err instanceof Error ? err.message : "Error updating samples";
+
+			toast.error("Error updating samples", {
+				description: (
+					<div className="flex flex-col gap-1 text-black">
+						{message.split("\n").map((line, index) => (
+							<div key={index}>{line}</div>
+						))}
+					</div>
+				),
+			});
 		}
 	};
 
@@ -480,8 +653,8 @@ export function DataTable<T extends object>({
 			: buildProjectTree(project, selectedRows as unknown as Sample[])
 		: { name: "", children: [] };
 
-	const editableColumns = autoColumns.filter(
-		(col) => !NON_EDITABLE_COLUMNS.includes(String(col.header))
+	const editableColumns = enhancedColumns.filter(
+		(col) => !NON_EDITABLE_COLUMNS.includes(String(col.id))
 	);
 
 	const quickEditColumns = editableColumns.slice(1, QUICK_EDIT_LIMIT);
@@ -640,7 +813,11 @@ export function DataTable<T extends object>({
 					</div>
 				)}
 
-				<DataTableViewOptions table={table} />
+				<DataTableViewOptions
+					table={table}
+					projectId={project?.id ?? ""}
+					dataType={dataType!}
+				/>
 				{showAddButton}
 				<Button
 					disabled={rows.length === 0}
@@ -745,46 +922,136 @@ function TableCellViewer({
 
 	const queryClient = useQueryClient();
 
+	const { data: customMetadataFields = [] } = useQuery({
+		queryKey: ["sample-metadata-fields", projectId],
+		enabled: Boolean(projectId),
+		queryFn: () => getSampleMetadataFields(projectId),
+	});
+
+	const standardFields = Object.keys(item).filter(
+		(field) =>
+			!NON_EDITABLE_COLUMNS.includes(field) &&
+			field !== "id" &&
+			field !== "customMetadata"
+	);
+
+	const activeCustomFields = customMetadataFields.filter(
+		(field) => !field.archived
+	);
+
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
+
 		if (!projectId) return;
+
 		setLoading(true);
 
 		try {
 			const formData = new FormData(e.currentTarget);
 
-			const rawData: Partial<CreateSample> = {
-				name: formData.get("name") as string,
-				alias: formData.get("alias") as string,
-				taxId: formData.get("taxId") ? Number(formData.get("taxId")) : null,
-				hostTaxId: formData.get("hostTaxId")
-					? Number(formData.get("hostTaxId"))
-					: null,
-				mlst: formData.get("mlst") as string,
-				isolationSource: formData.get("isolationSource") as string,
-				collectionDate: formData.get("collectionDate") as string,
-				location: formData.get("location") as string,
-				sequencingLab: formData.get("sequencingLab") as string,
-				institution: formData.get("institution") as string,
-				hostHealthState: formData.get("hostHealthState") as string,
-			};
+			const updateData: Record<string, unknown> = {};
 
-			const updateData = emptyToNull(rawData);
+			/*
+			 * Standard columns
+			 */
+			for (const field of standardFields) {
+				const value = formData.get(field);
 
-			await updateSample(projectId, item.id, updateData);
+				if (value === null) {
+					continue;
+				}
+
+				const originalValue = item[field as keyof Sample];
+
+				// Empty values become null
+				if (value === "") {
+					updateData[field] = null;
+					continue;
+				}
+
+				/*
+				 * Preserve the type of the original Sample value.
+				 * This means we don't need to manually list every field.
+				 */
+				if (typeof originalValue === "number") {
+					const numberValue = Number(value);
+
+					updateData[field] = Number.isNaN(numberValue) ? null : numberValue;
+				} else if (typeof originalValue === "boolean") {
+					updateData[field] = value === "true";
+				} else {
+					updateData[field] = String(value);
+				}
+			}
+
+			/*
+			 * Custom columns
+			 */
+			const customMetadata: Record<string, string | number | boolean | null> =
+				{};
+
+			for (const field of activeCustomFields) {
+				const value = formData.get(`customMetadata.${field.key}`);
+
+				if (value === null || value === "") {
+					customMetadata[field.key] = null;
+					continue;
+				}
+
+				switch (field.type) {
+					case "NUMBER": {
+						const numberValue = Number(value);
+
+						customMetadata[field.key] = Number.isNaN(numberValue)
+							? null
+							: numberValue;
+
+						break;
+					}
+
+					case "BOOLEAN":
+						customMetadata[field.key] = value === "true";
+						break;
+
+					case "DATE":
+					case "TEXT":
+					default:
+						customMetadata[field.key] = String(value);
+						break;
+				}
+			}
+
+			/*
+			 * Add custom metadata only when there are custom fields.
+			 */
+			if (activeCustomFields.length > 0) {
+				updateData.customMetadata = customMetadata;
+			}
+
+			await updateSample(
+				projectId,
+				item.id,
+				updateData as Partial<CreateSample>
+			);
 
 			toast.success("Sample has been updated", {
 				description: `${new Date().toLocaleString()}.`,
 			});
 
-			queryClient.invalidateQueries({
+			await queryClient.invalidateQueries({
 				queryKey: ["samples"],
 			});
 
-			if (onUpdated) onUpdated();
+			await queryClient.invalidateQueries({
+				queryKey: ["sample-metadata-fields", projectId],
+			});
+
+			onUpdated?.();
+			setOpenDrawer(false);
 		} catch (err: unknown) {
 			const message =
 				err instanceof Error ? err.message : "Error updating sample";
+
 			toast.error(message);
 		} finally {
 			setLoading(false);
@@ -819,35 +1086,55 @@ function TableCellViewer({
 						onSubmit={handleSubmit}
 						className="flex flex-col gap-4"
 					>
-						{Object.keys(item)
-							.filter(
-								(field) =>
-									!NON_EDITABLE_COLUMNS.includes(field) && field !== "id"
-							)
-							.map((field) => {
-								const rawValue = item[field as keyof Sample];
+						{standardFields.map((field) => {
+							const rawValue = item[field as keyof Sample];
 
-								const isDateField = field.toLowerCase().includes("date");
+							const isDateField = field.toLowerCase().includes("date");
 
-								const formattedValue = isDateField
-									? formatDateToYMD(rawValue as string)
-									: String(rawValue ?? "");
+							const formattedValue = isDateField
+								? formatDateToYMD(rawValue as string)
+								: String(rawValue ?? "");
 
-								return (
-									<div key={field} className="flex flex-col gap-3">
-										<Label htmlFor={field}>{getColumnNewName(field)}</Label>
+							return (
+								<div key={field} className="flex flex-col gap-3">
+									<Label htmlFor={field}>{getColumnNewName(field)}</Label>
 
-										<Input
-											id={field}
-											name={field}
-											type={isDateField ? "date" : "text"}
-											onPointerDown={(e) => e.stopPropagation()}
-											defaultValue={formattedValue}
-											className="grid grid-cols-1 place-content-around"
-										/>
-									</div>
-								);
-							})}
+									<Input
+										id={field}
+										name={field}
+										type={isDateField ? "date" : "text"}
+										onPointerDown={(e) => e.stopPropagation()}
+										defaultValue={formattedValue}
+										className="grid grid-cols-1 place-content-around"
+									/>
+								</div>
+							);
+						})}
+
+						{activeCustomFields.map((field) => {
+							const value = item.customMetadata?.[field.key] ?? "";
+
+							return (
+								<div key={`custom-${field.id}`} className="flex flex-col gap-3">
+									<Label htmlFor={`custom-${field.key}`}>{field.label}</Label>
+
+									<Input
+										id={`custom-${field.key}`}
+										name={`customMetadata.${field.key}`}
+										type={
+											field.type === "DATE"
+												? "date"
+												: field.type === "NUMBER"
+													? "number"
+													: "text"
+										}
+										defaultValue={String(value ?? "")}
+										onPointerDown={(e) => e.stopPropagation()}
+										className="grid grid-cols-1 place-content-around"
+									/>
+								</div>
+							);
+						})}
 					</form>
 				</div>
 
