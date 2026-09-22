@@ -81,9 +81,12 @@ export const COLUMN_TOOLTIPS: Record<string, string> = {
 	hostTissue:
 		"Name of host tissue or organ sampled for analysis. Example: tracheal tissue.",
 
+	isolationSourceHostAssociated:
+		"Describes the physical, environmental and/or local geographical source of the biological sample from which the sample was derived (example: soil)",
+
 	hostBehaviour: "Natural behaviour of the host.",
 
-	nonHostAssociatedIsolationSource:
+	isolationSourceNonHostAssociated:
 		"Describes the physical, environmental and/or local geographical source of the biological sample from which the sample was derived when not host associated.",
 
 	influenzaVirusType: "One of the three influenza virus classification types.",
@@ -106,13 +109,16 @@ export const COLUMN_TOOLTIPS: Record<string, string> = {
 	commune:
 		"The geographical origin of the sample as defined by the specific municipality (Kommune) name. Example: Tromsø.",
 
-	hospital:
+	hospitalHealthInstitution:
 		"The hospital or health institution where the sample was collected. Example: University Hospital of North Norway.",
 
 	mlst: "Multi-Locus Sequence Typing (MLST) scheme assigned to the isolate.",
 
 	sequencingLab:
 		"Typically the laboratory that carried out the sequencing of the samples.",
+
+	collectingInstitution:
+		"Name of the institution to which the person collecting the specimen belongs. Format: Institute Name, Institute Address.",
 
 	// EXPERIMENT COLUMNS TOOLTIP
 	sampleName:
