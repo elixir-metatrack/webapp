@@ -102,7 +102,7 @@ export function UploadSampleDialog({
 					<p className="text-muted-foreground text-sm">
 						Drag & drop your file here
 					</p>
-					<p className="text-muted-foreground text-xs">CSV, TSV, XLSX or TXT</p>
+					<p className="text-muted-foreground text-xs">CSV, TSV or TXT</p>
 
 					<Button
 						variant="secondary"
@@ -115,13 +115,12 @@ export function UploadSampleDialog({
 					<Input
 						ref={fileInputRef}
 						type="file"
-						accept=".csv,.xlsx,.tsv,.txt"
+						accept=".csv,.tsv,.txt"
 						className="hidden"
 						onChange={(e) => setFile(e.target.files?.[0] || null)}
 					/>
 				</div>
 
-				{/* Nome do arquivo */}
 				{file && (
 					<p className="mt-2 text-sm">
 						Selected file: <strong>{file.name}</strong>
