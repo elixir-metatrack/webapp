@@ -161,3 +161,13 @@ export type TemplateType =
 	| "sample_extended"
 	| "sample_virus"
 	| "experiment";
+
+export type SampleMetadataFieldType = "TEXT" | "NUMBER" | "DATE" | "BOOLEAN";
+
+export interface SampleMetadataField {
+	id: string;
+	key: string;
+	label: string;
+	type: SampleMetadataFieldType;
+	archived: boolean;
+}
