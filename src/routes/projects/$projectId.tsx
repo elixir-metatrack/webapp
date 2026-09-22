@@ -205,7 +205,8 @@ function RouteComponent() {
 										))}
 									</Tabs>
 								) : (
-									<div className="flex justify-center py-8">
+									<div className="flex justify-center gap-2 py-8">
+										<DownloadTemplateButton type="experiment" />
 										<AddAssayDialog projectId={projectId}></AddAssayDialog>
 									</div>
 								)}
