@@ -95,28 +95,26 @@ export function DataTableViewOptions<TData>({
 	// Standard table columns
 	// ============================================================
 
-	const columns = useMemo(() => {
-		const customColumnKeys = new Set(
-			customColumns.filter((field) => !field.archived).map((field) => field.key)
-		);
+	const customColumnKeys = new Set(
+		customColumns.filter((field) => !field.archived).map((field) => field.key)
+	);
 
-		return table.getAllColumns().filter((column) => {
-			if (!column.getCanHide()) {
-				return false;
-			}
+	const columns = table.getAllColumns().filter((column) => {
+		if (!column.getCanHide()) {
+			return false;
+		}
 
-			if (["select", "actions", "name"].includes(column.id)) {
-				return false;
-			}
+		if (["select", "actions", "name"].includes(column.id)) {
+			return false;
+		}
 
-			// Custom columns are managed separately.
-			if (customColumnKeys.has(column.id)) {
-				return false;
-			}
+		// Custom columns are managed separately.
+		if (customColumnKeys.has(column.id)) {
+			return false;
+		}
 
-			return true;
-		});
-	}, [table, customColumns]);
+		return true;
+	});
 
 	// ============================================================
 	// Filter standard columns
@@ -150,17 +148,15 @@ export function DataTableViewOptions<TData>({
 		return table.getColumn(field.key);
 	};
 
-	const availableCustomColumns = useMemo(() => {
-		return customColumns.filter((field) => {
-			if (field.archived) {
-				return false;
-			}
+	const availableCustomColumns = customColumns.filter((field) => {
+		if (field.archived) {
+			return false;
+		}
 
-			const column = table.getColumn(field.key);
+		const column = table.getColumn(field.key);
 
-			return Boolean(column?.getCanHide());
-		});
-	}, [customColumns, table]);
+		return Boolean(column?.getCanHide());
+	});
 
 	const filteredCustomColumns = useMemo(() => {
 		const value = search.toLowerCase().trim();
@@ -187,16 +183,14 @@ export function DataTableViewOptions<TData>({
 			table.getColumn(field.key)?.getIsVisible()
 		).length;
 
-	const allFilteredTableColumns = useMemo(() => {
-		return [
-			...filteredColumns,
-			...filteredCustomColumns
-				.map((field) => table.getColumn(field.key))
-				.filter((column): column is NonNullable<typeof column> =>
-					Boolean(column)
-				),
-		];
-	}, [filteredColumns, filteredCustomColumns, table]);
+	const allFilteredTableColumns = [
+		...filteredColumns,
+		...filteredCustomColumns
+			.map((field) => table.getColumn(field.key))
+			.filter((column): column is NonNullable<typeof column> =>
+				Boolean(column)
+			),
+	];
 
 	const allFilteredColumnsVisible =
 		allFilteredTableColumns.length > 0 &&
