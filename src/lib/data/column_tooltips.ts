@@ -10,7 +10,7 @@ export const COLUMN_TOOLTIPS: Record<string, string> = {
 	taxonName:
 		"Scientific name of the organism as in the NCBI Taxonomy database. Scientific names typically follow the binomial nomenclature. For example, the scientific name for humans is Homo sapiens. NB! you don't need to provide this as it will be automatically fetched from the Tax ID in MetaTrack.",
 
-	title: "Title of the sample.",
+	projectTitle: "Title of the sample.",
 
 	description:
 		"Description of the sample. Example: Staphylococcus aureus isolated from blood culture.",
