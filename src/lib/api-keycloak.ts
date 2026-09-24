@@ -14,6 +14,7 @@ import type {
 	SampleMetadataFieldType,
 	SampleStatsByDateResponse,
 	StatisticsResponse,
+	StorageStats,
 	Taxon,
 	TemplateType,
 } from "./types";
@@ -582,10 +583,14 @@ export async function getTaxon(taxon_id: string): Promise<Taxon> {
 	return api<Taxon>(`../taxon/${taxon_id}`);
 }
 
-export async function getSamplesByDate(
-	size = 1000
-): Promise<SampleStatsByDateResponse> {
+export async function getSamplesByDate(): Promise<SampleStatsByDateResponse> {
 	return apiPublic<SampleStatsByDateResponse>(`statistics/samples-by-date`);
+}
+
+export async function getProjectStorageStatistics(
+	projectId: string
+): Promise<StorageStats> {
+	return api<StorageStats>(`projects/${projectId}/statistics/storage`);
 }
 
 // ============================================================

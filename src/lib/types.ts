@@ -156,6 +156,11 @@ export type SampleStatsByDateResponse = {
 	totalPages: number;
 };
 
+export type StorageStats = {
+	fileCount: number;
+	totalBytes: number;
+};
+
 export type TemplateType =
 	| "sample"
 	| "sample_extended"
