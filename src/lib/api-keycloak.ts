@@ -1,3 +1,4 @@
+import { isTableImportViolations, TableImportError } from "./table-import";
 import { keycloak } from "./keycloak";
 import type {
 	Assay,
@@ -50,7 +51,13 @@ export async function api<T = unknown>(
 
 		if (contentType?.includes("application/json")) {
 			const data = await res.json();
-
+			if (
+				(endpoint.endsWith("/samplesheet") ||
+					/assays\/[^/]+\/experiments$/.test(endpoint)) &&
+				isTableImportViolations(data)
+			) {
+				throw new TableImportError(data);
+			}
 			throw new Error(getApiErrorMessage(data));
 		}
 
@@ -296,6 +303,19 @@ export async function uploadSamplesheet(
 	formData.append("file", file);
 
 	return api(`projects/${projectId}/samples/samplesheet`, {
+		method: "POST",
+		body: formData,
+	});
+}
+
+export async function uploadExperimentsheet(
+	projectId: string,
+	assayId: string,
+	file: File
+): Promise<unknown> {
+	const formData = new FormData();
+	formData.append("file", file);
+	return api(`projects/${projectId}/assays/${assayId}/experiments`, {
 		method: "POST",
 		body: formData,
 	});
@@ -602,14 +622,16 @@ export async function downloadTemplate(type: TemplateType): Promise<void> {
 		sample: "/templates/samples/sample.csv",
 		sample_extended: "/templates/samples/sample_extended.csv",
 		sample_virus: "/templates/samples/sample_virus.csv",
-		experiment: "/templates/experiments/experiment.csv",
+		experiment_PE: "/templates/experiments/experiment_PE.csv",
+		experiment_SE: "/templates/experiments/experiment_SE.csv",
 	};
 
 	const TEMPLATE_FILENAMES: Record<TemplateType, string> = {
 		sample: "sample.csv",
 		sample_extended: "sample_extended.csv",
 		sample_virus: "sample_virus.csv",
-		experiment: "experiment.csv",
+		experiment_PE: "experiment_PE.csv",
+		experiment_SE: "experiment_SE.csv",
 	};
 
 	const path = TEMPLATE_PATHS[type];
@@ -633,4 +655,18 @@ export async function downloadTemplate(type: TemplateType): Promise<void> {
 
 	a.remove();
 	window.URL.revokeObjectURL(url);
+}
+
+export async function downloadExcelTemplate(type: TemplateType): Promise<void> {
+	const res = await fetch(`${API_URL}/templates/excel/${type}`);
+	if (!res.ok) throw new Error("Failed to download Excel template");
+	const blob = await res.blob();
+	const url = URL.createObjectURL(blob);
+	const anchor = document.createElement("a");
+	anchor.href = url;
+	anchor.download = `${type}-v1.xlsx`;
+	document.body.appendChild(anchor);
+	anchor.click();
+	anchor.remove();
+	URL.revokeObjectURL(url);
 }

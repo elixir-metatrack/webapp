@@ -18,10 +18,12 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { downloadTemplate } from "@/lib/api-keycloak";
+import { downloadExcelTemplate, downloadTemplate } from "@/lib/api-keycloak";
+import type { TemplateType } from "@/lib/types";
 
 interface DownloadTemplateButtonProps {
 	type: "sample" | "experiment";
+	format?: "csv" | "xlsx";
 }
 
 const SAMPLE_TEMPLATES = [
@@ -34,49 +36,60 @@ const SAMPLE_TEMPLATES = [
 	{ type: "sample_virus" as const, label: "Sample Virus", icon: Virus },
 ];
 
-export function DownloadTemplateButton({ type }: DownloadTemplateButtonProps) {
+const EXPERIMENT_TEMPLATES = [
+	{
+		type: "experiment_PE" as const,
+		label: "Paired-end experiment",
+		icon: Files,
+	},
+	{
+		type: "experiment_SE" as const,
+		label: "Single-end experiment",
+		icon: FileSpreadsheet,
+	},
+];
+
+export function DownloadTemplateButton({
+	type,
+	format = "csv",
+}: DownloadTemplateButtonProps) {
 	const [loading, setLoading] = useState(false);
 
-	const handleDownload = async (
-		templateType: "sample" | "sample_extended" | "sample_virus" | "experiment"
-	) => {
+	const handleDownload = async (templateType: TemplateType) => {
 		try {
 			setLoading(true);
 
-			await downloadTemplate(templateType);
+			await (format === "xlsx" ? downloadExcelTemplate : downloadTemplate)(
+				templateType
+			);
 
 			toast.success("Template downloaded successfully");
 		} catch (err: unknown) {
-			toast.error((err as Error)?.message ?? "Error downloading template");
+			toast.error(
+				err instanceof Error ? err.message : "Error downloading template"
+			);
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	if (type === "experiment") {
-		return (
-			<Button
-				variant="default"
-				onClick={() => handleDownload("experiment")}
-				disabled={loading}
-			>
-				<Download className="h-4 w-4" />
-				Experiment Template
-			</Button>
-		);
-	}
+	const templates =
+		type === "experiment" ? EXPERIMENT_TEMPLATES : SAMPLE_TEMPLATES;
 
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button variant="default" disabled={loading}>
-					<Download className="h-4 w-4" /> Sample Template{" "}
+					<Download className="h-4 w-4" />
+					{format === "xlsx"
+						? "Download Excel template"
+						: `${type === "experiment" ? "Experiment" : "Sample"} Template`}{" "}
 					<ChevronDown className="ml-1 h-4 w-4" />
 				</Button>
 			</DropdownMenuTrigger>
 
 			<DropdownMenuContent align="start">
-				{SAMPLE_TEMPLATES.map((template) => {
+				{templates.map((template) => {
 					const Icon = template.icon;
 					return (
 						<DropdownMenuItem

@@ -167,8 +167,9 @@ function RouteComponent() {
 									dataType="sample"
 									project={project}
 									showAddButton={
-										<div className="flex gap-2">
+										<div className="flex flex-wrap gap-2">
 											<DownloadTemplateButton type="sample" />
+											<DownloadTemplateButton type="sample" format="xlsx" />
 											<AddSampleDialog projectId={projectId} />
 											<UploadSampleDialog projectId={projectId} />
 										</div>

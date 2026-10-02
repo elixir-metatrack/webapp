@@ -9,7 +9,12 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { uploadSamplesheet as uploadSampleFileNew } from "@/lib/api-keycloak";
+import { uploadSamplesheet, uploadExperimentsheet } from "@/lib/api-keycloak";
+import {
+	isTableFile,
+	TABLE_FILE_ACCEPT,
+	TableImportError,
+} from "@/lib/table-import";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Input } from "../ui/input";
@@ -17,62 +22,69 @@ import { HardDriveUpload } from "lucide-react";
 
 interface UploadSampleDialogProps {
 	projectId: string;
-	studyId?: string;
 	assayId?: string;
 }
 
 export function UploadSampleDialog({
 	projectId,
-	studyId,
 	assayId,
 }: UploadSampleDialogProps) {
 	const [file, setFile] = useState<File | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [open, setOpen] = useState(false);
+	const [importError, setImportError] = useState<string | null>(null);
+	const [partialImport, setPartialImport] = useState(false);
+	const entity = assayId ? "Experiment" : "Sample";
 	const queryClient = useQueryClient();
 
 	const uploadMutation = useMutation({
-		mutationFn: (file: File) => uploadSampleFileNew(projectId, file),
+		mutationFn: (selectedFile: File) =>
+			assayId
+				? uploadExperimentsheet(projectId, assayId, selectedFile)
+				: uploadSamplesheet(projectId, selectedFile),
 		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: ["samples", projectId, studyId, assayId],
-			});
-
-			const now = new Date();
-			const formattedDate = now.toLocaleString();
-
-			toast.success("Upload completed successfully", {
-				description: `${formattedDate}.`,
-				action: {
-					label: "Undo",
-					onClick: () => console.log("Undo"),
-				},
-			});
+			toast.success(`${entity} import completed successfully`);
 			setFile(null);
 			setOpen(false);
 		},
 		onError: (error: Error) => {
-			console.error(error);
-			const message = error?.message || "Uploading error";
-
-			toast.error(message, {
-				action: {
-					label: "Undo",
-					onClick: () => console.log("Undo"),
-				},
-			});
+			setImportError(error.message);
+			setPartialImport(error instanceof TableImportError);
+			toast.error("Import could not be completed. See the details below.");
+		},
+		onSettled: () => {
+			queryClient.invalidateQueries({ queryKey: ["samples", projectId] });
+			if (assayId) {
+				queryClient.invalidateQueries({ queryKey: ["assays", projectId] });
+				queryClient.invalidateQueries({ queryKey: ["assaySamples", assayId] });
+			}
 		},
 	});
 
 	const handleUpload = () => {
 		if (!file) return;
+		setImportError(null);
+		setPartialImport(false);
 		uploadMutation.mutate(file);
+	};
+
+	const selectFile = (selected: File | null) => {
+		if (uploadMutation.isPending) return;
+		setPartialImport(false);
+		if (selected && !isTableFile(selected)) {
+			setFile(null);
+			if (fileInputRef.current) fileInputRef.current.value = "";
+			setImportError("Choose a CSV, TSV, TXT, XLS or XLSX file.");
+			return;
+		}
+		setFile(selected);
+		setImportError(null);
 	};
 
 	const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
 		e.preventDefault();
-		const droppedFile = e.dataTransfer.files?.[0];
-		if (droppedFile) setFile(droppedFile);
+		const droppedFile = e.dataTransfer.files.item(0);
+		if (droppedFile) selectFile(droppedFile);
 	};
 
 	const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -80,20 +92,30 @@ export function UploadSampleDialog({
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
+		<Dialog
+			open={open}
+			onOpenChange={(value) => {
+				if (uploadMutation.isPending) return;
+				setOpen(value);
+				if (!value) {
+					setFile(null);
+					setImportError(null);
+					setPartialImport(false);
+				}
+			}}
+		>
 			<DialogTrigger asChild>
 				<Button className="flex items-center gap-2">
 					<HardDriveUpload className="h-4 w-4" />
-					Upload Sample
+					Upload {entity}
 				</Button>
 			</DialogTrigger>
 
 			<DialogContent className="sm:max-w-2xl" aria-describedby={undefined}>
 				<DialogHeader>
-					<DialogTitle>Upload Sample File</DialogTitle>
+					<DialogTitle>Upload {entity} File</DialogTitle>
 				</DialogHeader>
 
-				{/* Dropzone */}
 				<div
 					onDrop={handleDrop}
 					onDragOver={handleDragOver}
@@ -102,7 +124,9 @@ export function UploadSampleDialog({
 					<p className="text-muted-foreground text-sm">
 						Drag & drop your file here
 					</p>
-					<p className="text-muted-foreground text-xs">CSV, TSV or TXT</p>
+					<p className="text-muted-foreground text-xs">
+						CSV, TSV, XLS, XLSX or TXT
+					</p>
 
 					<Button
 						variant="secondary"
@@ -115,9 +139,11 @@ export function UploadSampleDialog({
 					<Input
 						ref={fileInputRef}
 						type="file"
-						accept=".csv,.tsv,.txt"
+						accept={TABLE_FILE_ACCEPT}
+						aria-label={`${entity} table file`}
+						disabled={uploadMutation.isPending}
 						className="hidden"
-						onChange={(e) => setFile(e.target.files?.[0] || null)}
+						onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
 					/>
 				</div>
 
@@ -127,9 +153,37 @@ export function UploadSampleDialog({
 					</p>
 				)}
 
-				{/* Ações */}
+				{importError && (
+					<div
+						role="alert"
+						className="border-destructive max-h-60 space-y-2 overflow-auto rounded-md border p-3 text-sm"
+					>
+						{/* The server may accept valid rows before reporting the rejected ones. */}
+						<p className="whitespace-pre-wrap">{importError}</p>
+						{partialImport && (
+							<p>
+								Valid rows may already have been imported. Check the project
+								before retrying.
+							</p>
+						)}
+					</div>
+				)}
+				{!assayId && (
+					<p className="text-muted-foreground text-sm">
+						Excel files may include a second sheet with vocabularies for
+						existing custom text attributes.
+					</p>
+				)}
+
 				<div className="mt-4 flex justify-end gap-2">
-					<Button variant="outline" onClick={() => setOpen(false)}>
+					<Button
+						variant="outline"
+						disabled={uploadMutation.isPending}
+						onClick={() => {
+							setOpen(false);
+							selectFile(null);
+						}}
+					>
 						Cancel
 					</Button>
 

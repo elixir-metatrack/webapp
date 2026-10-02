@@ -5,6 +5,7 @@ import { getFilesSampleAssay, getSamplesInAssay } from "@/lib/api-keycloak";
 import { AddSamplesToAssayDialog } from "./add-samples-assay";
 import { DownloadTemplateButton } from "./download-template-button";
 import { EditAssayDialog } from "./edit-assay-dialog";
+import { UploadSampleDialog } from "./upload-sample";
 
 interface AssayTableProps {
 	assay: Assay;
@@ -15,8 +16,10 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 	const { data } = useQuery({
 		queryKey: ["assaySamples", assay.id, assay.modifiedOn],
 		queryFn: async () => {
-			const samples: Sample[] =
-				(await getSamplesInAssay(project?.id ?? "", assay.id)) ?? [];
+			const samples: Sample[] = await getSamplesInAssay(
+				project?.id ?? "",
+				assay.id
+			);
 
 			const samplesWithFiles = await Promise.all(
 				samples.map(async (sample) => {
@@ -43,7 +46,7 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 			return {
 				samples: samplesWithFiles,
 				rows: samplesWithFiles.map<AssaySampleRow>((sample) => ({
-					name: sample.name ?? "Unknown",
+					name: sample.name,
 					studyAccession: assay.studyAccession,
 					instrumentModel: assay.instrumentModel,
 					libraryName: assay.libraryName,
@@ -71,8 +74,12 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 			onDelete={(sample) => console.log("Delete sample", sample)}
 			assay={assay}
 			showAddButton={
-				<div className="flex gap-2">
+				<div className="flex flex-wrap gap-2">
 					<DownloadTemplateButton type="experiment" />
+					<DownloadTemplateButton type="experiment" format="xlsx" />
+					{project?.id && (
+						<UploadSampleDialog projectId={project.id} assayId={assay.id} />
+					)}
 					<EditAssayDialog assay={assay} projectId={project?.id ?? ""} />
 					<AddSamplesToAssayDialog
 						projectId={project?.id ?? ""}
