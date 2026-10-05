@@ -72,7 +72,6 @@ export const seo = ({
 };
 
 export function getApiErrorMessage(data: unknown): string {
-	// Caso o backend retorne um array de erros
 	if (Array.isArray(data)) {
 		const messages = data
 			.map((error) => {
@@ -99,7 +98,6 @@ export function getApiErrorMessage(data: unknown): string {
 		}
 	}
 
-	// Caso o backend retorne um objeto
 	if (data && typeof data === "object") {
 		const error = data as {
 			message?: string;
