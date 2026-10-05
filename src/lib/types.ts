@@ -165,7 +165,8 @@ export type TemplateType =
 	| "sample"
 	| "sample_extended"
 	| "sample_virus"
-	| "experiment";
+	| "experiment_PE"
+	| "experiment_SE";
 
 export type SampleMetadataFieldType = "TEXT" | "NUMBER" | "DATE" | "BOOLEAN";
 

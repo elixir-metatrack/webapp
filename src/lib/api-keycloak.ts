@@ -602,14 +602,16 @@ export async function downloadTemplate(type: TemplateType): Promise<void> {
 		sample: "/templates/samples/sample.csv",
 		sample_extended: "/templates/samples/sample_extended.csv",
 		sample_virus: "/templates/samples/sample_virus.csv",
-		experiment: "/templates/experiments/experiment.csv",
+		experiment_PE: "/templates/experiments/experiment_PE.csv",
+		experiment_SE: "/templates/experiments/experiment_SE.csv",
 	};
 
 	const TEMPLATE_FILENAMES: Record<TemplateType, string> = {
 		sample: "sample.csv",
 		sample_extended: "sample_extended.csv",
 		sample_virus: "sample_virus.csv",
-		experiment: "experiment.csv",
+		experiment_PE: "experiment_PE.csv",
+		experiment_SE: "experiment_SE.csv",
 	};
 
 	const path = TEMPLATE_PATHS[type];
