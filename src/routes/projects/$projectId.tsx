@@ -16,7 +16,7 @@ import { AddSampleDialog } from "@/components/dashboard/add-sample";
 import type { Assay, Project, Sample } from "@/lib/types";
 import { UploadSampleDialog } from "@/components/dashboard/upload-sample";
 import type { ColumnDef } from "@tanstack/react-table";
-import { NON_VIEWED_COLUMNS } from "@/lib/utils";
+import { cn, NON_VIEWED_COLUMNS } from "@/lib/utils";
 import { DownloadTemplateButton } from "@/components/dashboard/download-template-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
@@ -26,6 +26,9 @@ import { Button } from "@/components/ui/button";
 import { EditProjectDialog } from "@/components/dashboard/edit-project-dialog";
 import { SquarePen, UserRoundCog } from "lucide-react";
 import { IconMicroscope, IconTestPipe } from "@tabler/icons-react";
+import { useUser } from "#/hooks/use-user";
+import { useSidebar } from "#/components/ui/sidebar";
+import { VocabulariesDialog } from "#/components/vocabulariesDialog";
 
 export const Route = createFileRoute("/projects/$projectId")({
 	component: RouteComponent,
@@ -38,6 +41,10 @@ function RouteComponent() {
 	const [editDialogInitialTab, setEditDialogInitialTab] = useState<
 		"general" | "members"
 	>("general");
+
+	const { data: user } = useUser();
+
+	const isSystemAdmin = user?.roles?.includes("system-admin");
 
 	const openEditProjectDialog = (tab: "general" | "members") => {
 		setEditDialogInitialTab(tab);
@@ -98,8 +105,10 @@ function RouteComponent() {
 					}))
 			: [];
 
+	const { state } = useSidebar();
+
 	return (
-		<div>
+		<div className={cn(state === "collapsed" ? "w-19/20" : "w-7/8")}>
 			<SiteHeader
 				items={[
 					{ label: "My Projects", href: "/projects" },
@@ -138,23 +147,43 @@ function RouteComponent() {
 				<Card className="pt-2">
 					<Tabs value={activeTab} onValueChange={setActiveTab}>
 						<CardHeader className="pb-0">
-							<TabsList className="w-[300px]">
-								<TabsTrigger
-									value="samples"
-									className="text-lg font-semibold text-gray-500 [&_svg:not([class*='size-'])]:size-5"
-								>
-									<IconTestPipe />
-									Samples
-								</TabsTrigger>
+							<div className="flex w-full items-center justify-between">
+								<TabsList className="w-[300px]">
+									<TabsTrigger
+										value="samples"
+										className="text-lg font-semibold text-gray-500 [&_svg:not([class*='size-'])]:size-5"
+									>
+										<IconTestPipe />
+										Samples
+									</TabsTrigger>
 
-								<TabsTrigger
-									value="experiments"
-									className="text-lg font-semibold text-gray-500 [&_svg:not([class*='size-'])]:size-5"
-								>
-									<IconMicroscope />
-									Experiments
-								</TabsTrigger>
-							</TabsList>
+									<TabsTrigger
+										value="experiments"
+										className="text-lg font-semibold text-gray-500 [&_svg:not([class*='size-'])]:size-5"
+									>
+										<IconMicroscope />
+										Experiments
+									</TabsTrigger>
+								</TabsList>
+
+								<div className="flex items-center gap-2">
+									{/* Normal user vocabulary */}
+									<VocabulariesDialog
+										projectId={projectId}
+										dataType={activeTab === "samples" ? "sample" : "assay"}
+										isSystemAdmin={false}
+									/>
+
+									{/* Admin global vocabulary */}
+									{isSystemAdmin && (
+										<VocabulariesDialog
+											projectId={projectId}
+											dataType={activeTab === "samples" ? "sample" : "assay"}
+											isSystemAdmin={true}
+										/>
+									)}
+								</div>
+							</div>
 						</CardHeader>
 
 						<CardContent className="pt-6">
@@ -182,16 +211,17 @@ function RouteComponent() {
 										value={activeAssayTab ?? assays[0].id}
 										onValueChange={setActiveAssayTab}
 									>
-										<div className="mb-4 flex items-center gap-2">
-											<TabsList>
-												{assays.map((assay) => (
-													<TabsTrigger key={assay.id} value={assay.id}>
-														{assay.name}
-													</TabsTrigger>
-												))}
-											</TabsList>
-
-											<AddAssayDialog projectId={projectId}></AddAssayDialog>
+										<div className="mb-4 flex items-center justify-between gap-2">
+											<div className="flex items-center gap-2">
+												<TabsList>
+													{assays.map((assay) => (
+														<TabsTrigger key={assay.id} value={assay.id}>
+															{assay.name}
+														</TabsTrigger>
+													))}
+												</TabsList>
+												<AddAssayDialog projectId={projectId}></AddAssayDialog>
+											</div>
 										</div>
 
 										{assays.map((assay) => (

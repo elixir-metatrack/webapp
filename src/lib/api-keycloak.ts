@@ -17,6 +17,7 @@ import type {
 	StorageStats,
 	Taxon,
 	TemplateType,
+	Vocabulary,
 } from "./types";
 import { API_URL, API_BASE_URL } from "./config";
 import { getApiErrorMessage } from "./utils";
@@ -362,15 +363,17 @@ export async function deleteSampleMetadataField(
 
 export async function getSampleVocabularies(
 	projectId: string
-): Promise<unknown[]> {
-	return api<unknown[]>(`projects/${projectId}/sample-vocabularies`);
+): Promise<Vocabulary[]> {
+	return api<Vocabulary[]>(`projects/${projectId}/sample-vocabularies`);
 }
 
 export async function getSampleVocabulary(
 	projectId: string,
 	fieldKey: string
-): Promise<unknown> {
-	return api<unknown>(`projects/${projectId}/sample-vocabularies/${fieldKey}`);
+): Promise<Vocabulary> {
+	return api<Vocabulary>(
+		`projects/${projectId}/sample-vocabularies/${fieldKey}`
+	);
 }
 
 export async function updateSampleVocabulary(
@@ -389,6 +392,52 @@ export async function deleteSampleVocabulary(
 	fieldKey: string
 ): Promise<void> {
 	await api(`projects/${projectId}/sample-vocabularies/${fieldKey}`, {
+		method: "DELETE",
+	});
+}
+
+export async function createSampleVocabulary(
+	projectId: string,
+	fieldKey: string,
+	terms: string[]
+): Promise<Vocabulary> {
+	return api<Vocabulary>(`projects/${projectId}/sample-vocabularies`, {
+		method: "POST",
+		body: JSON.stringify({ fieldKey, terms }),
+	});
+}
+
+// ============================================================
+// Global Sample Vocabularies
+// ============================================================
+
+export async function getGlobalSampleVocabularies(): Promise<Vocabulary[]> {
+	return api<Vocabulary[]>("sample-vocabularies");
+}
+
+export async function getGlobalSampleVocabulary(
+	fieldKey: string
+): Promise<Vocabulary> {
+	return api<Vocabulary>(`sample-vocabularies/${encodeURIComponent(fieldKey)}`);
+}
+
+export async function updateGlobalSampleVocabulary(
+	fieldKey: string,
+	terms: string[]
+): Promise<Vocabulary> {
+	return api<Vocabulary>(
+		`sample-vocabularies/${encodeURIComponent(fieldKey)}`,
+		{
+			method: "PUT",
+			body: JSON.stringify({ terms }),
+		}
+	);
+}
+
+export async function deleteGlobalSampleVocabulary(
+	fieldKey: string
+): Promise<void> {
+	await api(`sample-vocabularies/${encodeURIComponent(fieldKey)}`, {
 		method: "DELETE",
 	});
 }
@@ -464,6 +513,38 @@ export async function addSamplesToAssay(
 	return api(`projects/${projectId}/assays/${assayId}/samples`, {
 		method: "PUT",
 		body: JSON.stringify({ sampleNames }),
+	});
+}
+
+// ============================================================
+// Global Assay Vocabularies
+// ============================================================
+
+export async function getGlobalAssayVocabularies(): Promise<Vocabulary[]> {
+	return api<Vocabulary[]>("assay-vocabularies");
+}
+
+export async function getGlobalAssayVocabulary(
+	fieldKey: string
+): Promise<Vocabulary> {
+	return api<Vocabulary>(`assay-vocabularies/${encodeURIComponent(fieldKey)}`);
+}
+
+export async function updateGlobalAssayVocabulary(
+	fieldKey: string,
+	terms: string[]
+): Promise<Vocabulary> {
+	return api<Vocabulary>(`assay-vocabularies/${encodeURIComponent(fieldKey)}`, {
+		method: "PUT",
+		body: JSON.stringify({ terms }),
+	});
+}
+
+export async function deleteGlobalAssayVocabulary(
+	fieldKey: string
+): Promise<void> {
+	await api(`assay-vocabularies/${encodeURIComponent(fieldKey)}`, {
+		method: "DELETE",
 	});
 }
 

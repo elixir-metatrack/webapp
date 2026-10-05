@@ -156,6 +156,23 @@ export type SampleStatsByDateResponse = {
 	totalPages: number;
 };
 
+export interface Vocabulary {
+	id: string;
+	fieldKey: string;
+	label: string;
+	custom: boolean;
+	terms: string[];
+	createdOn: string;
+	modifiedOn: string;
+}
+
+type VocabularyScope = "global" | "project";
+
+export interface VocabularyManagerProps {
+	projectId?: string;
+	scope: VocabularyScope;
+}
+
 export type StorageStats = {
 	fileCount: number;
 	totalBytes: number;
