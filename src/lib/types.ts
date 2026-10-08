@@ -53,6 +53,10 @@ export interface Sample {
 	files?: SampleFile[];
 }
 
+export interface SampleWithAssays extends Sample {
+	assays: Assay[];
+}
+
 export interface SampleFile {
 	name: string;
 }
