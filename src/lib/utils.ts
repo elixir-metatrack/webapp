@@ -21,6 +21,21 @@ export const NON_EDITABLE_COLUMNS = [
 ];
 export const NON_VIEWED_COLUMNS = ["id", "lastUpdatedOn", "alias"];
 
+export const SAMPLE_NUMBER_FIELDS = new Set([
+	"taxId",
+	"hostTaxId",
+	"latitude",
+	"longitude",
+]);
+
+export const ASSAY_NUMBER_FIELDS = new Set(["insertSize"]);
+
+export const DATE_FIELDS = new Set([
+	"collectionDate",
+	"createdOn",
+	"modifiedOn",
+]);
+
 declare module "@tanstack/react-table" {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	interface ColumnMeta<TData extends RowData, TValue> {
