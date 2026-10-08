@@ -136,7 +136,9 @@ export interface Assay {
 	files?: SampleFile[];
 }
 
-export type AssaySampleRow = Omit<Assay, "id">;
+export type UpdateAssay = Partial<
+	Omit<Assay, "id" | "createdOn" | "modifiedOn" | "files">
+>;
 
 export interface Taxon {
 	taxon_id: string;
