@@ -61,6 +61,7 @@ import type {
 	Project,
 	Sample,
 	SampleFile,
+	SampleWithAssays,
 } from "@/lib/types";
 import {
 	ASSAY_NUMBER_FIELDS,
@@ -70,15 +71,14 @@ import {
 	QUICK_EDIT_LIMIT,
 	SAMPLE_NUMBER_FIELDS,
 } from "@/lib/utils";
-import { ProjectTree } from "../projectTree";
-import {
-	buildProjectTree,
-	buildProjectTreeSampleAssay,
-} from "@/lib/projectTree";
+import { ProjectTree, type ProjectGraph } from "../projectTree";
+import { buildProjectGraph } from "@/lib/projectTree";
 import { UploadDataDialog } from "./upload-data";
 import {
 	batchEditSamples,
+	getAssaysInSample,
 	getSampleMetadataFields,
+	getSamplesInAssay,
 	requestPresignedDownload,
 	updateAssay,
 	updateSample,
@@ -791,15 +791,183 @@ export function DataTable<T extends object>({
 		}
 	};
 
-	const treeData = project
-		? dataType === "assay" && assay
-			? buildProjectTreeSampleAssay(
-					project,
-					selectedRows as unknown as Sample[],
-					assay
+	/*
+	 * ============================================================
+	 * PROJECT TREE
+	 * ============================================================
+	 */
+
+	const selectedSamples: Sample[] =
+		dataType === "sample" ? (selectedRows as Sample[]) : [];
+
+	const selectedAssays: Sample[] =
+		dataType === "assay" ? (selectedRows as Sample[]) : [];
+
+	const selectedSamplesForTree =
+		dataType === "sample" ? selectedSamples : selectedAssays;
+
+	/*
+	 * ============================================================
+	 * SAMPLE TAB
+	 *
+	 * Selected Samples
+	 *      ↓
+	 * GET /projects/{projectId}/samples/{sampleId}/assays
+	 *      ↓
+	 * Assays for each Sample
+	 *      ↓
+	 * Project -> Sample -> Assay
+	 * ============================================================
+	 */
+
+	const { data: treeAssaysBySample = {} } = useQuery({
+		queryKey: [
+			"tree-assays-by-sample",
+			project?.id,
+			selectedSamplesForTree.map((sample) => sample.id),
+		],
+
+		enabled: Boolean(project?.id) && selectedSamplesForTree.length > 0,
+
+		queryFn: async () => {
+			if (!project?.id) return {};
+
+			const entries = await Promise.all(
+				selectedSamplesForTree
+					.filter((sample) => Boolean(sample.id))
+					.map(async (sample) => {
+						const assays = await getAssaysInSample(project.id!, sample.id!);
+
+						return [sample.id!, assays] as const;
+					})
+			);
+
+			return Object.fromEntries(entries);
+		},
+	});
+
+	/*
+	 * ============================================================
+	 * ASSAY TAB
+	 *
+	 * Keep the existing reverse relationship:
+	 *
+	 * Selected Assays
+	 *      ↓
+	 * GET /projects/{projectId}/assays/{assayId}/samples
+	 *      ↓
+	 * Samples
+	 *      ↓
+	 * GET /projects/{projectId}/samples/{sampleId}/assays
+	 *      ↓
+	 * Assays
+	 * ============================================================
+	 */
+
+	const selectedAssayIds =
+		dataType === "assay"
+			? selectedAssays
+					.map((assay) => assay.id)
+					.filter((id): id is string => Boolean(id))
+			: [];
+
+	const { data: samplesBySelectedAssay = {} } = useQuery({
+		queryKey: ["selected-assay-samples", project?.id, selectedAssayIds],
+
+		enabled:
+			Boolean(project?.id) &&
+			dataType === "assay" &&
+			selectedAssayIds.length > 0,
+
+		queryFn: async () => {
+			if (!project?.id || selectedAssayIds.length === 0) {
+				return {};
+			}
+
+			const entries = await Promise.all(
+				selectedAssayIds.map(async (assayId) => {
+					const samples = await getSamplesInAssay(project.id!, assayId);
+
+					return [assayId, samples] as const;
+				})
+			);
+
+			return Object.fromEntries(entries);
+		},
+	});
+
+	/*
+	 * ------------------------------------------------------------
+	 * Samples returned from selected Assays
+	 * ------------------------------------------------------------
+	 */
+
+	const samplesFromSelectedAssays: Sample[] =
+		dataType === "assay"
+			? Array.from(
+					new Map(
+						Object.values(samplesBySelectedAssay)
+							.flat()
+							.map((sample) => [sample.id, sample])
+					).values()
 				)
-			: buildProjectTree(project, selectedRows as unknown as Sample[])
-		: { name: "", children: [] };
+			: [];
+
+	/*
+	 * ------------------------------------------------------------
+	 * For Assay tab, retrieve all Assays for those Samples.
+	 * ------------------------------------------------------------
+	 */
+
+	const assayTabSampleIds =
+		dataType === "assay"
+			? samplesFromSelectedAssays
+					.map((sample) => sample.id)
+					.filter((id): id is string => Boolean(id))
+			: [];
+
+	const { data: assaysForAssayTab = {} } = useQuery({
+		queryKey: [
+			"selected-sample-assays-from-assays",
+			project?.id,
+			assayTabSampleIds,
+		],
+
+		enabled:
+			Boolean(project?.id) &&
+			dataType === "assay" &&
+			assayTabSampleIds.length > 0,
+
+		queryFn: async () => {
+			if (!project?.id || assayTabSampleIds.length === 0) {
+				return {};
+			}
+
+			const entries = await Promise.all(
+				assayTabSampleIds.map(async (sampleId) => {
+					const assays = await getAssaysInSample(project.id!, sampleId);
+
+					return [sampleId, assays] as const;
+				})
+			);
+
+			return Object.fromEntries(entries);
+		},
+	});
+
+	/*
+	 * ============================================================
+	 * BUILD GRAPH
+	 * ============================================================
+	 */
+
+	const treeData: ProjectGraph =
+		project && selectedSamplesForTree.length > 0
+			? buildProjectGraph(project, selectedSamplesForTree, treeAssaysBySample)
+			: {
+					nodes: [],
+					links: [],
+				};
 
 	const editableColumns = enhancedColumns.filter(
 		(col) => !NON_EDITABLE_COLUMNS.includes(String(col.id))
