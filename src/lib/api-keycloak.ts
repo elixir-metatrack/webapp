@@ -302,6 +302,17 @@ export async function uploadSamplesheet(
 	});
 }
 
+export async function getAssaysInSample(
+	projectId: string,
+	sampleId: string
+): Promise<Assay[]> {
+	const data = await api<Assay[] | { assays: Assay[] }>(
+		`projects/${projectId}/samples/${sampleId}/assays`
+	);
+
+	return Array.isArray(data) ? data : (data.assays ?? []);
+}
+
 // ============================================================
 // Sample Metadata Fields
 // ============================================================
