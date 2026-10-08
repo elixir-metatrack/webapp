@@ -2,10 +2,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Project } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { useState } from "react";
 import { updateProject } from "@/lib/api-keycloak";
 import { Textarea } from "@/components/ui/textarea";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 export function ProjectGeneralTab({ project }: { project: Project }) {
 	const queryClient = useQueryClient();
@@ -15,11 +15,11 @@ export function ProjectGeneralTab({ project }: { project: Project }) {
 	const mutation = useMutation({
 		mutationFn: () => updateProject(project.id!, { name, description }),
 		onSuccess: () => {
-			toast.success("Project updated");
+			toastSuccess("Project updated");
 			queryClient.invalidateQueries({ queryKey: ["projects"] });
 		},
 		onError: () => {
-			toast.error("Failed to update project");
+			toastError("Failed to update project");
 		},
 	});
 

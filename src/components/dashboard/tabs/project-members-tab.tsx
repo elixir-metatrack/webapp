@@ -17,7 +17,6 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import {
 	addProjectMember,
 	getAllProjectMembers,
@@ -46,6 +45,7 @@ import {
 import { MoreVertical } from "lucide-react";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 export function ProjectMembersTab({ project }: { project: Project }) {
 	const queryClient = useQueryClient();
@@ -73,7 +73,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 	const addMutation = useMutation({
 		mutationFn: () => addProjectMember(project.id!, memberId, role),
 		onSuccess: () => {
-			toast.success("Member added");
+			toastSuccess("Member added");
 			queryClient.invalidateQueries({
 				queryKey: ["projectMembers", project.id],
 			});
@@ -81,7 +81,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 			setMemberId("");
 		},
 		onError: (err: unknown) =>
-			toast.error((err as Error)?.message || "Error adding member"),
+			toastError((err as Error)?.message || "Error adding member"),
 	});
 
 	const updateRoleMutation = useMutation({
@@ -91,7 +91,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 		},
 
 		onSuccess: () => {
-			toast.success("Role updated");
+			toastSuccess("Role updated");
 
 			queryClient.invalidateQueries({
 				queryKey: ["projectMembers", project.id],
@@ -101,7 +101,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 		},
 
 		onError: (err: unknown) =>
-			toast.error((err as Error)?.message || "Error updating role"),
+			toastError((err as Error)?.message || "Error updating role"),
 	});
 
 	const removeMutation = useMutation({
@@ -111,7 +111,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 		},
 
 		onSuccess: () => {
-			toast.success("Member removed");
+			toastSuccess("Member removed");
 
 			queryClient.invalidateQueries({
 				queryKey: ["projectMembers", project.id],
@@ -121,7 +121,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 		},
 
 		onError: (err: unknown) =>
-			toast.error((err as Error)?.message || "Error removing member"),
+			toastError((err as Error)?.message || "Error removing member"),
 	});
 
 	/* ------------------ INVITE MEMBER (future) ------------------ */
@@ -130,11 +130,11 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 	const inviteMutation = useMutation({
 		mutationFn: () => inviteProjectMember(project.id!, email, role),
 		onSuccess: () => {
-			toast.success("Invitation sent");
+			toastSuccess("Invitation sent");
 			setOpenInvite(false);
 			setEmail("");
 		},
-		onError: () => toast.error("Error sending invite"),
+		onError: () => toastError("Error sending invite"),
 	});
 	*/
 

@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	addSamplesToAssay,
@@ -18,6 +17,7 @@ import {
 } from "@/lib/api-keycloak";
 import { Input } from "@/components/ui/input";
 import { SquarePlus } from "lucide-react";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 interface AddSamplesToAssayDialogProps {
 	projectId: string;
@@ -46,13 +46,13 @@ export function AddSamplesToAssayDialog({
 	const { mutate, isPending } = useMutation({
 		mutationFn: () => addSamplesToAssay(projectId, assayId, selectedSamples),
 		onSuccess: () => {
-			toast.success("Samples added to assay!");
+			toastSuccess("Samples added to assay!");
 			queryClient.invalidateQueries({ queryKey: ["assaySamples", assayId] });
 			setOpen(false);
 			setSelectedSamples([]);
 		},
 		onError: (err: Error) => {
-			toast.error(err?.message ?? "Failed to add samples");
+			toastError(err?.message ?? "Failed to add samples");
 		},
 	});
 

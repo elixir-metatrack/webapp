@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
 	Dialog,
 	DialogContent,
@@ -15,6 +15,7 @@ import { Input } from "../ui/input";
 import { CheckCircle, HardDriveUpload, Loader2, XCircle } from "lucide-react";
 import { progressUploadFile, requestPresignedUpload } from "@/lib/api-keycloak";
 import { Progress } from "../ui/progress";
+import { toastSuccess } from "#/lib/toast";
 
 interface UploadSampleDialogProps {
 	projectId: string;
@@ -106,7 +107,7 @@ export function UploadDataDialog({
 
 		const succeeded = fileStates.length - failed;
 		if (failed === 0) {
-			toast.success(
+			toastSuccess(
 				`${succeeded} file${succeeded > 1 ? "s" : ""} uploaded successfully`
 			);
 		} else {

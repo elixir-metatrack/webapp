@@ -17,10 +17,10 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { HelpCircle, SquarePlus } from "lucide-react";
-import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createInvestigation } from "@/lib/api-keycloak";
 import type { Project } from "@/lib/types";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 export function AddProjectDialog() {
 	const [name, setName] = useState("");
@@ -44,24 +44,15 @@ export function AddProjectDialog() {
 			const now = new Date();
 			const formattedDate = now.toLocaleString();
 
-			toast.success("Project has been created", {
+			toastSuccess("Project has been created", {
 				description: `${formattedDate}.`,
-				action: {
-					label: "Undo",
-					onClick: () => console.log("Undo"),
-				},
 			});
 		},
 
 		onError: (error: Error) => {
 			const message = error?.message || "Error creating project";
 
-			toast.error(message, {
-				action: {
-					label: "Undo",
-					onClick: () => console.log("Undo"),
-				},
-			});
+			toastError(message, {});
 		},
 	});
 

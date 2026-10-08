@@ -8,7 +8,6 @@ import {
 	FileSpreadsheet,
 	Virus,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { downloadTemplate } from "@/lib/api-keycloak";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 interface DownloadTemplateButtonProps {
 	type: "sample" | "experiment";
@@ -73,9 +73,9 @@ export function DownloadTemplateButton({ type }: DownloadTemplateButtonProps) {
 
 			await downloadTemplate(templateType);
 
-			toast.success("Template downloaded successfully");
+			toastSuccess("Template downloaded successfully");
 		} catch (err: unknown) {
-			toast.error((err as Error)?.message ?? "Error downloading template");
+			toastError((err as Error)?.message ?? "Error downloading template");
 		} finally {
 			setLoading(false);
 		}
