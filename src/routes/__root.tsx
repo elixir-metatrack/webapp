@@ -107,7 +107,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<LayoutComponent />
 				<main className="mx-auto w-full flex-1">
 					{children}
-					<Toaster position="top-center" />
+					<Toaster position="top-center" duration={Infinity} />
 				</main>
 				<Footer />
 				<TanStackDevtools
