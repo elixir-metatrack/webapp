@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Edit3, Plus, Search, Trash2, X, Settings2 } from "lucide-react";
-import { toast } from "sonner";
 
 import {
 	// Sample - project
@@ -40,6 +39,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import type { Vocabulary } from "#/lib/types";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 type VocabularyDataType = "sample" | "assay";
 
@@ -227,7 +227,7 @@ export function Vocabularies({
 		},
 
 		onSuccess: () => {
-			toast.success("Vocabulary updated successfully");
+			toastSuccess("Vocabulary updated successfully");
 
 			queryClient.invalidateQueries({
 				queryKey: vocabularyListQueryKey,
@@ -241,7 +241,7 @@ export function Vocabularies({
 		},
 
 		onError: (error) => {
-			toast.error(
+			toastError(
 				error instanceof Error ? error.message : "Failed to update vocabulary"
 			);
 		},
@@ -279,7 +279,7 @@ export function Vocabularies({
 		},
 
 		onSuccess: () => {
-			toast.success("Vocabulary deleted successfully");
+			toastSuccess("Vocabulary deleted successfully");
 
 			queryClient.invalidateQueries({
 				queryKey: vocabularyListQueryKey,
@@ -292,7 +292,7 @@ export function Vocabularies({
 		},
 
 		onError: (error) => {
-			toast.error(
+			toastError(
 				error instanceof Error ? error.message : "Failed to delete vocabulary"
 			);
 		},
@@ -342,7 +342,7 @@ export function Vocabularies({
 			 * Open the dialog empty so the user
 			 * can create one.
 			 */
-			toast.error(
+			toastError(
 				error instanceof Error ? error.message : "Failed to load vocabulary"
 			);
 		}
@@ -360,7 +360,7 @@ export function Vocabularies({
 		}
 
 		if (editedTerms.includes(term)) {
-			toast.error("This term already exists");
+			toastError("This term already exists");
 			return;
 		}
 
@@ -408,7 +408,7 @@ export function Vocabularies({
 
 	const handleSave = () => {
 		if (editedTerms.length === 0) {
-			toast.error("Vocabulary must contain at least one term");
+			toastError("Vocabulary must contain at least one term");
 
 			return;
 		}
