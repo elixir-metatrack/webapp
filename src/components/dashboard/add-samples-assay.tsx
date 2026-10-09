@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	addSamplesToAssay,
+	getSamplesInAssay,
 	getSamples as getSamplesNew,
 } from "@/lib/api-keycloak";
 import { Input } from "@/components/ui/input";
@@ -39,9 +40,28 @@ export function AddSamplesToAssayDialog({
 		queryFn: () => getSamplesNew(projectId),
 	});
 
-	const filteredSamples = samples.filter((sample) =>
-		sample.name.toLowerCase().includes(search.toLowerCase())
+	const { data: assaySamples = [] } = useQuery({
+		queryKey: ["assaySamples", assayId],
+		queryFn: () => getSamplesInAssay(projectId, assayId),
+		enabled: open,
+	});
+
+	const existingSampleNames = new Set(
+		assaySamples.map((sample) => sample.name)
 	);
+
+	const filteredSamples = samples
+		.filter(
+			(sample) =>
+				!existingSampleNames.has(sample.name) &&
+				sample.name.toLowerCase().includes(search.toLowerCase())
+		)
+		.sort((a, b) =>
+			a.name.localeCompare(b.name, undefined, {
+				numeric: true,
+				sensitivity: "base",
+			})
+		);
 
 	const { mutate, isPending } = useMutation({
 		mutationFn: () => addSamplesToAssay(projectId, assayId, selectedSamples),
@@ -65,10 +85,18 @@ export function AddSamplesToAssayDialog({
 	};
 
 	const toggleSelectAll = () => {
-		if (selectedSamples.length === filteredSamples.length) {
-			setSelectedSamples([]);
+		const visibleNames = filteredSamples.map((sample) => sample.name);
+
+		const allVisibleSelected =
+			visibleNames.length > 0 &&
+			visibleNames.every((name) => selectedSamples.includes(name));
+
+		if (allVisibleSelected) {
+			setSelectedSamples((prev) =>
+				prev.filter((name) => !visibleNames.includes(name))
+			);
 		} else {
-			setSelectedSamples(filteredSamples.map((s) => s.name));
+			setSelectedSamples((prev) => [...new Set([...prev, ...visibleNames])]);
 		}
 	};
 
@@ -109,7 +137,9 @@ export function AddSamplesToAssayDialog({
 						<Checkbox
 							checked={
 								filteredSamples.length > 0 &&
-								selectedSamples.length === filteredSamples.length
+								filteredSamples.every((sample) =>
+									selectedSamples.includes(sample.name)
+								)
 							}
 							onCheckedChange={toggleSelectAll}
 						/>
