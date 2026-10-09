@@ -69,12 +69,10 @@ export type CreateSample = Omit<
 export type MeResponse = {
 	userId: string;
 	username: string;
-	email?: string;
-	firstName?: string;
-	lastName?: string;
-	isAuthenticated: boolean;
 	roles: string[];
-	avatar?: string;
+	country: string;
+	institution: string;
+	orcid: string;
 };
 
 export type Member = {
