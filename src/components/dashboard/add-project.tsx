@@ -69,7 +69,7 @@ export function AddProjectDialog() {
 			<DialogTrigger asChild>
 				<Button>
 					<SquarePlus className="h-4 w-4" />
-					Add Project
+					Create Project
 				</Button>
 			</DialogTrigger>
 			<DialogContent aria-describedby={undefined}>
