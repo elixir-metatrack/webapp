@@ -36,6 +36,63 @@ export const DATE_FIELDS = new Set([
 	"modifiedOn",
 ]);
 
+export const SAMPLE_COLUMN_ORDER = [
+	"name",
+	"projectTitle",
+	"description",
+	"taxId",
+	"taxonName",
+	"isolationSource",
+	"collectionDate",
+	"location",
+	"hostHealthState",
+	"hostTaxId",
+	"hostTaxonName",
+	"isolate",
+	"collectedBy",
+	"latitude",
+	"longitude",
+	"environmentalSample",
+	"hostAssociated",
+	"hostCommonName",
+	"hostSubjectId",
+	"collectorName",
+	"collectingInstitution",
+	"hostSex",
+	"influenzaTestMethod",
+	"influenzaTestResult",
+	"otherPathogensTested",
+	"otherPathogensTestResult",
+	"hostHabitat",
+	"isolationSourceHostAssociated",
+	"hostBehaviour",
+	"isolationSourceNonHostAssociated",
+	"influenzaVirusType",
+	"influenzaSubType",
+	"serovar",
+	"strain",
+	"hostAge",
+	"county",
+	"commune",
+	"hospitalHealthInstitution",
+	"mlst",
+	"alias",
+	"sequencingLab",
+	"institution",
+	"createdOn",
+	"modifiedOn",
+	"lastUpdatedOn",
+] as const;
+
+// Empty means use the order in which assay fields are received.
+export const ASSAY_COLUMN_ORDER: string[] = [];
+
+export function getColumnOrder(
+	dataType: "sample" | "assay"
+): readonly string[] {
+	return dataType === "sample" ? SAMPLE_COLUMN_ORDER : ASSAY_COLUMN_ORDER;
+}
+
 declare module "@tanstack/react-table" {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	interface ColumnMeta<TData extends RowData, TValue> {

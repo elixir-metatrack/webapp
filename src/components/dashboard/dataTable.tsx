@@ -61,11 +61,11 @@ import type {
 	Project,
 	Sample,
 	SampleFile,
-	SampleWithAssays,
 } from "@/lib/types";
 import {
 	ASSAY_NUMBER_FIELDS,
 	DATE_FIELDS,
+	getColumnOrder,
 	NON_EDITABLE_COLUMNS,
 	NON_VIEWED_COLUMNS,
 	QUICK_EDIT_LIMIT,
@@ -241,57 +241,9 @@ export function DataTable<T extends object>({
 		},
 	]);
 	const [globalFilter, setGlobalFilter] = React.useState("");
-	const [initialColumnOrder] = React.useState<string[]>(
-		dataType === "assay"
-			? []
-			: [
-					"name",
-					"projectTitle",
-					"description",
-					"taxId",
-					"taxonName",
-					"isolationSource",
-					"collectionDate",
-					"location",
-					"hostHealthState",
-					"hostTaxId",
-					"hostTaxonName",
-					"isolate",
-					"collectedBy",
-					"latitude",
-					"longitude",
-					"environmentalSample",
-					"hostAssociated",
-					"hostCommonName",
-					"hostSubjectId",
-					"collectorName",
-					"collectingInstitution",
-					"hostSex",
-					"influenzaTestMethod",
-					"influenzaTestResult",
-					"otherPathogensTested",
-					"otherPathogensTestResult",
-					"hostHabitat",
-					"isolationSourceHostAssociated",
-					"hostBehaviour",
-					"isolationSourceNonHostAssociated",
-					"influenzaVirusType",
-					"influenzaSubType",
-					"serovar",
-					"strain",
-					"hostAge",
-					"county",
-					"commune",
-					"hospitalHealthInstitution",
-					"mlst",
-					"alias",
-					"sequencingLab",
-					"institution",
-					"createdOn",
-					"modifiedOn",
-					"lastUpdatedOn",
-				]
-	);
+
+	const initialColumnOrder = getColumnOrder(dataType);
+
 	const queryClient = useQueryClient();
 
 	const { getTerms } = useVocabularies(dataType ?? "sample", project?.id);
@@ -1171,19 +1123,27 @@ export function DataTable<T extends object>({
 									<TableHead key={header.id}>
 										{header.isPlaceholder ? null : (
 											<div className="flex items-center gap-1">
-												<Tooltip>
-													<TooltipTrigger asChild>
-														<div>
-															{flexRender(
-																header.column.columnDef.header,
-																header.getContext()
-															)}
-														</div>
-													</TooltipTrigger>
-													<TooltipContent className="max-w-xs">
-														<p>{getColumnTooltip(header.id)}</p>
-													</TooltipContent>
-												</Tooltip>
+												{getColumnTooltip(header.id) ? (
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<div>
+																{flexRender(
+																	header.column.columnDef.header,
+																	header.getContext()
+																)}
+															</div>
+														</TooltipTrigger>
+
+														<TooltipContent className="max-w-xs">
+															<p>{getColumnTooltip(header.id)}</p>
+														</TooltipContent>
+													</Tooltip>
+												) : (
+													flexRender(
+														header.column.columnDef.header,
+														header.getContext()
+													)
+												)}
 											</div>
 										)}
 									</TableHead>
@@ -1250,12 +1210,25 @@ function TableCellViewer({
 		queryFn: () => getSampleMetadataFields(projectId),
 	});
 
-	const standardFields = Object.keys(item).filter(
-		(field) =>
-			!NON_EDITABLE_COLUMNS.includes(field) &&
-			field !== "id" &&
-			field !== "customMetadata"
-	);
+	const columnOrder = getColumnOrder(dataType ?? "sample");
+
+	const standardFields = Object.keys(item)
+		.filter(
+			(field) =>
+				!NON_EDITABLE_COLUMNS.includes(field) &&
+				field !== "id" &&
+				field !== "customMetadata"
+		)
+		.sort((a, b) => {
+			const indexA = columnOrder.indexOf(a);
+			const indexB = columnOrder.indexOf(b);
+
+			if (indexA === -1 && indexB === -1) return 0;
+			if (indexA === -1) return 1;
+			if (indexB === -1) return -1;
+
+			return indexA - indexB;
+		});
 
 	const activeCustomFields = customMetadataFields.filter(
 		(field) => !field.archived
