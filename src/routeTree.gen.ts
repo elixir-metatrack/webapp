@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GetStartedRouteImport } from './routes/get-started'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as ProjectsRouteRouteImport } from './routes/projects/route'
 import { Route as PublicDataRouteImport } from './routes/public-data'
@@ -31,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 const GetStartedRoute = GetStartedRouteImport.update({
   id: '/get-started',
   path: '/get-started',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteRouteWithChildren
   '/get-started': typeof GetStartedRoute
+  '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
   '/resources': typeof ResourcesRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/get-started': typeof GetStartedRoute
+  '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
   '/resources': typeof ResourcesRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteRouteWithChildren
   '/get-started': typeof GetStartedRoute
+  '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
   '/resources': typeof ResourcesRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/projects'
     | '/get-started'
+    | '/login'
     | '/privacy-policy'
     | '/public-data'
     | '/resources'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/get-started'
+    | '/login'
     | '/privacy-policy'
     | '/public-data'
     | '/resources'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/'
     | '/projects'
     | '/get-started'
+    | '/login'
     | '/privacy-policy'
     | '/public-data'
     | '/resources'
@@ -185,6 +197,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProjectsRouteRoute: typeof ProjectsRouteRouteWithChildren
   GetStartedRoute: typeof GetStartedRoute
+  LoginRoute: typeof LoginRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   PublicDataRoute: typeof PublicDataRoute
   ResourcesRoute: typeof ResourcesRoute
@@ -208,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/get-started'
       fullPath: '/get-started'
       preLoaderRoute: typeof GetStartedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy-policy': {
@@ -310,6 +330,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProjectsRouteRoute: ProjectsRouteRouteWithChildren,
   GetStartedRoute: GetStartedRoute,
+  LoginRoute: LoginRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   PublicDataRoute: PublicDataRoute,
   ResourcesRoute: ResourcesRoute,
