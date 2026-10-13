@@ -19,7 +19,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { cn, NON_VIEWED_COLUMNS } from "@/lib/utils";
 import { DownloadTemplateButton } from "@/components/dashboard/download-template-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AssayTable } from "@/components/dashboard/assayTable";
 import { AddAssayDialog } from "@/components/dashboard/add-assay";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,10 @@ function RouteComponent() {
 	const [editDialogInitialTab, setEditDialogInitialTab] = useState<
 		"general" | "members"
 	>("general");
+
+	useEffect(() => {
+		setActiveTab("samples");
+	}, [projectId]);
 
 	const { data: user } = useUser();
 
