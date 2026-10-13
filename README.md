@@ -17,8 +17,10 @@ Both data exports use the selected rows matching the current filter, or all filt
 rows across every page when nothing is selected.
 
 In development, `/api/**` and `/templates/**` are forwarded to `LOCAL_API_URL`
-(see `.env.example`). CSV templates are static backend resources under `/templates/`;
-Excel templates are generated under `/api/templates/excel/`.
+(see `.env.example`). The CSV template proxy runs only in Vite's development server;
+production downloads continue to use the API origin directly. CSV templates are static
+backend resources under `/templates/`; Excel templates are generated under
+`/api/templates/excel/`.
 
 # Building For Production
 

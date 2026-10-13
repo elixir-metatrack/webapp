@@ -7,7 +7,7 @@ import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
 
-const config = defineConfig(({ mode }) => {
+const config = defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const keycloakTarget = env.LOCAL_KEYCLOAK_URL || 'https://auth.metatrack.no'
   const apiTarget = env.LOCAL_API_URL || 'https://api.metatrack.no'
@@ -27,7 +27,9 @@ const config = defineConfig(({ mode }) => {
             },
           },
           '/api/**': { proxy: `${apiTarget}/api/**` },
-          '/templates/**': { proxy: `${apiTarget}/templates/**` },
+          ...(command === 'serve'
+            ? { '/templates/**': { proxy: `${apiTarget}/templates/**` } }
+            : {}),
         },
       }),
       tailwindcss(),
