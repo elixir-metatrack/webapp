@@ -88,6 +88,7 @@ import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
 import { toastError, toastSuccess } from "#/lib/toast";
 import { VocabularyCombobox } from "../vocabulary-combobox";
 import { useVocabularies } from "#/hooks/use-vocabularies";
+import { ExportExcelButton } from "./export-excel-button";
 
 interface DataTableProps<T extends object> {
 	data: T[];
@@ -545,6 +546,10 @@ export function DataTable<T extends object>({
 	});
 
 	const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
+	const excelRows =
+		selectedRows.length > 0
+			? table.getFilteredSelectedRowModel().rows
+			: table.getSortedRowModel().rows;
 	const prepareTableDataForDownload = (table: TanStackTable<T>) => {
 		const headers = table
 			.getHeaderGroups()[0]
@@ -934,7 +939,7 @@ export function DataTable<T extends object>({
 				<ProjectTree data={treeData} width={1200} />
 			</div>
 
-			<div className="items-center justify-between space-x-2 lg:flex">
+			<div className="flex flex-wrap items-center justify-between gap-2">
 				<Input
 					placeholder={filterPlaceholder}
 					value={globalFilter ?? ""}
@@ -1091,6 +1096,14 @@ export function DataTable<T extends object>({
 					dataType={dataType!}
 				/>
 				{showAddButton}
+				{project?.id && (dataType === "sample" || assay) && (
+					<ExportExcelButton
+						projectId={project.id}
+						assayId={assay?.id}
+						sampleNames={excelRows.map((row) => row.id)}
+						selected={selectedRows.length > 0}
+					/>
+				)}
 				<Button
 					disabled={rows.length === 0}
 					onClick={() =>

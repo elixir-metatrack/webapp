@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import {
 	api,
 	downloadExcelTemplate,
+	exportExcelData,
 	uploadExperimentsheet,
 	uploadSamplesheet,
 } from "./api-keycloak";
@@ -15,6 +16,59 @@ vi.mock("./config", () => ({
 afterEach(() => {
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
+});
+
+it.each([undefined, "assay-1"])(
+	"exports selected data with authentication (assay: %s)",
+	async (assayId) => {
+		const fetch = vi.fn().mockResolvedValue(new Response("workbook"));
+		vi.stubGlobal("fetch", fetch);
+		const revoke = vi.fn();
+		vi.stubGlobal("URL", {
+			createObjectURL: vi.fn().mockReturnValue("blob:export"),
+			revokeObjectURL: revoke,
+		});
+		const click = vi
+			.spyOn(HTMLAnchorElement.prototype, "click")
+			.mockImplementation(() => {});
+		await exportExcelData("42", ["00012", "sample-2"], assayId);
+		expect(fetch).toHaveBeenCalledWith(
+			assayId
+				? "http://localhost/api/projects/42/assays/assay-1/experiments/export"
+				: "http://localhost/api/projects/42/samples/export",
+			{
+				method: "POST",
+				headers: {
+					Authorization: "Bearer test-token",
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ sampleNames: ["00012", "sample-2"] }),
+			}
+		);
+		expect((click.mock.instances[0] as HTMLAnchorElement).download).toBe(
+			assayId ? "experiments-assay-1.xlsx" : "samples-42.xlsx"
+		);
+		expect(revoke).toHaveBeenCalledWith("blob:export");
+		expect(document.querySelector("a[download]")).toBeNull();
+	}
+);
+
+it("does not download export errors or submit an empty selection", async () => {
+	const fetch = vi
+		.fn()
+		.mockResolvedValue(
+			Response.json({ message: "Export not allowed" }, { status: 403 })
+		);
+	vi.stubGlobal("fetch", fetch);
+	const click = vi
+		.spyOn(HTMLAnchorElement.prototype, "click")
+		.mockImplementation(() => {});
+	await expect(exportExcelData("42", [])).rejects.toThrow("Choose samples");
+	expect(fetch).not.toHaveBeenCalled();
+	await expect(exportExcelData("42", ["sample"])).rejects.toThrow(
+		"Export not allowed"
+	);
+	expect(click).not.toHaveBeenCalled();
 });
 
 it("keeps multipart uploads on the existing sample and experiment endpoints", async () => {

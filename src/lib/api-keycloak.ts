@@ -762,3 +762,43 @@ export async function downloadExcelTemplate(type: TemplateType): Promise<void> {
 	anchor.remove();
 	URL.revokeObjectURL(url);
 }
+
+export async function exportExcelData(
+	projectId: string,
+	sampleNames: string[],
+	assayId?: string
+): Promise<void> {
+	if (sampleNames.length === 0) throw new Error("Choose samples to export");
+	const path = assayId
+		? `projects/${projectId}/assays/${assayId}/experiments/export`
+		: `projects/${projectId}/samples/export`;
+	const response = await fetch(`${API_URL}/${path}`, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${keycloak.token}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({ sampleNames }),
+	});
+	if (!response.ok) {
+		const message = response.headers
+			.get("content-type")
+			?.includes("application/json")
+			? getApiErrorMessage(await response.json())
+			: await response.text();
+		throw new Error(message || "Failed to export Excel file");
+	}
+	const url = URL.createObjectURL(await response.blob());
+	const anchor = document.createElement("a");
+	try {
+		anchor.href = url;
+		anchor.download = assayId
+			? `experiments-${assayId}.xlsx`
+			: `samples-${projectId}.xlsx`;
+		document.body.appendChild(anchor);
+		anchor.click();
+	} finally {
+		anchor.remove();
+		URL.revokeObjectURL(url);
+	}
+}
