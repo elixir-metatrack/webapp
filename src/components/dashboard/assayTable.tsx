@@ -6,6 +6,7 @@ import { AddSamplesToAssayDialog } from "./add-samples-assay";
 import { DownloadTemplateButton } from "./download-template-button";
 import { EditAssayDialog } from "./edit-assay-dialog";
 import { UploadSampleDialog } from "./upload-sample";
+import { TableActionGroup } from "./table-action-group";
 
 interface AssayTableProps {
 	assay: Assay;
@@ -74,19 +75,23 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 			onEdit={(sample) => console.log("Edit sample", sample)}
 			onDelete={(sample) => console.log("Delete sample", sample)}
 			assay={assay}
-			showAddButton={
-				<div className="flex flex-wrap gap-2">
-					<DownloadTemplateButton type="experiment" />
-					<DownloadTemplateButton type="experiment" format="xlsx" />
-					{project?.id && (
-						<UploadSampleDialog projectId={project.id} assayId={assay.id} />
-					)}
-					<EditAssayDialog assay={assay} projectId={project?.id ?? ""} />
-					<AddSamplesToAssayDialog
-						projectId={project?.id ?? ""}
-						assayId={assay.id}
-					/>
-				</div>
+			toolbarActions={
+				<>
+					<TableActionGroup label="Manage data">
+						<AddSamplesToAssayDialog
+							projectId={project?.id ?? ""}
+							assayId={assay.id}
+						/>
+						{project?.id && (
+							<UploadSampleDialog projectId={project.id} assayId={assay.id} />
+						)}
+						<EditAssayDialog assay={assay} projectId={project?.id ?? ""} />
+					</TableActionGroup>
+					<TableActionGroup label="Templates">
+						<DownloadTemplateButton type="experiment" />
+						<DownloadTemplateButton type="experiment" format="xlsx" />
+					</TableActionGroup>
+				</>
 			}
 		/>
 	);

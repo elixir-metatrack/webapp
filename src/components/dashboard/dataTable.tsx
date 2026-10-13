@@ -85,6 +85,7 @@ import { toastError, toastSuccess } from "#/lib/toast";
 import { VocabularyCombobox } from "../vocabulary-combobox";
 import { useVocabularies } from "#/hooks/use-vocabularies";
 import { ExportExcelButton } from "./export-excel-button";
+import { TableActionGroup } from "./table-action-group";
 
 interface DataTableProps<T extends object> {
 	data: T[];
@@ -92,7 +93,7 @@ interface DataTableProps<T extends object> {
 	onSelectSamples?: (selected: Sample[]) => void;
 	onEdit?: (row: T) => void;
 	onDelete?: (row: T) => void;
-	showAddButton?: React.ReactNode;
+	toolbarActions?: React.ReactNode;
 	filterPlaceholder?: string;
 	project?: Project;
 	dataType: "sample" | "assay";
@@ -225,7 +226,7 @@ export function DataTable<T extends object>({
 	data,
 	onEdit,
 	onDelete,
-	showAddButton,
+	toolbarActions,
 	project,
 	filterPlaceholder = "Filter...",
 	dataType,
@@ -974,26 +975,6 @@ export function DataTable<T extends object>({
 							);
 						})}
 
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="rounded-none"
-									disabled={exportRows.length === 0}
-									onClick={handleDownloadTSV}
-									aria-label="Download selected as TSV"
-								>
-									<Download className="h-4 w-4" />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Download selected</p>
-							</TooltipContent>
-						</Tooltip>
-
-						<Separator orientation="vertical" />
-
 						<DropdownMenu modal={false}>
 							<DropdownMenuTrigger asChild>
 								<Button variant="ghost" size="sm" className="rounded-none">
@@ -1060,22 +1041,26 @@ export function DataTable<T extends object>({
 					projectId={project?.id ?? ""}
 					dataType={dataType!}
 				/>
-				{showAddButton}
-				{project?.id && (dataType === "sample" || assay) && (
-					<ExportExcelButton
-						projectId={project.id}
-						assayId={assay?.id}
-						sampleNames={exportRows.map((row) => row.id)}
-					/>
-				)}
-				<Button
-					disabled={exportRows.length === 0}
-					onClick={handleDownloadTSV}
-					title="Export visible fields for the selected or filtered rows"
-				>
-					<Download className="h-4 w-4" />
-					TSV
-				</Button>
+			</div>
+			<div className="flex flex-wrap items-start gap-x-6 gap-y-3 rounded-md border p-3">
+				{toolbarActions}
+				<TableActionGroup label="Export">
+					{project?.id && (dataType === "sample" || assay) && (
+						<ExportExcelButton
+							projectId={project.id}
+							assayId={assay?.id}
+							sampleNames={exportRows.map((row) => row.id)}
+						/>
+					)}
+					<Button
+						disabled={exportRows.length === 0}
+						onClick={handleDownloadTSV}
+						title="Export visible fields for the selected or filtered rows"
+					>
+						<Download className="h-4 w-4" />
+						TSV
+					</Button>
+				</TableActionGroup>
 			</div>
 			<div className="rounded-md border">
 				<Table>

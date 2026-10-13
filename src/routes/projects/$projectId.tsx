@@ -18,6 +18,7 @@ import { UploadSampleDialog } from "@/components/dashboard/upload-sample";
 import type { ColumnDef } from "@tanstack/react-table";
 import { cn, NON_VIEWED_COLUMNS } from "@/lib/utils";
 import { DownloadTemplateButton } from "@/components/dashboard/download-template-button";
+import { TableActionGroup } from "@/components/dashboard/table-action-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { AssayTable } from "@/components/dashboard/assayTable";
@@ -195,13 +196,17 @@ function RouteComponent() {
 									onDelete={(sample) => console.log("Delete sample", sample)}
 									dataType="sample"
 									project={project}
-									showAddButton={
-										<div className="flex flex-wrap gap-2">
-											<DownloadTemplateButton type="sample" />
-											<DownloadTemplateButton type="sample" format="xlsx" />
-											<AddSampleDialog projectId={projectId} />
-											<UploadSampleDialog projectId={projectId} />
-										</div>
+									toolbarActions={
+										<>
+											<TableActionGroup label="Add data">
+												<AddSampleDialog projectId={projectId} />
+												<UploadSampleDialog projectId={projectId} />
+											</TableActionGroup>
+											<TableActionGroup label="Templates">
+												<DownloadTemplateButton type="sample" />
+												<DownloadTemplateButton type="sample" format="xlsx" />
+											</TableActionGroup>
+										</>
 									}
 								/>
 							</TabsContent>
@@ -236,9 +241,14 @@ function RouteComponent() {
 										))}
 									</Tabs>
 								) : (
-									<div className="flex justify-center gap-2 py-8">
-										<DownloadTemplateButton type="experiment" />
-										<AddAssayDialog projectId={projectId}></AddAssayDialog>
+									<div className="flex flex-wrap justify-center gap-x-6 gap-y-3 py-8">
+										<TableActionGroup label="Add data">
+											<AddAssayDialog projectId={projectId} />
+										</TableActionGroup>
+										<TableActionGroup label="Templates">
+											<DownloadTemplateButton type="experiment" />
+											<DownloadTemplateButton type="experiment" format="xlsx" />
+										</TableActionGroup>
 									</div>
 								)}
 							</TabsContent>
