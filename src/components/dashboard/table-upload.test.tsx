@@ -135,10 +135,10 @@ it("keeps the existing template download separate from the Excel download", asyn
 			<DownloadTemplateButton type="experiment" format="xlsx" />
 		</>
 	);
-	fireEvent.pointerDown(
-		screen.getByRole("button", { name: "Experiment Template" }),
-		{ button: 0, ctrlKey: false }
-	);
+	fireEvent.pointerDown(screen.getByRole("button", { name: "CSV Template" }), {
+		button: 0,
+		ctrlKey: false,
+	});
 	fireEvent.click(
 		screen.getByRole("menuitem", { name: /Experiment Paired-End/ })
 	);

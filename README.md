@@ -9,6 +9,17 @@ bun install
 bun --bun run dev
 ```
 
+## Table downloads
+
+**CSV Template** and **XLS Template** download empty import templates. **TSV** exports
+the visible data columns; **XLS** exports all importable fields as an XLSX workbook.
+Both data exports use the selected rows matching the current filter, or all filtered
+rows across every page when nothing is selected.
+
+In development, `/api/**` and `/templates/**` are forwarded to `LOCAL_API_URL`
+(see `.env.example`). CSV templates are static backend resources under `/templates/`;
+Excel templates are generated under `/api/templates/excel/`.
+
 # Building For Production
 
 To build this application for production:

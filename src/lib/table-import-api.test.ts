@@ -12,7 +12,7 @@ import { TableImportError } from "./table-import";
 vi.mock("./keycloak", () => ({ keycloak: { token: "test-token" } }));
 vi.mock("./config", () => ({
 	API_URL: "http://localhost/api",
-	API_BASE_URL: "http://localhost/api",
+	API_BASE_URL: "http://localhost",
 }));
 afterEach(() => {
 	vi.unstubAllGlobals();
@@ -136,7 +136,7 @@ it("downloads the versioned Excel template without changing CSV paths", async ()
 	expect(revoke).toHaveBeenCalledWith("blob:template");
 	await downloadTemplate("experiment_PE");
 	expect(fetch).toHaveBeenLastCalledWith(
-		"http://localhost/api/templates/experiments/experiment_PE.csv"
+		"http://localhost/templates/experiments/experiment_PE.csv"
 	);
 	expect((click.mock.instances[1] as HTMLAnchorElement).download).toBe(
 		"experiment_PE.csv"

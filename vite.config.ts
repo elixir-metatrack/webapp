@@ -27,6 +27,7 @@ const config = defineConfig(({ mode }) => {
             },
           },
           '/api/**': { proxy: `${apiTarget}/api/**` },
+          '/templates/**': { proxy: `${apiTarget}/templates/**` },
         },
       }),
       tailwindcss(),

@@ -91,9 +91,7 @@ export function DownloadTemplateButton({
 			<DropdownMenuTrigger asChild>
 				<Button variant="default" disabled={loading}>
 					<Download className="h-4 w-4" />
-					{format === "xlsx"
-						? "XLS Template"
-						: `${type === "experiment" ? "Experiment" : "Sample"} Template`}{" "}
+					{format === "xlsx" ? "XLS Template" : "CSV Template"}
 					<ChevronDown className="ml-1 h-4 w-4" />
 				</Button>
 			</DropdownMenuTrigger>
