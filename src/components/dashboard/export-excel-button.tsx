@@ -8,14 +8,17 @@ interface ExportExcelButtonProps {
 	projectId: string;
 	assayId?: string;
 	sampleNames: string[];
+	selected?: boolean;
 }
 
 export function ExportExcelButton({
 	projectId,
 	assayId,
 	sampleNames,
+	selected = false,
 }: ExportExcelButtonProps) {
 	const [loading, setLoading] = useState(false);
+	const label = selected ? `XLS (${sampleNames.length})` : "XLS";
 
 	const download = async () => {
 		setLoading(true);
@@ -38,7 +41,7 @@ export function ExportExcelButton({
 			title="Export all importable fields for the selected or filtered samples"
 		>
 			<Download className="h-4 w-4" />
-			{loading ? "Exporting…" : "XLS"}
+			{loading ? "Exporting…" : label}
 		</Button>
 	);
 }

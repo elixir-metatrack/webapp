@@ -65,7 +65,11 @@ it.each(["XLS", "TSV"])(
 			</QueryClientProvider>
 		);
 		const expectExport = async (expected: typeof data, filename: string) => {
-			fireEvent.click(screen.getByRole("button", { name: format }));
+			const label =
+				filename === "selected-rows"
+					? `${format} (${expected.length})`
+					: format;
+			fireEvent.click(screen.getByRole("button", { name: label }));
 			await waitFor(() => {
 				if (format === "XLS") {
 					expect(exportExcelData).toHaveBeenLastCalledWith(
@@ -82,7 +86,7 @@ it.each(["XLS", "TSV"])(
 			});
 			await waitFor(() =>
 				expect(
-					screen.getByRole("button", { name: format }).hasAttribute("disabled")
+					screen.getByRole("button", { name: label }).hasAttribute("disabled")
 				).toBe(false)
 			);
 		};
@@ -104,7 +108,9 @@ it.each(["XLS", "TSV"])(
 			target: { value: "unrelated" },
 		});
 		expect(
-			screen.getByRole("button", { name: format }).hasAttribute("disabled")
+			screen
+				.getByRole("button", { name: `${format} (0)` })
+				.hasAttribute("disabled")
 		).toBe(true);
 	}
 );

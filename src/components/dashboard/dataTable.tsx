@@ -543,11 +543,11 @@ export function DataTable<T extends object>({
 	});
 
 	const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
+	const hasSelection = selectedRows.length > 0;
 	// Export across all pages, keeping the current filter even when rows are selected.
-	const exportRows =
-		selectedRows.length > 0
-			? table.getFilteredSelectedRowModel().rows
-			: table.getSortedRowModel().rows;
+	const exportRows = hasSelection
+		? table.getFilteredSelectedRowModel().rows
+		: table.getSortedRowModel().rows;
 	const handleDownloadTSV = () => {
 		const tsvRows = exportRows.map((row) =>
 			Object.fromEntries(
@@ -557,10 +557,7 @@ export function DataTable<T extends object>({
 					.map((cell) => [cell.column.id, cell.getValue()])
 			)
 		);
-		downloadTSV(
-			tsvRows,
-			selectedRows.length > 0 ? "selected-rows" : "filtered-rows"
-		);
+		downloadTSV(tsvRows, hasSelection ? "selected-rows" : "filtered-rows");
 	};
 
 	const handleBatchUpdate = async (colName: string, value: string) => {
@@ -1050,6 +1047,7 @@ export function DataTable<T extends object>({
 							projectId={project.id}
 							assayId={assay?.id}
 							sampleNames={exportRows.map((row) => row.id)}
+							selected={hasSelection}
 						/>
 					)}
 					<Button
@@ -1058,7 +1056,7 @@ export function DataTable<T extends object>({
 						title="Export visible fields for the selected or filtered rows"
 					>
 						<Download className="h-4 w-4" />
-						TSV
+						{hasSelection ? `TSV (${exportRows.length})` : "TSV"}
 					</Button>
 				</TableActionGroup>
 			</div>

@@ -28,9 +28,10 @@ it("exports the selected sample names in the current assay and prevents duplicat
 			projectId="42"
 			assayId="assay-1"
 			sampleNames={["00012"]}
+			selected
 		/>
 	);
-	fireEvent.click(screen.getByRole("button", { name: "XLS" }));
+	fireEvent.click(screen.getByRole("button", { name: "XLS (1)" }));
 	expect(exportExcelData).toHaveBeenCalledWith("42", ["00012"], "assay-1");
 	expect(
 		screen.getByRole("button", { name: "Exporting…" }).hasAttribute("disabled")
@@ -40,7 +41,7 @@ it("exports the selected sample names in the current assay and prevents duplicat
 		expect(
 			screen
 				.getByRole("button", {
-					name: "XLS",
+					name: "XLS (1)",
 				})
 				.hasAttribute("disabled")
 		).toBe(false)
@@ -62,8 +63,8 @@ it("shows export errors and allows retrying", async () => {
 });
 
 it("does not offer a download for an empty filtered selection", () => {
-	render(<ExportExcelButton projectId="42" sampleNames={[]} />);
+	render(<ExportExcelButton projectId="42" sampleNames={[]} selected />);
 	expect(
-		screen.getByRole("button", { name: "XLS" }).hasAttribute("disabled")
+		screen.getByRole("button", { name: "XLS (0)" }).hasAttribute("disabled")
 	).toBe(true);
 });
