@@ -546,6 +546,7 @@ export function DataTable<T extends object>({
 	});
 
 	const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
+	// Export across all pages, keeping the current filter even when rows are selected.
 	const excelRows =
 		selectedRows.length > 0
 			? table.getFilteredSelectedRowModel().rows

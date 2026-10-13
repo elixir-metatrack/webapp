@@ -67,9 +67,11 @@ export function DownloadTemplateButton({
 		try {
 			setLoading(true);
 
-			await (format === "xlsx" ? downloadExcelTemplate : downloadTemplate)(
-				templateType
-			);
+			if (format === "xlsx") {
+				await downloadExcelTemplate(templateType);
+			} else {
+				await downloadTemplate(templateType);
+			}
 
 			toastSuccess("Template downloaded successfully");
 		} catch (err: unknown) {

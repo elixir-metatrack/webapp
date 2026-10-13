@@ -53,6 +53,7 @@ export function UploadSampleDialog({
 			toastError("Import could not be completed. See the details below.");
 		},
 		onSettled: () => {
+			// A failed import can still save valid rows and vocabulary definitions.
 			queryClient.invalidateQueries({ queryKey: ["samples", projectId] });
 			if (assayId) {
 				queryClient.invalidateQueries({ queryKey: ["assays", projectId] });
@@ -162,7 +163,6 @@ export function UploadSampleDialog({
 						role="alert"
 						className="border-destructive max-h-60 space-y-2 overflow-auto rounded-md border p-3 text-sm"
 					>
-						{/* The server may accept valid rows before reporting the rejected ones. */}
 						<p className="whitespace-pre-wrap">{importError}</p>
 						{partialImport && (
 							<p>

@@ -718,16 +718,8 @@ export async function downloadTemplate(type: TemplateType): Promise<void> {
 		experiment_SE: "/templates/experiments/experiment_SE.csv",
 	};
 
-	const TEMPLATE_FILENAMES: Record<TemplateType, string> = {
-		sample: "sample.csv",
-		sample_extended: "sample_extended.csv",
-		sample_virus: "sample_virus.csv",
-		experiment_PE: "experiment_PE.csv",
-		experiment_SE: "experiment_SE.csv",
-	};
-
 	const path = TEMPLATE_PATHS[type];
-	const filename = TEMPLATE_FILENAMES[type];
+	const filename = `${type}.csv`;
 
 	const res = await fetch(`${API_BASE_URL}${path}`);
 
@@ -735,32 +727,13 @@ export async function downloadTemplate(type: TemplateType): Promise<void> {
 		throw new Error(`Failed to download ${filename}`);
 	}
 
-	const blob = await res.blob();
-	const url = window.URL.createObjectURL(blob);
-
-	const a = document.createElement("a");
-	a.href = url;
-	a.download = filename;
-
-	document.body.appendChild(a);
-	a.click();
-
-	a.remove();
-	window.URL.revokeObjectURL(url);
+	downloadBlob(await res.blob(), filename);
 }
 
 export async function downloadExcelTemplate(type: TemplateType): Promise<void> {
 	const res = await fetch(`${API_URL}/templates/excel/${type}`);
 	if (!res.ok) throw new Error("Failed to download Excel template");
-	const blob = await res.blob();
-	const url = URL.createObjectURL(blob);
-	const anchor = document.createElement("a");
-	anchor.href = url;
-	anchor.download = `${type}-v1.xlsx`;
-	document.body.appendChild(anchor);
-	anchor.click();
-	anchor.remove();
-	URL.revokeObjectURL(url);
+	downloadBlob(await res.blob(), `${type}-v1.xlsx`);
 }
 
 export async function exportExcelData(
@@ -788,13 +761,18 @@ export async function exportExcelData(
 			: await response.text();
 		throw new Error(message || "Failed to export Excel file");
 	}
-	const url = URL.createObjectURL(await response.blob());
+	const filename = assayId
+		? `experiments-${assayId}.xlsx`
+		: `samples-${projectId}.xlsx`;
+	downloadBlob(await response.blob(), filename);
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+	const url = URL.createObjectURL(blob);
 	const anchor = document.createElement("a");
 	try {
 		anchor.href = url;
-		anchor.download = assayId
-			? `experiments-${assayId}.xlsx`
-			: `samples-${projectId}.xlsx`;
+		anchor.download = filename;
 		document.body.appendChild(anchor);
 		anchor.click();
 	} finally {

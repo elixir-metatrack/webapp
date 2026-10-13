@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import {
 	api,
 	downloadExcelTemplate,
+	downloadTemplate,
 	exportExcelData,
 	uploadExperimentsheet,
 	uploadSamplesheet,
@@ -115,7 +116,9 @@ it("retains structured row errors for table imports only", async () => {
 });
 
 it("downloads the versioned Excel template without changing CSV paths", async () => {
-	const fetch = vi.fn().mockResolvedValue(new Response("workbook"));
+	const fetch = vi
+		.fn()
+		.mockImplementation(() => Promise.resolve(new Response("template")));
 	vi.stubGlobal("fetch", fetch);
 	const create = vi.fn().mockReturnValue("blob:template");
 	const revoke = vi.fn();
@@ -131,4 +134,12 @@ it("downloads the versioned Excel template without changing CSV paths", async ()
 		"sample_extended-v1.xlsx"
 	);
 	expect(revoke).toHaveBeenCalledWith("blob:template");
+	await downloadTemplate("experiment_PE");
+	expect(fetch).toHaveBeenLastCalledWith(
+		"http://localhost/api/templates/experiments/experiment_PE.csv"
+	);
+	expect((click.mock.instances[1] as HTMLAnchorElement).download).toBe(
+		"experiment_PE.csv"
+	);
+	expect(document.querySelector("a[download]")).toBeNull();
 });
