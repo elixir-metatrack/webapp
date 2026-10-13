@@ -99,6 +99,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 	const [editingMember, setEditingMember] = useState<Member | null>(null);
 	const [removingMember, setRemovingMember] = useState<Member | null>(null);
 	const [editRole, setEditRole] = useState("");
+	const [isRefreshingInvitations, setIsRefreshingInvitations] = useState(false);
 
 	const [invitationPage, setInvitationPage] = useState(0);
 	const invitationPageSize = 10;
@@ -295,6 +296,21 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 		if (!invitation.deliveryRetryAfter) return true;
 
 		return new Date(invitation.deliveryRetryAfter).getTime() <= Date.now();
+	};
+
+	const handleRefreshInvitations = async () => {
+		if (isRefreshingInvitations) return;
+
+		setIsRefreshingInvitations(true);
+
+		try {
+			await Promise.all([
+				refetchInvitations(),
+				new Promise((resolve) => setTimeout(resolve, 600)),
+			]);
+		} finally {
+			setIsRefreshingInvitations(false);
+		}
 	};
 
 	return (
@@ -697,12 +713,17 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 							<Button
 								variant="outline"
 								size="icon"
-								onClick={() => refetchInvitations()}
-								disabled={invitationsLoading}
+								onClick={handleRefreshInvitations}
+								disabled={invitationsLoading || isRefreshingInvitations}
 								title="Refresh invitations"
+								aria-label="Refresh invitations"
 							>
 								<RefreshCw
-									className={`h-4 w-4 ${invitationsLoading ? "animate-spin" : ""}`}
+									className={`h-4 w-4 ${
+										invitationsLoading || isRefreshingInvitations
+											? "animate-spin"
+											: ""
+									}`}
 								/>
 							</Button>
 						</div>
