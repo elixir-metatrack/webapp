@@ -95,6 +95,9 @@ describe("table uploads", () => {
 			"Valid rows may already have been imported"
 		);
 		expect(invalidate).toHaveBeenCalledWith({ queryKey: ["samples", "42"] });
+		expect(invalidate).toHaveBeenCalledWith({
+			queryKey: ["sample-vocabularies", "42"],
+		});
 		expect(screen.getByRole("dialog")).toBeTruthy();
 	});
 

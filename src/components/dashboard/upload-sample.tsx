@@ -57,6 +57,10 @@ export function UploadSampleDialog({
 			if (assayId) {
 				queryClient.invalidateQueries({ queryKey: ["assays", projectId] });
 				queryClient.invalidateQueries({ queryKey: ["assaySamples", assayId] });
+			} else {
+				queryClient.invalidateQueries({
+					queryKey: ["sample-vocabularies", projectId],
+				});
 			}
 		},
 	});
