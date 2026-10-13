@@ -9,6 +9,7 @@ import type { MeResponse } from "@/lib/types";
 import { AuthContext } from "@/providers/auth-context";
 import { useContext } from "react";
 import { Link } from "@tanstack/react-router";
+import { ModeToggle } from "../mode-toggle";
 
 export function NavUser({ user }: { user: MeResponse }) {
 	const { logout } = useContext(AuthContext);
@@ -33,6 +34,12 @@ export function NavUser({ user }: { user: MeResponse }) {
 							<BadgeCheck className="size-4" />
 							<span>Account</span>
 						</Link>
+					</SidebarMenuButton>
+				</SidebarMenuItem>
+
+				<SidebarMenuItem>
+					<SidebarMenuButton asChild className="gap-x-2">
+						<ModeToggle label="Theme" variant="ghost" align="end" />
 					</SidebarMenuButton>
 				</SidebarMenuItem>
 
