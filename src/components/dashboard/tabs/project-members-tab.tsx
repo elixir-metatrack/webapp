@@ -54,12 +54,38 @@ import {
 import {
 	ChevronLeft,
 	ChevronRight,
+	Info,
 	Mail,
 	MoreVertical,
 	RefreshCw,
 	Trash2,
 } from "lucide-react";
 import { toastError, toastSuccess } from "#/lib/toast";
+
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+function InfoTooltip({ content }: { content: React.ReactNode }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<button
+					type="button"
+					className="text-muted-foreground hover:text-foreground inline-flex items-center"
+					aria-label="More information"
+					tabIndex={-1}
+				>
+					<Info className="h-4 w-4" />
+				</button>
+			</TooltipTrigger>
+
+			<TooltipContent className="max-w-xs">{content}</TooltipContent>
+		</Tooltip>
+	);
+}
 
 export function ProjectMembersTab({ project }: { project: Project }) {
 	const queryClient = useQueryClient();
@@ -69,7 +95,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 
 	const [memberId, setMemberId] = useState("");
 	const [email, setEmail] = useState("");
-	const [role, setRole] = useState("MEMBER");
+	const [role, setRole] = useState("VIEWER");
 	const [editingMember, setEditingMember] = useState<Member | null>(null);
 	const [removingMember, setRemovingMember] = useState<Member | null>(null);
 	const [editRole, setEditRole] = useState("");
@@ -96,7 +122,6 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 
 	console.log("invitationsPage", invitationsPage);
 	const invitations = invitationsPage ?? [];
-	console.log("invitations", invitations);
 
 	const pendingInvitations = invitations.filter(
 		(invitation) => invitation.status === "PENDING"
@@ -338,9 +363,17 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 						{/* ADD MEMBER */}
 
 						<Dialog open={openAdd} onOpenChange={setOpenAdd}>
-							<DialogTrigger asChild>
-								<Button>Add member</Button>
-							</DialogTrigger>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<DialogTrigger asChild>
+										<Button>Add member</Button>
+									</DialogTrigger>
+								</TooltipTrigger>
+								<TooltipContent>
+									Only existing MetaTrack users can be added directly to a
+									project.
+								</TooltipContent>
+							</Tooltip>
 
 							<DialogContent aria-describedby={undefined}>
 								<DialogHeader>
@@ -358,7 +391,31 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 									</div>
 
 									<div className="space-y-2">
-										<label className="text-sm font-medium">Role</label>
+										<div className="flex items-center gap-2">
+											<label className="text-sm font-medium">Role</label>
+
+											<InfoTooltip
+												content={
+													<div className="space-y-2">
+														<p>
+															<strong>OWNER:</strong> Full project control,
+															including member and role management.
+														</p>
+														<p>
+															<strong>ADMIN:</strong> Administrative access to
+															the project and its members.
+														</p>
+														<p>
+															<strong>EDITOR:</strong> Can edit project data.
+														</p>
+														<p>
+															<strong>VIEWER:</strong> Can view project data
+															without editing it.
+														</p>
+													</div>
+												}
+											/>
+										</div>
 
 										<Select value={role} onValueChange={setRole}>
 											<SelectTrigger>
@@ -389,13 +446,47 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 						{/* INVITE MEMBER */}
 
 						<Dialog open={openInvite} onOpenChange={setOpenInvite}>
-							<DialogTrigger asChild>
-								<Button variant="secondary">Invite by email</Button>
-							</DialogTrigger>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<DialogTrigger asChild>
+										<Button variant="secondary">Invite by email</Button>
+									</DialogTrigger>
+								</TooltipTrigger>
+								<TooltipContent>
+									Invite collaborators to join the project via email.
+								</TooltipContent>
+							</Tooltip>
 
 							<DialogContent aria-describedby={undefined}>
 								<DialogHeader>
-									<DialogTitle>Invite Member by Email</DialogTitle>
+									<div className="flex items-center gap-2">
+										<DialogTitle>Invite Member by Email</DialogTitle>
+
+										<InfoTooltip
+											content={
+												<div className="space-y-2">
+													<p>
+														Selecting this option will trigger the following
+														process:
+													</p>
+													<ol className="list-decimal space-y-1 pl-4">
+														<li>
+															An email containing a link to this project will be
+															sent from noreply@metatrack.no.
+														</li>
+														<li>
+															The recipient must log in to MetaTrack and request
+															access to the project.
+														</li>
+														<li>
+															Project members with the OWNER or ADMIN role will
+															be notified and must approve the request.
+														</li>
+													</ol>
+												</div>
+											}
+										/>
+									</div>
 								</DialogHeader>
 
 								<div className="space-y-4">
@@ -418,7 +509,31 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 									</div>
 
 									<div className="space-y-2">
-										<label className="text-sm font-medium">Role</label>
+										<div className="flex items-center gap-2">
+											<label className="text-sm font-medium">Role</label>
+
+											<InfoTooltip
+												content={
+													<div className="space-y-2">
+														<p>
+															<strong>OWNER:</strong> Full project control,
+															including member and role management.
+														</p>
+														<p>
+															<strong>ADMIN:</strong> Administrative access to
+															the project and its members.
+														</p>
+														<p>
+															<strong>EDITOR:</strong> Can edit project data.
+														</p>
+														<p>
+															<strong>VIEWER:</strong> Can view project data
+															without editing it.
+														</p>
+													</div>
+												}
+											/>
+										</div>
 
 										<Select
 											value={inviteRole}
@@ -437,11 +552,6 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 											</SelectContent>
 										</Select>
 									</div>
-
-									<p className="text-muted-foreground text-sm">
-										The recipient must accept the invitation before becoming a
-										project member.
-									</p>
 
 									{createdInvitation && (
 										<div className="space-y-2 rounded-md border p-3">
