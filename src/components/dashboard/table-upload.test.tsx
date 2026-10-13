@@ -146,10 +146,10 @@ it("keeps the existing template download separate from the Excel download", asyn
 		expect(downloadTemplate).toHaveBeenCalledWith("experiment_PE")
 	);
 	expect(downloadExcelTemplate).not.toHaveBeenCalled();
-	fireEvent.pointerDown(
-		screen.getByRole("button", { name: "Download Excel template" }),
-		{ button: 0, ctrlKey: false }
-	);
+	fireEvent.pointerDown(screen.getByRole("button", { name: "XLS Template" }), {
+		button: 0,
+		ctrlKey: false,
+	});
 	fireEvent.click(
 		screen.getByRole("menuitem", { name: /Experiment Single-End/ })
 	);

@@ -1,17 +1,13 @@
 import * as React from "react";
 import { useState } from "react";
 import {
-	type Cell,
 	type ColumnDef,
 	flexRender,
 	getCoreRowModel,
 	getFilteredRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
-	type Header,
-	type Row,
 	type SortingState,
-	type Table as TanStackTable,
 	useReactTable,
 } from "@tanstack/react-table";
 
@@ -547,42 +543,24 @@ export function DataTable<T extends object>({
 
 	const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
 	// Export across all pages, keeping the current filter even when rows are selected.
-	const excelRows =
+	const exportRows =
 		selectedRows.length > 0
 			? table.getFilteredSelectedRowModel().rows
 			: table.getSortedRowModel().rows;
-	const prepareTableDataForDownload = (table: TanStackTable<T>) => {
-		const headers = table
-			.getHeaderGroups()[0]
-			.headers.filter(
-				(h: Header<T, unknown>, idx: number) =>
-					!h.isPlaceholder &&
-					idx > 0 &&
-					idx < table.getHeaderGroups()[0].headers.length - 1
+	const handleDownloadTSV = () => {
+		const tsvRows = exportRows.map((row) =>
+			Object.fromEntries(
+				row
+					.getVisibleCells()
+					.filter((cell) => cell.column.accessorFn)
+					.map((cell) => [cell.column.id, cell.getValue()])
 			)
-			.map((h: Header<T, unknown>) => {
-				const resolvedColumnDef = h.column.columnDef;
-				if ("accessorKey" in resolvedColumnDef)
-					return resolvedColumnDef.accessorKey as string;
-				if ("accessorFn" in resolvedColumnDef)
-					return resolvedColumnDef.id as string;
-				return "";
-			});
-
-		const rows = table.getRowModel().rows.map((row: Row<T>) =>
-			row
-				.getVisibleCells()
-				.slice(1, -1)
-				.map((cell: Cell<T, unknown>) => {
-					const value = cell.getValue();
-					return value !== undefined && value !== null ? String(value) : "";
-				})
 		);
-
-		return { headers, rows };
+		downloadTSV(
+			tsvRows,
+			selectedRows.length > 0 ? "selected-rows" : "filtered-rows"
+		);
 	};
-
-	const { headers, rows } = prepareTableDataForDownload(table);
 
 	const handleBatchUpdate = async (colName: string, value: string) => {
 		try {
@@ -1002,23 +980,9 @@ export function DataTable<T extends object>({
 									variant="ghost"
 									size="sm"
 									className="rounded-none"
-									onClick={() =>
-										downloadTSV(
-											table
-												.getSelectedRowModel()
-												.rows.map((r: Row<T>) =>
-													Object.fromEntries(
-														r
-															.getVisibleCells()
-															.map((cell: Cell<T, unknown>, i: number) => [
-																headers[i],
-																cell.getValue(),
-															])
-													)
-												),
-											"selected-rows"
-										)
-									}
+									disabled={exportRows.length === 0}
+									onClick={handleDownloadTSV}
+									aria-label="Download selected as TSV"
 								>
 									<Download className="h-4 w-4" />
 								</Button>
@@ -1101,31 +1065,16 @@ export function DataTable<T extends object>({
 					<ExportExcelButton
 						projectId={project.id}
 						assayId={assay?.id}
-						sampleNames={excelRows.map((row) => row.id)}
-						selected={selectedRows.length > 0}
+						sampleNames={exportRows.map((row) => row.id)}
 					/>
 				)}
 				<Button
-					disabled={rows.length === 0}
-					onClick={() =>
-						downloadTSV(
-							table
-								.getFilteredRowModel()
-								.rows.map((r: Row<T>) =>
-									Object.fromEntries(
-										r
-											.getVisibleCells()
-											.map((cell: Cell<T, unknown>, i: number) => [
-												headers[i],
-												cell.getValue(),
-											])
-									)
-								),
-							"filtered-rows"
-						)
-					}
+					disabled={exportRows.length === 0}
+					onClick={handleDownloadTSV}
+					title="Export visible fields for the selected or filtered rows"
 				>
 					<Download className="h-4 w-4" />
+					TSV
 				</Button>
 			</div>
 			<div className="rounded-md border">

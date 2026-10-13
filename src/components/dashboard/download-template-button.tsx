@@ -92,7 +92,7 @@ export function DownloadTemplateButton({
 				<Button variant="default" disabled={loading}>
 					<Download className="h-4 w-4" />
 					{format === "xlsx"
-						? "Download Excel template"
+						? "XLS Template"
 						: `${type === "experiment" ? "Experiment" : "Sample"} Template`}{" "}
 					<ChevronDown className="ml-1 h-4 w-4" />
 				</Button>
