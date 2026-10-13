@@ -55,7 +55,6 @@ import { Label } from "../ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DeleteAlertButton } from "../delete-alert-button";
-import { toast } from "sonner";
 import type {
 	Assay,
 	CreateSample,
@@ -64,25 +63,31 @@ import type {
 	SampleFile,
 } from "@/lib/types";
 import {
-	emptyToNull,
+	ASSAY_NUMBER_FIELDS,
+	DATE_FIELDS,
+	getColumnOrder,
 	NON_EDITABLE_COLUMNS,
 	NON_VIEWED_COLUMNS,
 	QUICK_EDIT_LIMIT,
+	SAMPLE_NUMBER_FIELDS,
 } from "@/lib/utils";
-import { ProjectTree } from "../projectTree";
-import {
-	buildProjectTree,
-	buildProjectTreeSampleAssay,
-} from "@/lib/projectTree";
+import { ProjectTree, type ProjectGraph } from "../projectTree";
+import { buildProjectGraph } from "@/lib/projectTree";
 import { UploadDataDialog } from "./upload-data";
 import {
 	batchEditSamples,
+	getAssaysInSample,
 	getSampleMetadataFields,
+	getSamplesInAssay,
 	requestPresignedDownload,
+	updateAssay,
 	updateSample,
 } from "@/lib/api-keycloak";
 import { useEnrichedSamples } from "#/hooks/use-enrichedSamples";
 import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
+import { toastError, toastSuccess } from "#/lib/toast";
+import { VocabularyCombobox } from "../vocabulary-combobox";
+import { useVocabularies } from "#/hooks/use-vocabularies";
 
 interface DataTableProps<T extends object> {
 	data: T[];
@@ -93,7 +98,7 @@ interface DataTableProps<T extends object> {
 	showAddButton?: React.ReactNode;
 	filterPlaceholder?: string;
 	project?: Project;
-	dataType?: "sample" | "assay";
+	dataType: "sample" | "assay";
 	assay?: Assay;
 }
 
@@ -166,6 +171,59 @@ function getColumnNewName(key: string) {
 const formatDateToYMD = (dateStr?: string | null) =>
 	dateStr ? new Date(dateStr).toISOString().split("T")[0] : "";
 
+function QuickEditField({
+	fieldKey,
+	label,
+	terms,
+	dataType,
+	onSubmit,
+}: {
+	fieldKey: string;
+	label: string;
+	terms: string[];
+	dataType: "sample" | "assay";
+	onSubmit: (value: string) => void;
+}) {
+	const [value, setValue] = React.useState("");
+
+	const isNumberField =
+		dataType === "assay"
+			? ASSAY_NUMBER_FIELDS.has(fieldKey)
+			: SAMPLE_NUMBER_FIELDS.has(fieldKey);
+
+	const handleSubmit = (e?: React.FormEvent) => {
+		e?.preventDefault();
+
+		onSubmit(value);
+	};
+
+	return (
+		<form onSubmit={handleSubmit} className="flex flex-col gap-2 p-1">
+			{terms.length > 0 ? (
+				<VocabularyCombobox
+					name={fieldKey}
+					value={value}
+					terms={terms}
+					onChange={(newValue) => {
+						setValue(newValue);
+					}}
+				/>
+			) : (
+				<Input
+					value={value}
+					onChange={(e) => setValue(e.target.value)}
+					placeholder={label}
+					type={isNumberField ? "number" : "text"}
+				/>
+			)}
+
+			<Button type="submit" size="sm" className="w-full">
+				Apply
+			</Button>
+		</form>
+	);
+}
+
 export function DataTable<T extends object>({
 	data,
 	onEdit,
@@ -183,58 +241,12 @@ export function DataTable<T extends object>({
 		},
 	]);
 	const [globalFilter, setGlobalFilter] = React.useState("");
-	const [initialColumnOrder] = React.useState<string[]>(
-		dataType === "assay"
-			? []
-			: [
-					"name",
-					"projectTitle",
-					"description",
-					"taxId",
-					"taxonName",
-					"isolationSource",
-					"collectionDate",
-					"location",
-					"hostHealthState",
-					"hostTaxId",
-					"hostTaxonName",
-					"isolate",
-					"collectedBy",
-					"latitude",
-					"longitude",
-					"environmentalSample",
-					"hostAssociated",
-					"hostCommonName",
-					"hostSubjectId",
-					"collectorName",
-					"collectingInstitution",
-					"hostSex",
-					"influenzaTestMethod",
-					"influenzaTestResult",
-					"otherPathogensTested",
-					"otherPathogensTestResult",
-					"hostHabitat",
-					"isolationSourceHostAssociated",
-					"hostBehaviour",
-					"isolationSourceNonHostAssociated",
-					"influenzaVirusType",
-					"influenzaSubType",
-					"serovar",
-					"strain",
-					"hostAge",
-					"county",
-					"commune",
-					"hospitalHealthInstitution",
-					"mlst",
-					"alias",
-					"sequencingLab",
-					"institution",
-					"createdOn",
-					"modifiedOn",
-					"lastUpdatedOn",
-				]
-	);
+
+	const initialColumnOrder = getColumnOrder(dataType);
+
 	const queryClient = useQueryClient();
+
+	const { getTerms } = useVocabularies(dataType ?? "sample", project?.id);
 
 	const { data: customMetadataFields = [] } = useQuery({
 		queryKey: ["sample-metadata-fields", project?.id],
@@ -366,7 +378,7 @@ export function DataTable<T extends object>({
 									} catch (err: unknown) {
 										const message =
 											err instanceof Error ? err.message : "Download failed";
-										toast.error(message);
+										toastError(message);
 									}
 								}}
 								className="text-left text-blue-600 hover:underline"
@@ -398,6 +410,7 @@ export function DataTable<T extends object>({
 										<TableCellViewer
 											item={row.original as Sample}
 											projectId={project?.id ?? ""}
+											dataType={dataType}
 											onUpdated={() => {
 												if (onEdit) onEdit(row.original);
 											}}
@@ -568,16 +581,67 @@ export function DataTable<T extends object>({
 	const handleBatchUpdate = async (colName: string, value: string) => {
 		try {
 			if (!project?.id) {
-				toast.error("Project is required");
+				toastError("Project is required");
 				return;
 			}
+
+			/*
+			 * ============================================================
+			 * ASSAY / EXPERIMENT
+			 * ============================================================
+			 */
+			if (dataType === "assay") {
+				const assays = selectedRows as unknown as Assay[];
+
+				await Promise.all(
+					assays.map((row) => {
+						const updateData: Record<string, unknown> = {};
+
+						const originalValue = row[colName as keyof Assay];
+
+						if (value === "") {
+							updateData[colName] = null;
+						} else if (typeof originalValue === "number") {
+							const numberValue = Number(value);
+
+							updateData[colName] = Number.isNaN(numberValue)
+								? null
+								: numberValue;
+						} else if (typeof originalValue === "boolean") {
+							updateData[colName] = value === "true";
+						} else {
+							updateData[colName] = value;
+						}
+
+						return updateAssay(
+							project.id!,
+							row.id,
+							updateData as Partial<Assay>
+						);
+					})
+				);
+
+				toastSuccess("Experiments have been updated");
+
+				await queryClient.invalidateQueries({
+					queryKey: ["assays"],
+				});
+
+				return;
+			}
+
+			/*
+			 * ============================================================
+			 * SAMPLE
+			 * ============================================================
+			 */
 
 			const customField = customMetadataFields.find(
 				(field) => !field.archived && field.key === colName
 			);
 
 			const sampleData = (selectedRows as unknown as Sample[]).map((row) => {
-				const sampleData: Record<string, unknown> = {};
+				const updateData: Record<string, unknown> = {};
 
 				/*
 				 * Copy all editable standard columns dynamically
@@ -587,7 +651,7 @@ export function DataTable<T extends object>({
 						return;
 					}
 
-					sampleData[field] = row[field as keyof Sample];
+					updateData[field] = row[field as keyof Sample];
 				});
 
 				/*
@@ -624,7 +688,7 @@ export function DataTable<T extends object>({
 						}
 					}
 
-					sampleData.customMetadata = customMetadata;
+					updateData.customMetadata = customMetadata;
 				} else {
 					/*
 					 * Update standard column
@@ -632,57 +696,230 @@ export function DataTable<T extends object>({
 					const originalValue = row[colName as keyof Sample];
 
 					if (value === "") {
-						sampleData[colName] = null;
+						updateData[colName] = null;
 					} else if (typeof originalValue === "number") {
 						const numberValue = Number(value);
 
-						sampleData[colName] = Number.isNaN(numberValue)
+						updateData[colName] = Number.isNaN(numberValue)
 							? null
 							: numberValue;
 					} else if (typeof originalValue === "boolean") {
-						sampleData[colName] = value === "true";
+						updateData[colName] = value === "true";
 					} else {
-						sampleData[colName] = value;
+						updateData[colName] = value;
 					}
 				}
 
-				return sampleData;
+				return updateData;
 			});
 
 			await batchEditSamples(project.id, {
 				sampleData,
 			});
 
-			toast.success("Samples have been updated");
+			toastSuccess("Samples have been updated");
 
 			await queryClient.invalidateQueries({
 				queryKey: ["samples"],
 			});
 		} catch (err: unknown) {
 			const message =
-				err instanceof Error ? err.message : "Error updating samples";
+				err instanceof Error ? err.message : "Error updating data";
 
-			toast.error("Error updating samples", {
-				description: (
-					<div className="flex flex-col gap-1 text-black">
-						{message.split("\n").map((line, index) => (
-							<div key={index}>{line}</div>
-						))}
-					</div>
-				),
-			});
+			toastError(
+				dataType === "assay"
+					? "Error updating experiments"
+					: "Error updating samples",
+				{
+					description: (
+						<div className="flex flex-col gap-1 text-black">
+							{message.split("\n").map((line, index) => (
+								<div key={index}>{line}</div>
+							))}
+						</div>
+					),
+				}
+			);
 		}
 	};
 
-	const treeData = project
-		? dataType === "assay" && assay
-			? buildProjectTreeSampleAssay(
-					project,
-					selectedRows as unknown as Sample[],
-					assay
+	/*
+	 * ============================================================
+	 * PROJECT TREE
+	 * ============================================================
+	 */
+
+	const selectedSamples: Sample[] =
+		dataType === "sample" ? (selectedRows as Sample[]) : [];
+
+	const selectedAssays: Sample[] =
+		dataType === "assay" ? (selectedRows as Sample[]) : [];
+
+	const selectedSamplesForTree =
+		dataType === "sample" ? selectedSamples : selectedAssays;
+
+	/*
+	 * ============================================================
+	 * SAMPLE TAB
+	 *
+	 * Selected Samples
+	 *      ↓
+	 * GET /projects/{projectId}/samples/{sampleId}/assays
+	 *      ↓
+	 * Assays for each Sample
+	 *      ↓
+	 * Project -> Sample -> Assay
+	 * ============================================================
+	 */
+
+	const { data: treeAssaysBySample = {} } = useQuery({
+		queryKey: [
+			"tree-assays-by-sample",
+			project?.id,
+			selectedSamplesForTree.map((sample) => sample.id),
+		],
+
+		enabled: Boolean(project?.id) && selectedSamplesForTree.length > 0,
+
+		queryFn: async () => {
+			if (!project?.id) return {};
+
+			const entries = await Promise.all(
+				selectedSamplesForTree
+					.filter((sample) => Boolean(sample.id))
+					.map(async (sample) => {
+						const assays = await getAssaysInSample(project.id!, sample.id!);
+
+						return [sample.id!, assays] as const;
+					})
+			);
+
+			return Object.fromEntries(entries);
+		},
+	});
+
+	/*
+	 * ============================================================
+	 * ASSAY TAB
+	 *
+	 * Keep the existing reverse relationship:
+	 *
+	 * Selected Assays
+	 *      ↓
+	 * GET /projects/{projectId}/assays/{assayId}/samples
+	 *      ↓
+	 * Samples
+	 *      ↓
+	 * GET /projects/{projectId}/samples/{sampleId}/assays
+	 *      ↓
+	 * Assays
+	 * ============================================================
+	 */
+
+	const selectedAssayIds =
+		dataType === "assay"
+			? selectedAssays
+					.map((assay) => assay.id)
+					.filter((id): id is string => Boolean(id))
+			: [];
+
+	const { data: samplesBySelectedAssay = {} } = useQuery({
+		queryKey: ["selected-assay-samples", project?.id, selectedAssayIds],
+
+		enabled:
+			Boolean(project?.id) &&
+			dataType === "assay" &&
+			selectedAssayIds.length > 0,
+
+		queryFn: async () => {
+			if (!project?.id || selectedAssayIds.length === 0) {
+				return {};
+			}
+
+			const entries = await Promise.all(
+				selectedAssayIds.map(async (assayId) => {
+					const samples = await getSamplesInAssay(project.id!, assayId);
+
+					return [assayId, samples] as const;
+				})
+			);
+
+			return Object.fromEntries(entries);
+		},
+	});
+
+	/*
+	 * ------------------------------------------------------------
+	 * Samples returned from selected Assays
+	 * ------------------------------------------------------------
+	 */
+
+	const samplesFromSelectedAssays: Sample[] =
+		dataType === "assay"
+			? Array.from(
+					new Map(
+						Object.values(samplesBySelectedAssay)
+							.flat()
+							.map((sample) => [sample.id, sample])
+					).values()
 				)
-			: buildProjectTree(project, selectedRows as unknown as Sample[])
-		: { name: "", children: [] };
+			: [];
+
+	/*
+	 * ------------------------------------------------------------
+	 * For Assay tab, retrieve all Assays for those Samples.
+	 * ------------------------------------------------------------
+	 */
+
+	const assayTabSampleIds =
+		dataType === "assay"
+			? samplesFromSelectedAssays
+					.map((sample) => sample.id)
+					.filter((id): id is string => Boolean(id))
+			: [];
+
+	const { data: assaysForAssayTab = {} } = useQuery({
+		queryKey: [
+			"selected-sample-assays-from-assays",
+			project?.id,
+			assayTabSampleIds,
+		],
+
+		enabled:
+			Boolean(project?.id) &&
+			dataType === "assay" &&
+			assayTabSampleIds.length > 0,
+
+		queryFn: async () => {
+			if (!project?.id || assayTabSampleIds.length === 0) {
+				return {};
+			}
+
+			const entries = await Promise.all(
+				assayTabSampleIds.map(async (sampleId) => {
+					const assays = await getAssaysInSample(project.id!, sampleId);
+
+					return [sampleId, assays] as const;
+				})
+			);
+
+			return Object.fromEntries(entries);
+		},
+	});
+
+	/*
+	 * ============================================================
+	 * BUILD GRAPH
+	 * ============================================================
+	 */
+
+	const treeData: ProjectGraph =
+		project && selectedSamplesForTree.length > 0
+			? buildProjectGraph(project, selectedSamplesForTree, treeAssaysBySample)
+			: {
+					nodes: [],
+					links: [],
+				};
 
 	const editableColumns = enhancedColumns.filter(
 		(col) => !NON_EDITABLE_COLUMNS.includes(String(col.id))
@@ -720,39 +957,38 @@ export function DataTable<T extends object>({
 						</div>
 
 						<Separator orientation="vertical" />
-						{quickEditColumns.map((col) => (
-							<React.Fragment key={String(col.id)}>
-								<DropdownMenu modal={false}>
-									<DropdownMenuTrigger asChild>
-										<Button variant="ghost" size="sm" className="rounded-none">
-											{col.meta?.label}
-										</Button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent>
-										<form>
-											<Input
-												name="field"
-												placeholder={String(col.meta?.label)}
-												className="w-auto"
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														e.preventDefault();
-														const form = e.currentTarget.form;
-														if (form) {
-															const value = new FormData(form).get(
-																"field"
-															) as string;
-															handleBatchUpdate(String(col.id), value);
-														}
-													}
-												}}
+						{quickEditColumns.map((col) => {
+							const fieldKey = String(col.id);
+							const terms = getTerms(fieldKey);
+
+							return (
+								<React.Fragment key={fieldKey}>
+									<DropdownMenu modal={false}>
+										<DropdownMenuTrigger asChild>
+											<Button
+												variant="ghost"
+												size="sm"
+												className="rounded-none"
+											>
+												{col.meta?.label}
+											</Button>
+										</DropdownMenuTrigger>
+
+										<DropdownMenuContent>
+											<QuickEditField
+												fieldKey={fieldKey}
+												label={String(col.meta?.label)}
+												terms={terms}
+												dataType={dataType}
+												onSubmit={(value) => handleBatchUpdate(fieldKey, value)}
 											/>
-										</form>
-									</DropdownMenuContent>
-								</DropdownMenu>
-								<Separator orientation="vertical" />
-							</React.Fragment>
-						))}
+										</DropdownMenuContent>
+									</DropdownMenu>
+
+									<Separator orientation="vertical" />
+								</React.Fragment>
+							);
+						})}
 
 						<Tooltip>
 							<TooltipTrigger asChild>
@@ -802,32 +1038,37 @@ export function DataTable<T extends object>({
 
 								<DropdownMenuSeparator />
 
-								{moreEditColumns.map((col) => (
-									<DropdownMenuItem key={String(col.meta?.label)} asChild>
-										<Popover>
-											<PopoverTrigger asChild>
-												<Button variant="ghost" className="flex justify-start">
-													{String(col.meta?.label)}
-												</Button>
-											</PopoverTrigger>
-											<PopoverContent className="p-1">
-												<Input
-													placeholder={String(col.meta?.label)}
-													className="w-auto"
-													onKeyDown={(e) => {
-														if (e.key === "Enter") {
-															e.preventDefault();
-															handleBatchUpdate(
-																String(col.id),
-																e.currentTarget.value
-															);
+								{moreEditColumns.map((col) => {
+									const fieldKey = String(col.id);
+									const terms = getTerms(fieldKey);
+
+									return (
+										<DropdownMenuItem key={fieldKey} asChild>
+											<Popover modal={false}>
+												<PopoverTrigger asChild>
+													<Button
+														variant="ghost"
+														className="flex justify-start"
+													>
+														{String(col.meta?.label)}
+													</Button>
+												</PopoverTrigger>
+
+												<PopoverContent className="p-1">
+													<QuickEditField
+														fieldKey={fieldKey}
+														label={String(col.meta?.label)}
+														terms={terms}
+														dataType={dataType}
+														onSubmit={(value) =>
+															handleBatchUpdate(fieldKey, value)
 														}
-													}}
-												/>
-											</PopoverContent>
-										</Popover>
-									</DropdownMenuItem>
-								))}
+													/>
+												</PopoverContent>
+											</Popover>
+										</DropdownMenuItem>
+									);
+								})}
 
 								{/* Separator */}
 								<DropdownMenuSeparator />
@@ -882,19 +1123,27 @@ export function DataTable<T extends object>({
 									<TableHead key={header.id}>
 										{header.isPlaceholder ? null : (
 											<div className="flex items-center gap-1">
-												<Tooltip>
-													<TooltipTrigger asChild>
-														<div>
-															{flexRender(
-																header.column.columnDef.header,
-																header.getContext()
-															)}
-														</div>
-													</TooltipTrigger>
-													<TooltipContent className="max-w-xs">
-														<p>{getColumnTooltip(header.id)}</p>
-													</TooltipContent>
-												</Tooltip>
+												{getColumnTooltip(header.id) ? (
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<div>
+																{flexRender(
+																	header.column.columnDef.header,
+																	header.getContext()
+																)}
+															</div>
+														</TooltipTrigger>
+
+														<TooltipContent className="max-w-xs">
+															<p>{getColumnTooltip(header.id)}</p>
+														</TooltipContent>
+													</Tooltip>
+												) : (
+													flexRender(
+														header.column.columnDef.header,
+														header.getContext()
+													)
+												)}
 											</div>
 										)}
 									</TableHead>
@@ -941,10 +1190,12 @@ export function DataTable<T extends object>({
 function TableCellViewer({
 	item,
 	projectId,
+	dataType,
 	onUpdated,
 }: {
 	item: Sample;
 	projectId: string;
+	dataType?: "sample" | "assay";
 	onUpdated?: () => void;
 }) {
 	const [loading, setLoading] = useState(false);
@@ -955,16 +1206,29 @@ function TableCellViewer({
 
 	const { data: customMetadataFields = [] } = useQuery({
 		queryKey: ["sample-metadata-fields", projectId],
-		enabled: Boolean(projectId),
+		enabled: Boolean(projectId && dataType === "sample"),
 		queryFn: () => getSampleMetadataFields(projectId),
 	});
 
-	const standardFields = Object.keys(item).filter(
-		(field) =>
-			!NON_EDITABLE_COLUMNS.includes(field) &&
-			field !== "id" &&
-			field !== "customMetadata"
-	);
+	const columnOrder = getColumnOrder(dataType ?? "sample");
+
+	const standardFields = Object.keys(item)
+		.filter(
+			(field) =>
+				!NON_EDITABLE_COLUMNS.includes(field) &&
+				field !== "id" &&
+				field !== "customMetadata"
+		)
+		.sort((a, b) => {
+			const indexA = columnOrder.indexOf(a);
+			const indexB = columnOrder.indexOf(b);
+
+			if (indexA === -1 && indexB === -1) return 0;
+			if (indexA === -1) return 1;
+			if (indexB === -1) return -1;
+
+			return indexA - indexB;
+		});
 
 	const activeCustomFields = customMetadataFields.filter(
 		(field) => !field.archived
@@ -992,102 +1256,116 @@ function TableCellViewer({
 					continue;
 				}
 
-				const originalValue = item[field as keyof Sample];
-
-				// Empty values become null
 				if (value === "") {
 					updateData[field] = null;
 					continue;
 				}
 
-				/*
-				 * Preserve the type of the original Sample value.
-				 * This means we don't need to manually list every field.
-				 */
-				if (typeof originalValue === "number") {
+				const isNumberField =
+					dataType === "assay"
+						? ASSAY_NUMBER_FIELDS.has(field)
+						: SAMPLE_NUMBER_FIELDS.has(field);
+
+				if (isNumberField) {
 					const numberValue = Number(value);
 
 					updateData[field] = Number.isNaN(numberValue) ? null : numberValue;
-				} else if (typeof originalValue === "boolean") {
-					updateData[field] = value === "true";
-				} else {
-					updateData[field] = String(value);
-				}
-			}
 
-			/*
-			 * Custom columns
-			 */
-			const customMetadata: Record<string, string | number | boolean | null> =
-				{};
-
-			for (const field of activeCustomFields) {
-				const value = formData.get(`customMetadata.${field.key}`);
-
-				if (value === null || value === "") {
-					customMetadata[field.key] = null;
 					continue;
 				}
 
-				switch (field.type) {
-					case "NUMBER": {
-						const numberValue = Number(value);
-
-						customMetadata[field.key] = Number.isNaN(numberValue)
-							? null
-							: numberValue;
-
-						break;
-					}
-
-					case "BOOLEAN":
-						customMetadata[field.key] = value === "true";
-						break;
-
-					case "DATE":
-					case "TEXT":
-					default:
-						customMetadata[field.key] = String(value);
-						break;
-				}
+				updateData[field] = String(value);
 			}
 
 			/*
-			 * Add custom metadata only when there are custom fields.
+			 * Custom columns only belong to Samples.
 			 */
-			if (activeCustomFields.length > 0) {
+			if (dataType === "sample" && activeCustomFields.length > 0) {
+				const customMetadata: Record<string, string | number | boolean | null> =
+					{};
+
+				for (const field of activeCustomFields) {
+					const value = formData.get(`customMetadata.${field.key}`);
+
+					if (value === null || value === "") {
+						customMetadata[field.key] = null;
+						continue;
+					}
+
+					switch (field.type) {
+						case "NUMBER": {
+							const numberValue = Number(value);
+
+							customMetadata[field.key] = Number.isNaN(numberValue)
+								? null
+								: numberValue;
+
+							break;
+						}
+
+						case "BOOLEAN":
+							customMetadata[field.key] = value === "true";
+							break;
+
+						case "DATE":
+						case "TEXT":
+						default:
+							customMetadata[field.key] = String(value);
+							break;
+					}
+				}
+
 				updateData.customMetadata = customMetadata;
 			}
 
-			await updateSample(
-				projectId,
-				item.id,
-				updateData as Partial<CreateSample>
-			);
+			/*
+			 * Update the correct entity.
+			 */
+			if (dataType === "assay") {
+				await updateAssay(projectId, item.id, updateData as Partial<Assay>);
 
-			toast.success("Sample has been updated", {
-				description: `${new Date().toLocaleString()}.`,
-			});
+				toastSuccess("Experiment has been updated", {
+					description: `${new Date().toLocaleString()}.`,
+				});
+			} else {
+				await updateSample(
+					projectId,
+					item.id,
+					updateData as Partial<CreateSample>
+				);
+
+				toastSuccess("Sample has been updated", {
+					description: `${new Date().toLocaleString()}.`,
+				});
+
+				await queryClient.invalidateQueries({
+					queryKey: ["sample-metadata-fields", projectId],
+				});
+			}
 
 			await queryClient.invalidateQueries({
 				queryKey: ["samples"],
 			});
 
 			await queryClient.invalidateQueries({
-				queryKey: ["sample-metadata-fields", projectId],
+				queryKey: ["assays"],
 			});
 
 			onUpdated?.();
 			setOpenDrawer(false);
 		} catch (err: unknown) {
 			const message =
-				err instanceof Error ? err.message : "Error updating sample";
+				err instanceof Error
+					? err.message
+					: `Error updating ${dataType === "assay" ? "experiment" : "sample"}`;
 
-			toast.error(message);
+			toastError(message);
 		} finally {
 			setLoading(false);
 		}
 	};
+
+	const { getTerms } = useVocabularies(dataType ?? "sample", projectId);
 
 	return (
 		<Drawer
@@ -1120,52 +1398,83 @@ function TableCellViewer({
 						{standardFields.map((field) => {
 							const rawValue = item[field as keyof Sample];
 
-							const isDateField = field.toLowerCase().includes("date");
+							const isDateField = DATE_FIELDS.has(field);
+
+							const isNumberField =
+								dataType === "assay"
+									? ASSAY_NUMBER_FIELDS.has(field)
+									: SAMPLE_NUMBER_FIELDS.has(field);
 
 							const formattedValue = isDateField
 								? formatDateToYMD(rawValue as string)
 								: String(rawValue ?? "");
 
+							const vocabularyTerms = getTerms(field);
+
 							return (
 								<div key={field} className="flex flex-col gap-3">
 									<Label htmlFor={field}>{getColumnNewName(field)}</Label>
 
-									<Input
-										id={field}
-										name={field}
-										type={isDateField ? "date" : "text"}
-										onPointerDown={(e) => e.stopPropagation()}
-										defaultValue={formattedValue}
-										className="grid grid-cols-1 place-content-around"
-									/>
+									{vocabularyTerms.length > 0 ? (
+										<VocabularyCombobox
+											name={field}
+											value={formattedValue}
+											terms={vocabularyTerms}
+										/>
+									) : (
+										<Input
+											id={field}
+											name={field}
+											type={
+												isDateField ? "date" : isNumberField ? "number" : "text"
+											}
+											onPointerDown={(e) => e.stopPropagation()}
+											defaultValue={formattedValue}
+											className="grid grid-cols-1 place-content-around"
+										/>
+									)}
 								</div>
 							);
 						})}
 
-						{activeCustomFields.map((field) => {
-							const value = item.customMetadata?.[field.key] ?? "";
+						{dataType === "sample" &&
+							activeCustomFields.map((field) => {
+								const value = item.customMetadata?.[field.key] ?? "";
 
-							return (
-								<div key={`custom-${field.id}`} className="flex flex-col gap-3">
-									<Label htmlFor={`custom-${field.key}`}>{field.label}</Label>
+								const vocabularyTerms = getTerms(field.key);
 
-									<Input
-										id={`custom-${field.key}`}
-										name={`customMetadata.${field.key}`}
-										type={
-											field.type === "DATE"
-												? "date"
-												: field.type === "NUMBER"
-													? "number"
-													: "text"
-										}
-										defaultValue={String(value ?? "")}
-										onPointerDown={(e) => e.stopPropagation()}
-										className="grid grid-cols-1 place-content-around"
-									/>
-								</div>
-							);
-						})}
+								return (
+									<div
+										key={`custom-${field.id}`}
+										className="flex flex-col gap-3"
+									>
+										<Label htmlFor={`custom-${field.key}`}>{field.label}</Label>
+
+										{vocabularyTerms.length > 0 ? (
+											<VocabularyCombobox
+												name={`customMetadata.${field.key}`}
+												value={String(value ?? "")}
+												terms={vocabularyTerms}
+											/>
+										) : (
+											<Input
+												id={`custom-${field.key}`}
+												name={`customMetadata.${field.key}`}
+												type={
+													field.type === "DATE"
+														? "date"
+														: field.type === "NUMBER"
+															? "number"
+															: "text"
+												}
+												defaultValue={String(value ?? "")}
+												onPointerDown={(e) => e.stopPropagation()}
+												className="grid grid-cols-1 place-content-around"
+											/>
+										)}
+									</div>
+								);
+							})}
 					</form>
 				</div>
 

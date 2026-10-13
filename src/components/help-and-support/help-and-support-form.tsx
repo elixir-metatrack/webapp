@@ -13,12 +13,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
 import contactUsFormSchema, {
 	type HelpAndSupportFormSchema,
 } from "./helpAndSupportFormSchema";
 import { sendEmailToElixir } from "./actions";
 import { useForm } from "react-hook-form";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 export default function HelpAndSupportForm() {
 	const form = useForm<HelpAndSupportFormSchema>({
@@ -36,12 +36,8 @@ export default function HelpAndSupportForm() {
 		const serverResponse = await sendEmailToElixir(values);
 
 		if (!serverResponse.error) {
-			toast.success("Message sent successfully!", {
+			toastSuccess("Message sent successfully!", {
 				description: "We’ll get back to you soon.",
-				action: {
-					label: "Close",
-					onClick: () => {},
-				},
 			});
 			form.reset();
 		} else {
@@ -58,12 +54,8 @@ export default function HelpAndSupportForm() {
 				errorMessage = String(serverResponse.error);
 			}
 
-			toast.error("Message has not been sent", {
+			toastError("Message has not been sent", {
 				description: errorMessage,
-				action: {
-					label: "Close",
-					onClick: () => {},
-				},
 			});
 		}
 	};

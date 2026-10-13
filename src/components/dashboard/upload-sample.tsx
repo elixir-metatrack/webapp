@@ -16,9 +16,9 @@ import {
 	TableImportError,
 } from "@/lib/table-import";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { Input } from "../ui/input";
 import { HardDriveUpload } from "lucide-react";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 interface UploadSampleDialogProps {
 	projectId: string;
@@ -43,14 +43,14 @@ export function UploadSampleDialog({
 				? uploadExperimentsheet(projectId, assayId, selectedFile)
 				: uploadSamplesheet(projectId, selectedFile),
 		onSuccess: () => {
-			toast.success(`${entity} import completed successfully`);
+			toastSuccess(`${entity} import completed successfully`);
 			setFile(null);
 			setOpen(false);
 		},
 		onError: (error: Error) => {
 			setImportError(error.message);
 			setPartialImport(error instanceof TableImportError);
-			toast.error("Import could not be completed. See the details below.");
+			toastError("Import could not be completed. See the details below.");
 		},
 		onSettled: () => {
 			queryClient.invalidateQueries({ queryKey: ["samples", projectId] });

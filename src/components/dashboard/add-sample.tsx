@@ -10,13 +10,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CreateSample } from "@/lib/types";
 import { createSample } from "@/lib/api-keycloak";
 import { ChevronDown, ChevronUp, SquarePlus } from "lucide-react";
 import { FormField } from "../form-field";
 import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
+import { toastSuccess, toastError } from "#/lib/toast";
+import { VocabularyCombobox } from "../vocabulary-combobox";
+import { useVocabularies } from "#/hooks/use-vocabularies";
 
 interface AddSampleDialogProps {
 	projectId: string;
@@ -153,6 +155,18 @@ const fields: FieldConfig[] = [
 
 	// NEW FIELDS
 
+	{
+		key: "projectTitle",
+		label: "Project Title",
+		placeholder: "Project Title",
+		advanced: true,
+	},
+	{
+		key: "description",
+		label: "Description",
+		placeholder: "Description",
+		advanced: true,
+	},
 	{
 		key: "isolate",
 		label: "Isolate",
@@ -351,31 +365,40 @@ function RenderField({
 	field,
 	value,
 	onChange,
+	vocabularyTerms,
 }: {
 	field: FieldConfig;
 	value: string;
 	onChange: (value: string) => void;
+	vocabularyTerms: string[];
 }) {
 	const tooltip = COLUMN_TOOLTIPS[field.key];
 
-	const input = (
-		<Input
-			type={field.type ?? "text"}
-			placeholder={field.placeholder}
-			value={value}
-			required={field.required}
-			onChange={(e) => {
-				const val = e.target.value;
+	const input =
+		vocabularyTerms.length > 0 ? (
+			<VocabularyCombobox
+				value={value}
+				terms={vocabularyTerms}
+				onChange={onChange}
+			/>
+		) : (
+			<Input
+				type={field.type ?? "text"}
+				placeholder={field.placeholder}
+				value={value}
+				required={field.required}
+				onChange={(e) => {
+					const val = e.target.value;
 
-				if (field.numeric && !/^\d*\.?\d*$/.test(val)) {
-					return;
-				}
+					if (field.numeric && !/^\d*\.?\d*$/.test(val)) {
+						return;
+					}
 
-				onChange(val);
-			}}
-			inputMode={field.numeric ? "decimal" : undefined}
-		/>
-	);
+					onChange(val);
+				}}
+				inputMode={field.numeric ? "decimal" : undefined}
+			/>
+		);
 
 	if (tooltip || field.required) {
 		return (
@@ -454,13 +477,15 @@ export function AddSampleDialog({ projectId }: AddSampleDialogProps) {
 
 	const queryClient = useQueryClient();
 
+	const { getTerms } = useVocabularies("sample", projectId);
+
 	const mutation = useMutation({
 		mutationFn: (data: CreateSample) => createSample(data, projectId),
 
 		onSuccess: () => {
 			setOpen(false);
 
-			toast.success("Sample has been created", {
+			toastSuccess("Sample has been created", {
 				description: new Date().toLocaleString(),
 			});
 
@@ -470,7 +495,7 @@ export function AddSampleDialog({ projectId }: AddSampleDialogProps) {
 		},
 
 		onError: (error: Error) => {
-			toast.error(error?.message ?? "Error creating sample");
+			toastError(error?.message ?? "Error creating sample");
 		},
 	});
 
@@ -514,6 +539,7 @@ export function AddSampleDialog({ projectId }: AddSampleDialogProps) {
 								field={field}
 								value={form[field.key] ?? ""}
 								onChange={(value) => updateField(field.key, value)}
+								vocabularyTerms={getTerms(field.key)}
 							/>
 						))}
 
@@ -531,6 +557,7 @@ export function AddSampleDialog({ projectId }: AddSampleDialogProps) {
 										field={field}
 										value={form[field.key] ?? ""}
 										onChange={(value) => updateField(field.key, value)}
+										vocabularyTerms={getTerms(field.key)}
 									/>
 								))}
 						</div>

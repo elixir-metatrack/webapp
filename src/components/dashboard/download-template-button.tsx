@@ -8,7 +8,6 @@ import {
 	FileSpreadsheet,
 	Virus,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +19,7 @@ import {
 
 import { downloadExcelTemplate, downloadTemplate } from "@/lib/api-keycloak";
 import type { TemplateType } from "@/lib/types";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 interface DownloadTemplateButtonProps {
 	type: "sample" | "experiment";
@@ -27,24 +27,32 @@ interface DownloadTemplateButtonProps {
 }
 
 const SAMPLE_TEMPLATES = [
-	{ type: "sample" as const, label: "Sample", icon: FileSpreadsheet },
+	{
+		type: "sample" as const,
+		label: "Sample",
+		icon: FileSpreadsheet,
+	},
 	{
 		type: "sample_extended" as const,
 		label: "Sample Extended",
 		icon: Files,
 	},
-	{ type: "sample_virus" as const, label: "Sample Virus", icon: Virus },
+	{
+		type: "sample_virus" as const,
+		label: "Sample Virus",
+		icon: Virus,
+	},
 ];
 
 const EXPERIMENT_TEMPLATES = [
 	{
 		type: "experiment_PE" as const,
-		label: "Paired-end experiment",
+		label: "Experiment Paired-End",
 		icon: Files,
 	},
 	{
 		type: "experiment_SE" as const,
-		label: "Single-end experiment",
+		label: "Experiment Single-End",
 		icon: FileSpreadsheet,
 	},
 ];
@@ -63,9 +71,9 @@ export function DownloadTemplateButton({
 				templateType
 			);
 
-			toast.success("Template downloaded successfully");
+			toastSuccess("Template downloaded successfully");
 		} catch (err: unknown) {
-			toast.error(
+			toastError(
 				err instanceof Error ? err.message : "Error downloading template"
 			);
 		} finally {
@@ -91,13 +99,14 @@ export function DownloadTemplateButton({
 			<DropdownMenuContent align="start">
 				{templates.map((template) => {
 					const Icon = template.icon;
+
 					return (
 						<DropdownMenuItem
 							key={template.type}
 							onClick={() => handleDownload(template.type)}
 						>
-							{" "}
-							<Icon className="mr-2 h-4 w-4" /> {template.label}{" "}
+							<Icon className="mr-2 h-4 w-4" />
+							{template.label}
 						</DropdownMenuItem>
 					);
 				})}

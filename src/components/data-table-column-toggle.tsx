@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import type { Table } from "@tanstack/react-table";
 import { Check, Columns3, Loader2, Plus, Search, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 
 import {
 	createSampleMetadataField,
@@ -46,6 +45,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 export function DataTableViewOptions<TData>({
 	table,
@@ -217,17 +217,17 @@ export function DataTableViewOptions<TData>({
 		const label = newColumnLabel.trim();
 
 		if (!key) {
-			toast.error("Column key is required");
+			toastError("Column key is required");
 			return;
 		}
 
 		if (!label) {
-			toast.error("Column label is required");
+			toastError("Column label is required");
 			return;
 		}
 
 		if (!projectId) {
-			toast.error("Project is required");
+			toastError("Project is required");
 			return;
 		}
 
@@ -249,7 +249,7 @@ export function DataTableViewOptions<TData>({
 			setNewColumnType("TEXT");
 			setCreateDialogOpen(false);
 
-			toast.success(`Custom column "${field.label}" created`);
+			toastSuccess(`Custom column "${field.label}" created`);
 		} catch (error) {
 			console.error("Failed to create custom column:", error);
 
@@ -258,7 +258,7 @@ export function DataTableViewOptions<TData>({
 					? error.message
 					: "Failed to create custom column";
 
-			toast.error(message);
+			toastError(message);
 		} finally {
 			setCreatingColumn(false);
 		}
@@ -279,7 +279,7 @@ export function DataTableViewOptions<TData>({
 		}
 
 		if (!projectId) {
-			toast.error("Project is required");
+			toastError("Project is required");
 			return;
 		}
 
@@ -292,7 +292,7 @@ export function DataTableViewOptions<TData>({
 				queryKey: ["sample-metadata-fields", projectId],
 			});
 
-			toast.success(`Custom column "${columnToDelete.label}" deleted`);
+			toastSuccess(`Custom column "${columnToDelete.label}" deleted`);
 
 			setDeleteDialogOpen(false);
 			setColumnToDelete(null);
@@ -304,7 +304,7 @@ export function DataTableViewOptions<TData>({
 					? error.message
 					: "Failed to delete custom column";
 
-			toast.error(message);
+			toastError(message);
 		} finally {
 			setDeletingColumn(false);
 		}

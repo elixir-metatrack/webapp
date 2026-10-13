@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "./ui/button";
-import { toast } from "sonner";
 import { deleteProject, deleteSelectedSamples } from "@/lib/api-keycloak";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 interface DeleteAlertButtonProps {
 	projectId?: string;
@@ -58,7 +58,7 @@ export const DeleteAlertButton = ({
 				});
 			}
 
-			toast.success(`${entityName} deleted successfully!`, {
+			toastSuccess(`${entityName} deleted successfully!`, {
 				action: {
 					label: "Undo",
 					onClick: () => console.log("Undo"),
@@ -66,7 +66,7 @@ export const DeleteAlertButton = ({
 			});
 		} catch (error: unknown) {
 			const message = (error as Error)?.message || "Error deleting";
-			toast.error(message);
+			toastError(message);
 		}
 	};
 

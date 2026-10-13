@@ -12,11 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteAssay, updateAssay } from "@/lib/api-keycloak";
 import type { Assay } from "@/lib/types";
 import { SquarePen } from "lucide-react";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 interface EditAssayDialogProps {
 	assay: Assay;
@@ -42,7 +42,7 @@ export function EditAssayDialog({ assay, projectId }: EditAssayDialogProps) {
 	const updateMutation = useMutation({
 		mutationFn: () => updateAssay(projectId, assay.id, form),
 		onSuccess: () => {
-			toast.success("Experiment updated successfully!");
+			toastSuccess("Experiment updated successfully!");
 			queryClient.invalidateQueries({
 				queryKey: ["assays"],
 				exact: false,
@@ -54,18 +54,18 @@ export function EditAssayDialog({ assay, projectId }: EditAssayDialogProps) {
 			setOpen(false);
 		},
 		onError: (err: Error) =>
-			toast.error(err?.message ?? "Failed to update experiment"),
+			toastError(err?.message ?? "Failed to update experiment"),
 	});
 
 	const deleteMutation = useMutation({
 		mutationFn: () => deleteAssay(projectId, assay.id),
 		onSuccess: () => {
-			toast.success("Experiment deleted successfully!");
+			toastSuccess("Experiment deleted successfully!");
 			queryClient.invalidateQueries({ queryKey: ["assays", projectId] });
 			setOpen(false);
 		},
 		onError: (err: Error) =>
-			toast.error(err?.message ?? "Failed to delete experiment"),
+			toastError(err?.message ?? "Failed to delete experiment"),
 	});
 
 	const handleChange = (key: keyof typeof form, value: string | number) => {

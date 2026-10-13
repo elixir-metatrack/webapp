@@ -53,6 +53,10 @@ export interface Sample {
 	files?: SampleFile[];
 }
 
+export interface SampleWithAssays extends Sample {
+	assays: Assay[];
+}
+
 export interface SampleFile {
 	name: string;
 }
@@ -65,12 +69,10 @@ export type CreateSample = Omit<
 export type MeResponse = {
 	userId: string;
 	username: string;
-	email?: string;
-	firstName?: string;
-	lastName?: string;
-	isAuthenticated: boolean;
 	roles: string[];
-	avatar?: string;
+	country: string;
+	institution: string;
+	orcid: string;
 };
 
 export type Member = {
@@ -136,7 +138,9 @@ export interface Assay {
 	files?: SampleFile[];
 }
 
-export type AssaySampleRow = Omit<Assay, "id">;
+export type UpdateAssay = Partial<
+	Omit<Assay, "id" | "createdOn" | "modifiedOn" | "files">
+>;
 
 export interface Taxon {
 	taxon_id: string;
@@ -155,6 +159,23 @@ export type SampleStatsByDateResponse = {
 	totalElements: number;
 	totalPages: number;
 };
+
+export interface Vocabulary {
+	id: string;
+	fieldKey: string;
+	label: string;
+	custom: boolean;
+	terms: string[];
+	createdOn: string;
+	modifiedOn: string;
+}
+
+type VocabularyScope = "global" | "project";
+
+export interface VocabularyManagerProps {
+	projectId?: string;
+	scope: VocabularyScope;
+}
 
 export type StorageStats = {
 	fileCount: number;

@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createAssay } from "@/lib/api-keycloak";
 import { ChevronDown, ChevronUp, SquarePlus } from "lucide-react";
 import { FormField } from "../form-field";
+import { toastSuccess, toastError } from "#/lib/toast";
 
 interface AddAssayDialogProps {
 	projectId: string;
@@ -188,7 +188,7 @@ export function AddAssayDialog({ projectId }: AddAssayDialogProps) {
 		onSuccess: () => {
 			setOpen(false);
 
-			toast.success("Experiment has been created", {
+			toastSuccess("Experiment has been created", {
 				description: new Date().toLocaleString(),
 			});
 
@@ -198,7 +198,7 @@ export function AddAssayDialog({ projectId }: AddAssayDialogProps) {
 		},
 
 		onError: (error: Error) => {
-			toast.error(error?.message ?? "Error creating experiment");
+			toastError(error?.message ?? "Error creating experiment");
 		},
 	});
 

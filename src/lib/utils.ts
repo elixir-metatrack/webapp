@@ -21,6 +21,78 @@ export const NON_EDITABLE_COLUMNS = [
 ];
 export const NON_VIEWED_COLUMNS = ["id", "lastUpdatedOn", "alias"];
 
+export const SAMPLE_NUMBER_FIELDS = new Set([
+	"taxId",
+	"hostTaxId",
+	"latitude",
+	"longitude",
+]);
+
+export const ASSAY_NUMBER_FIELDS = new Set(["insertSize"]);
+
+export const DATE_FIELDS = new Set([
+	"collectionDate",
+	"createdOn",
+	"modifiedOn",
+]);
+
+export const SAMPLE_COLUMN_ORDER = [
+	"name",
+	"projectTitle",
+	"description",
+	"taxId",
+	"taxonName",
+	"isolationSource",
+	"collectionDate",
+	"location",
+	"hostHealthState",
+	"hostTaxId",
+	"hostTaxonName",
+	"isolate",
+	"collectedBy",
+	"latitude",
+	"longitude",
+	"environmentalSample",
+	"hostAssociated",
+	"hostCommonName",
+	"hostSubjectId",
+	"collectorName",
+	"collectingInstitution",
+	"hostSex",
+	"influenzaTestMethod",
+	"influenzaTestResult",
+	"otherPathogensTested",
+	"otherPathogensTestResult",
+	"hostHabitat",
+	"isolationSourceHostAssociated",
+	"hostBehaviour",
+	"isolationSourceNonHostAssociated",
+	"influenzaVirusType",
+	"influenzaSubType",
+	"serovar",
+	"strain",
+	"hostAge",
+	"county",
+	"commune",
+	"hospitalHealthInstitution",
+	"mlst",
+	"alias",
+	"sequencingLab",
+	"institution",
+	"createdOn",
+	"modifiedOn",
+	"lastUpdatedOn",
+] as const;
+
+// Empty means use the order in which assay fields are received.
+export const ASSAY_COLUMN_ORDER: string[] = [];
+
+export function getColumnOrder(
+	dataType: "sample" | "assay"
+): readonly string[] {
+	return dataType === "sample" ? SAMPLE_COLUMN_ORDER : ASSAY_COLUMN_ORDER;
+}
+
 declare module "@tanstack/react-table" {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	interface ColumnMeta<TData extends RowData, TValue> {
@@ -72,7 +144,6 @@ export const seo = ({
 };
 
 export function getApiErrorMessage(data: unknown): string {
-	// Caso o backend retorne um array de erros
 	if (Array.isArray(data)) {
 		const messages = data
 			.map((error) => {
@@ -99,7 +170,6 @@ export function getApiErrorMessage(data: unknown): string {
 		}
 	}
 
-	// Caso o backend retorne um objeto
 	if (data && typeof data === "object") {
 		const error = data as {
 			message?: string;

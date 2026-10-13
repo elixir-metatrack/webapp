@@ -137,7 +137,7 @@ it("keeps the existing template download separate from the Excel download", asyn
 		{ button: 0, ctrlKey: false }
 	);
 	fireEvent.click(
-		screen.getByRole("menuitem", { name: /Paired-end experiment/ })
+		screen.getByRole("menuitem", { name: /Experiment Paired-End/ })
 	);
 	await waitFor(() =>
 		expect(downloadTemplate).toHaveBeenCalledWith("experiment_PE")
@@ -148,7 +148,7 @@ it("keeps the existing template download separate from the Excel download", asyn
 		{ button: 0, ctrlKey: false }
 	);
 	fireEvent.click(
-		screen.getByRole("menuitem", { name: /Single-end experiment/ })
+		screen.getByRole("menuitem", { name: /Experiment Single-End/ })
 	);
 	await waitFor(() =>
 		expect(downloadExcelTemplate).toHaveBeenCalledWith("experiment_SE")

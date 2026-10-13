@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { Assay, AssaySampleRow, Project, Sample } from "@/lib/types";
+import type { Assay, Project, Sample } from "@/lib/types";
 import { DataTable } from "./dataTable";
 import { getFilesSampleAssay, getSamplesInAssay } from "@/lib/api-keycloak";
 import { AddSamplesToAssayDialog } from "./add-samples-assay";
@@ -45,8 +45,9 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 
 			return {
 				samples: samplesWithFiles,
-				rows: samplesWithFiles.map<AssaySampleRow>((sample) => ({
-					name: sample.name,
+				rows: samplesWithFiles.map<Assay>((sample) => ({
+					id: assay.id,
+					name: sample.name ?? "Unknown",
 					studyAccession: assay.studyAccession,
 					instrumentModel: assay.instrumentModel,
 					libraryName: assay.libraryName,

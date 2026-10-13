@@ -9,43 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TermsOfUseRouteImport } from './routes/terms-of-use'
-import { Route as SilentCheckSsoRouteImport } from './routes/silent-check-sso'
-import { Route as ResourcesRouteImport } from './routes/resources'
-import { Route as PublicDataRouteImport } from './routes/public-data'
-import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
-import { Route as GetStartedRouteImport } from './routes/get-started'
-import { Route as ProjectsRouteRouteImport } from './routes/projects/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
-import { Route as HelpAndSupportIndexRouteImport } from './routes/help-and-support/index'
+import { Route as GetStartedRouteImport } from './routes/get-started'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
+import { Route as ProjectsRouteRouteImport } from './routes/projects/route'
+import { Route as PublicDataRouteImport } from './routes/public-data'
+import { Route as ResourcesRouteImport } from './routes/resources'
+import { Route as SilentCheckSsoRouteImport } from './routes/silent-check-sso'
+import { Route as TermsOfUseRouteImport } from './routes/terms-of-use'
 import { Route as AboutIndexRouteImport } from './routes/about/index'
-import { Route as ProjectsMyProfileRouteImport } from './routes/projects/my-profile'
+import { Route as HelpAndSupportIndexRouteImport } from './routes/help-and-support/index'
+import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
+import { Route as ProjectsMyProfileRouteImport } from './routes/projects/my-profile'
 
-const TermsOfUseRoute = TermsOfUseRouteImport.update({
-  id: '/terms-of-use',
-  path: '/terms-of-use',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SilentCheckSsoRoute = SilentCheckSsoRouteImport.update({
-  id: '/silent-check-sso',
-  path: '/silent-check-sso',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResourcesRoute = ResourcesRouteImport.update({
-  id: '/resources',
-  path: '/resources',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PublicDataRoute = PublicDataRouteImport.update({
-  id: '/public-data',
-  path: '/public-data',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
-  id: '/privacy-policy',
-  path: '/privacy-policy',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GetStartedRoute = GetStartedRouteImport.update({
@@ -53,24 +34,39 @@ const GetStartedRoute = GetStartedRouteImport.update({
   path: '/get-started',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsRouteRoute = ProjectsRouteRouteImport.update({
   id: '/projects',
   path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const PublicDataRoute = PublicDataRouteImport.update({
+  id: '/public-data',
+  path: '/public-data',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ProjectsRouteRoute,
+const ResourcesRoute = ResourcesRouteImport.update({
+  id: '/resources',
+  path: '/resources',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const HelpAndSupportIndexRoute = HelpAndSupportIndexRouteImport.update({
-  id: '/help-and-support/',
-  path: '/help-and-support/',
+const SilentCheckSsoRoute = SilentCheckSsoRouteImport.update({
+  id: '/silent-check-sso',
+  path: '/silent-check-sso',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsOfUseRoute = TermsOfUseRouteImport.update({
+  id: '/terms-of-use',
+  path: '/terms-of-use',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutIndexRoute = AboutIndexRouteImport.update({
@@ -78,9 +74,14 @@ const AboutIndexRoute = AboutIndexRouteImport.update({
   path: '/about/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjectsMyProfileRoute = ProjectsMyProfileRouteImport.update({
-  id: '/my-profile',
-  path: '/my-profile',
+const HelpAndSupportIndexRoute = HelpAndSupportIndexRouteImport.update({
+  id: '/help-and-support/',
+  path: '/help-and-support/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => ProjectsRouteRoute,
 } as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
@@ -88,11 +89,17 @@ const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
   path: '/$projectId',
   getParentRoute: () => ProjectsRouteRoute,
 } as any)
+const ProjectsMyProfileRoute = ProjectsMyProfileRouteImport.update({
+  id: '/my-profile',
+  path: '/my-profile',
+  getParentRoute: () => ProjectsRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteRouteWithChildren
   '/get-started': typeof GetStartedRoute
+  '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
   '/resources': typeof ResourcesRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/get-started': typeof GetStartedRoute
+  '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
   '/resources': typeof ResourcesRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteRouteWithChildren
   '/get-started': typeof GetStartedRoute
+  '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
   '/resources': typeof ResourcesRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/projects'
     | '/get-started'
+    | '/login'
     | '/privacy-policy'
     | '/public-data'
     | '/resources'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/get-started'
+    | '/login'
     | '/privacy-policy'
     | '/public-data'
     | '/resources'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/'
     | '/projects'
     | '/get-started'
+    | '/login'
     | '/privacy-policy'
     | '/public-data'
     | '/resources'
@@ -185,6 +197,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProjectsRouteRoute: typeof ProjectsRouteRouteWithChildren
   GetStartedRoute: typeof GetStartedRoute
+  LoginRoute: typeof LoginRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   PublicDataRoute: typeof PublicDataRoute
   ResourcesRoute: typeof ResourcesRoute
@@ -196,39 +209,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/terms-of-use': {
-      id: '/terms-of-use'
-      path: '/terms-of-use'
-      fullPath: '/terms-of-use'
-      preLoaderRoute: typeof TermsOfUseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/silent-check-sso': {
-      id: '/silent-check-sso'
-      path: '/silent-check-sso'
-      fullPath: '/silent-check-sso'
-      preLoaderRoute: typeof SilentCheckSsoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/resources': {
-      id: '/resources'
-      path: '/resources'
-      fullPath: '/resources'
-      preLoaderRoute: typeof ResourcesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/public-data': {
-      id: '/public-data'
-      path: '/public-data'
-      fullPath: '/public-data'
-      preLoaderRoute: typeof PublicDataRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy-policy': {
-      id: '/privacy-policy'
-      path: '/privacy-policy'
-      fullPath: '/privacy-policy'
-      preLoaderRoute: typeof PrivacyPolicyRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/get-started': {
@@ -238,6 +223,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GetStartedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects': {
       id: '/projects'
       path: '/projects'
@@ -245,25 +244,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/public-data': {
+      id: '/public-data'
+      path: '/public-data'
+      fullPath: '/public-data'
+      preLoaderRoute: typeof PublicDataRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projects/': {
-      id: '/projects/'
-      path: '/'
-      fullPath: '/projects/'
-      preLoaderRoute: typeof ProjectsIndexRouteImport
-      parentRoute: typeof ProjectsRouteRoute
+    '/resources': {
+      id: '/resources'
+      path: '/resources'
+      fullPath: '/resources'
+      preLoaderRoute: typeof ResourcesRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/help-and-support/': {
-      id: '/help-and-support/'
-      path: '/help-and-support'
-      fullPath: '/help-and-support/'
-      preLoaderRoute: typeof HelpAndSupportIndexRouteImport
+    '/silent-check-sso': {
+      id: '/silent-check-sso'
+      path: '/silent-check-sso'
+      fullPath: '/silent-check-sso'
+      preLoaderRoute: typeof SilentCheckSsoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms-of-use': {
+      id: '/terms-of-use'
+      path: '/terms-of-use'
+      fullPath: '/terms-of-use'
+      preLoaderRoute: typeof TermsOfUseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about/': {
@@ -273,11 +279,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projects/my-profile': {
-      id: '/projects/my-profile'
-      path: '/my-profile'
-      fullPath: '/projects/my-profile'
-      preLoaderRoute: typeof ProjectsMyProfileRouteImport
+    '/help-and-support/': {
+      id: '/help-and-support/'
+      path: '/help-and-support'
+      fullPath: '/help-and-support/'
+      preLoaderRoute: typeof HelpAndSupportIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/': {
+      id: '/projects/'
+      path: '/'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof ProjectsIndexRouteImport
       parentRoute: typeof ProjectsRouteRoute
     }
     '/projects/$projectId': {
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       path: '/$projectId'
       fullPath: '/projects/$projectId'
       preLoaderRoute: typeof ProjectsProjectIdRouteImport
+      parentRoute: typeof ProjectsRouteRoute
+    }
+    '/projects/my-profile': {
+      id: '/projects/my-profile'
+      path: '/my-profile'
+      fullPath: '/projects/my-profile'
+      preLoaderRoute: typeof ProjectsMyProfileRouteImport
       parentRoute: typeof ProjectsRouteRoute
     }
   }
@@ -310,6 +330,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProjectsRouteRoute: ProjectsRouteRouteWithChildren,
   GetStartedRoute: GetStartedRoute,
+  LoginRoute: LoginRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   PublicDataRoute: PublicDataRoute,
   ResourcesRoute: ResourcesRoute,
