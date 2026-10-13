@@ -9,6 +9,7 @@ import {
 	IconMessageDots,
 	IconMessageQuestion,
 	IconRocket,
+	IconBell,
 } from "@tabler/icons-react";
 
 import { NavMain } from "@/components/dashboard/nav-main";
@@ -30,6 +31,7 @@ import { getProjectsByUser } from "@/lib/api-keycloak";
 import type { MeResponse, Project } from "@/lib/types";
 import { NavUser } from "./nav-user";
 import { Link } from "@tanstack/react-router";
+import { NotificationPopover } from "../notification-popover";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	user: MeResponse;
@@ -130,6 +132,13 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 			</SidebarHeader>
 
 			<SidebarContent>
+				<SidebarMenu className="px-2">
+					<SidebarMenuItem>
+						<SidebarMenuItem>
+							<NotificationPopover />
+						</SidebarMenuItem>
+					</SidebarMenuItem>
+				</SidebarMenu>
 				<NavMain items={data.navMain} />
 				<SidebarSeparator className="mx-0" />
 				<NavMain items={data.navPlatform} />

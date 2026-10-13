@@ -2,12 +2,15 @@ import { keycloak } from "./keycloak";
 import type {
 	Assay,
 	CreateSample,
+	InvitationRole,
 	Member,
+	NotificationPage,
 	PresignDownloadRequest,
 	PresignDownloadResponse,
 	PresignUploadRequest,
 	PresignUploadResponse,
 	Project,
+	ProjectInvitation,
 	Sample,
 	SampleFile,
 	SampleMetadataField,
@@ -204,6 +207,68 @@ export async function deleteJoinRequest(
 ): Promise<void> {
 	await api(`projects/${projectId}/joingrequests/${userId}`, {
 		method: "DELETE",
+	});
+}
+
+export async function inviteProjectMember(
+	projectId: string,
+	email: string,
+	role: InvitationRole
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(`projects/${projectId}/invitations`, {
+		method: "POST",
+		body: JSON.stringify({
+			email: email.trim(),
+			role,
+		}),
+	});
+}
+
+export async function resendProjectInvitation(
+	projectId: string,
+	invitationId: string
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(
+		`projects/${projectId}/invitations/${invitationId}/resend`,
+		{
+			method: "POST",
+		}
+	);
+}
+
+export async function getProjectInvitations(
+	projectId: string,
+	page = 0,
+	size = 20
+): Promise<ProjectInvitation[]> {
+	return api<ProjectInvitation[]>(
+		`projects/${projectId}/invitations?page=${page}&size=${size}`,
+		{ method: "GET" }
+	);
+}
+
+export async function revokeProjectInvitation(
+	projectId: string,
+	invitationId: string
+): Promise<void> {
+	await api(`projects/${projectId}/invitations/${invitationId}`, {
+		method: "DELETE",
+	});
+}
+
+export async function acceptProjectInvitation(
+	invitationId: string
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(`invitations/${invitationId}/accept`, {
+		method: "POST",
+	});
+}
+
+export async function declineProjectInvitation(
+	invitationId: string
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(`invitations/${invitationId}/decline`, {
+		method: "POST",
 	});
 }
 
@@ -727,4 +792,43 @@ export async function downloadTemplate(type: TemplateType): Promise<void> {
 
 	a.remove();
 	window.URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// Notifications
+// ============================================================
+
+export async function getNotifications(
+	page = 0,
+	size = 20,
+	unread = false
+): Promise<NotificationPage> {
+	const params = new URLSearchParams({
+		page: String(page),
+		size: String(size),
+	});
+
+	if (unread) {
+		params.set("unread", "true");
+	}
+
+	return api<NotificationPage>(`notifications?${params.toString()}`);
+}
+
+export async function syncNotifications(): Promise<{
+	created: number;
+}> {
+	return api<{ created: number }>("notifications/sync", {
+		method: "POST",
+	});
+}
+
+export async function markNotificationRead(
+	notificationId: string,
+	read: boolean
+): Promise<void> {
+	await api(`notifications/${notificationId}`, {
+		method: "PATCH",
+		body: JSON.stringify({ read }),
+	});
 }
