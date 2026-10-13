@@ -39,7 +39,10 @@ export function EditProjectDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-3xl" aria-describedby={undefined}>
+			<DialogContent
+				className="flex !h-[90vh] !max-h-[90vh] !w-[95vw] !max-w-[1200px] flex-col"
+				aria-describedby={undefined}
+			>
 				<DialogHeader>
 					<DialogTitle>Edit project</DialogTitle>
 				</DialogHeader>
@@ -49,18 +52,24 @@ export function EditProjectDialog({
 					onValueChange={(val: string) =>
 						setActiveTab(val as "general" | "members")
 					}
-					className="mt-4"
+					className="mt-4 flex min-h-0 flex-1 flex-col"
 				>
-					<TabsList>
+					<TabsList className="shrink-0">
 						<TabsTrigger value="general">General</TabsTrigger>
 						<TabsTrigger value="members">Members</TabsTrigger>
 					</TabsList>
 
-					<TabsContent value="general">
+					<TabsContent
+						value="general"
+						className="min-h-0 flex-1 overflow-y-auto"
+					>
 						<ProjectGeneralTab project={project} />
 					</TabsContent>
 
-					<TabsContent value="members">
+					<TabsContent
+						value="members"
+						className="min-h-0 flex-1 overflow-y-auto"
+					>
 						<ProjectMembersTab project={project} />
 					</TabsContent>
 				</Tabs>
