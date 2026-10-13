@@ -78,7 +78,6 @@ import {
 	batchEditSamples,
 	getAssaysInSample,
 	getSampleMetadataFields,
-	getSamplesInAssay,
 	requestPresignedDownload,
 	updateAssay,
 	updateSample,
@@ -792,115 +791,6 @@ export function DataTable<T extends object>({
 
 						return [sample.id!, assays] as const;
 					})
-			);
-
-			return Object.fromEntries(entries);
-		},
-	});
-
-	/*
-	 * ============================================================
-	 * ASSAY TAB
-	 *
-	 * Keep the existing reverse relationship:
-	 *
-	 * Selected Assays
-	 *      ↓
-	 * GET /projects/{projectId}/assays/{assayId}/samples
-	 *      ↓
-	 * Samples
-	 *      ↓
-	 * GET /projects/{projectId}/samples/{sampleId}/assays
-	 *      ↓
-	 * Assays
-	 * ============================================================
-	 */
-
-	const selectedAssayIds =
-		dataType === "assay"
-			? selectedAssays
-					.map((assay) => assay.id)
-					.filter((id): id is string => Boolean(id))
-			: [];
-
-	const { data: samplesBySelectedAssay = {} } = useQuery({
-		queryKey: ["selected-assay-samples", project?.id, selectedAssayIds],
-
-		enabled:
-			Boolean(project?.id) &&
-			dataType === "assay" &&
-			selectedAssayIds.length > 0,
-
-		queryFn: async () => {
-			if (!project?.id || selectedAssayIds.length === 0) {
-				return {};
-			}
-
-			const entries = await Promise.all(
-				selectedAssayIds.map(async (assayId) => {
-					const samples = await getSamplesInAssay(project.id!, assayId);
-
-					return [assayId, samples] as const;
-				})
-			);
-
-			return Object.fromEntries(entries);
-		},
-	});
-
-	/*
-	 * ------------------------------------------------------------
-	 * Samples returned from selected Assays
-	 * ------------------------------------------------------------
-	 */
-
-	const samplesFromSelectedAssays: Sample[] =
-		dataType === "assay"
-			? Array.from(
-					new Map(
-						Object.values(samplesBySelectedAssay)
-							.flat()
-							.map((sample) => [sample.id, sample])
-					).values()
-				)
-			: [];
-
-	/*
-	 * ------------------------------------------------------------
-	 * For Assay tab, retrieve all Assays for those Samples.
-	 * ------------------------------------------------------------
-	 */
-
-	const assayTabSampleIds =
-		dataType === "assay"
-			? samplesFromSelectedAssays
-					.map((sample) => sample.id)
-					.filter((id): id is string => Boolean(id))
-			: [];
-
-	const { data: assaysForAssayTab = {} } = useQuery({
-		queryKey: [
-			"selected-sample-assays-from-assays",
-			project?.id,
-			assayTabSampleIds,
-		],
-
-		enabled:
-			Boolean(project?.id) &&
-			dataType === "assay" &&
-			assayTabSampleIds.length > 0,
-
-		queryFn: async () => {
-			if (!project?.id || assayTabSampleIds.length === 0) {
-				return {};
-			}
-
-			const entries = await Promise.all(
-				assayTabSampleIds.map(async (sampleId) => {
-					const assays = await getAssaysInSample(project.id!, sampleId);
-
-					return [sampleId, assays] as const;
-				})
 			);
 
 			return Object.fromEntries(entries);

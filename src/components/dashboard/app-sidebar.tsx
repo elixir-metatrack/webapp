@@ -9,7 +9,6 @@ import {
 	IconMessageDots,
 	IconMessageQuestion,
 	IconRocket,
-	IconBell,
 } from "@tabler/icons-react";
 
 import { NavMain } from "@/components/dashboard/nav-main";
