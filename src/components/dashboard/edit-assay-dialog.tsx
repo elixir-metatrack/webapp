@@ -17,6 +17,58 @@ import { deleteAssay, updateAssay } from "@/lib/api-keycloak";
 import type { Assay } from "@/lib/types";
 import { SquarePen } from "lucide-react";
 import { toastError, toastSuccess } from "#/lib/toast";
+import { VocabularyCombobox } from "../vocabulary-combobox";
+import { useVocabularies } from "#/hooks/use-vocabularies";
+import { FormField } from "../form-field";
+
+const fields = [
+	{
+		key: "name",
+		label: "Experiment Name",
+		placeholder: "Experiment name",
+	},
+	{
+		key: "studyAccession",
+		label: "Study Accession",
+		placeholder: "ENA study accession",
+	},
+	{
+		key: "instrumentModel",
+		label: "Instrument Model",
+		placeholder: "e.g. Illumina NovaSeq 6000",
+	},
+	{
+		key: "libraryName",
+		label: "Library Name",
+		placeholder: "Library name",
+	},
+	{
+		key: "librarySource",
+		label: "Library Source",
+		placeholder: "GENOMIC / TRANSCRIPTOMIC",
+	},
+	{
+		key: "libraryStrategy",
+		label: "Library Strategy",
+		placeholder: "e.g. WGS",
+	},
+	{
+		key: "librarySelection",
+		label: "Library Selection",
+		placeholder: "e.g. RANDOM",
+	},
+	{
+		key: "libraryLayout",
+		label: "Library Layout",
+		placeholder: "PAIRED / SINGLE",
+	},
+	{
+		key: "insertSize",
+		label: "Insert Size",
+		placeholder: "Insert size",
+		numeric: true,
+	},
+] as const;
 
 interface EditAssayDialogProps {
 	assay: Assay;
@@ -38,6 +90,8 @@ export function EditAssayDialog({ assay, projectId }: EditAssayDialogProps) {
 	});
 
 	const queryClient = useQueryClient();
+
+	const { getTerms } = useVocabularies("assay", projectId);
 
 	const updateMutation = useMutation({
 		mutationFn: () => updateAssay(projectId, assay.id, form),
@@ -87,23 +141,42 @@ export function EditAssayDialog({ assay, projectId }: EditAssayDialogProps) {
 				</DialogHeader>
 
 				<div className="space-y-4">
-					{Object.keys(form).map((key) => (
-						<div key={key} className="space-y-1">
-							<label className="text-sm font-medium">{key}</label>
-							<Input
-								type={key === "insertSize" ? "number" : "text"}
-								value={form[key as keyof typeof form]}
-								onChange={(e) =>
-									handleChange(
-										key as keyof typeof form,
-										key === "insertSize"
-											? Number(e.target.value)
-											: e.target.value
-									)
-								}
-							/>
-						</div>
-					))}
+					{fields.map((field) => {
+						const key = field.key;
+						const value = form[key];
+						const vocabularyTerms = getTerms(key);
+
+						const input =
+							vocabularyTerms.length > 0 ? (
+								<VocabularyCombobox
+									value={String(value)}
+									terms={vocabularyTerms}
+									onChange={(newValue) => handleChange(key, newValue)}
+								/>
+							) : (
+								<Input
+									type={"numeric" in field && field.numeric ? "number" : "text"}
+									placeholder={field.placeholder}
+									value={value}
+									onChange={(e) =>
+										handleChange(
+											key,
+											"numeric" in field && field.numeric
+												? e.target.value === ""
+													? 0
+													: Number(e.target.value)
+												: e.target.value
+										)
+									}
+								/>
+							);
+
+						return (
+							<FormField key={key} label={field.label}>
+								{input}
+							</FormField>
+						);
+					})}
 				</div>
 
 				<DialogFooter className="w-full !justify-between">
