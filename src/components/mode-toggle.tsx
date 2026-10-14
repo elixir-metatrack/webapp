@@ -34,8 +34,8 @@ export function ModeToggle({
 							: ""
 					}
 				>
-					<SunIcon className="h-4 w-4 shrink-0 scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-					<MoonIcon className="absolute left-2 h-4 w-4 scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+					<SunIcon className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+					<MoonIcon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
 					{label && <span>{label}</span>}
 				</Button>
 			</DropdownMenuTrigger>

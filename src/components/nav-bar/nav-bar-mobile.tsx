@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AuthContext } from "@/providers/auth-context";
+import { MetatrackLogo } from "../logos-metatrack-toogle";
 
 type NavItem = {
 	pageUrl: string;
@@ -109,11 +110,7 @@ export function NavBarMobile() {
 			</Sheet>
 
 			<Link to="/" className="flex items-center">
-				<img
-					src="/Metatrack_logo_advanced.svg"
-					alt="MetaTrack Logo"
-					className="h-auto w-36 sm:w-40"
-				/>
+				<MetatrackLogo className="w-36 sm:w-40" />
 			</Link>
 
 			<ModeToggle />
