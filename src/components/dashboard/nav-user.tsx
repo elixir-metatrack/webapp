@@ -11,7 +11,13 @@ import { useContext } from "react";
 import { Link } from "@tanstack/react-router";
 import { ModeToggle } from "../mode-toggle";
 
-export function NavUser({ user }: { user: MeResponse }) {
+export function NavUser({
+	user,
+	isCollapsed,
+}: {
+	user: MeResponse;
+	isCollapsed: boolean;
+}) {
 	const { logout } = useContext(AuthContext);
 
 	return (
@@ -39,7 +45,11 @@ export function NavUser({ user }: { user: MeResponse }) {
 
 				<SidebarMenuItem>
 					<SidebarMenuButton asChild className="gap-x-2">
-						<ModeToggle label="Theme" variant="ghost" align="end" />
+						<ModeToggle
+							label={isCollapsed ? undefined : "Theme"}
+							variant="ghost"
+							align="end"
+						/>
 					</SidebarMenuButton>
 				</SidebarMenuItem>
 
