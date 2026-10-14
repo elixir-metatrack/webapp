@@ -87,6 +87,12 @@ import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
 import { toastError, toastSuccess } from "#/lib/toast";
 import { VocabularyCombobox } from "../vocabulary-combobox";
 import { useVocabularies } from "#/hooks/use-vocabularies";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+} from "../ui/input-group";
 
 interface DataTableProps<T extends object> {
 	data: T[];
@@ -208,12 +214,29 @@ function QuickEditField({
 					}}
 				/>
 			) : (
-				<Input
-					value={value}
-					onChange={(e) => setValue(e.target.value)}
-					placeholder={label}
-					type={isNumberField ? "number" : "text"}
-				/>
+				<InputGroup>
+					<InputGroupInput
+						value={value}
+						onChange={(e) => setValue(e.target.value)}
+						placeholder={label}
+						type={isNumberField ? "number" : "text"}
+					/>
+
+					{value !== "" && (
+						<InputGroupAddon align="inline-end">
+							<InputGroupButton
+								type="button"
+								size="icon-xs"
+								variant="ghost"
+								aria-label="Limpar campo"
+								title="Limpar campo"
+								onClick={() => setValue("")}
+							>
+								<X />
+							</InputGroupButton>
+						</InputGroupAddon>
+					)}
+				</InputGroup>
 			)}
 
 			<Button type="submit" size="sm" className="w-full">
@@ -599,7 +622,7 @@ export function DataTable<T extends object>({
 						const originalValue = row[colName as keyof Assay];
 
 						if (value === "") {
-							updateData[colName] = null;
+							updateData[colName] = "";
 						} else if (typeof originalValue === "number") {
 							const numberValue = Number(value);
 
@@ -662,7 +685,7 @@ export function DataTable<T extends object>({
 					};
 
 					if (value === "") {
-						customMetadata[colName] = null;
+						customMetadata[colName] = "";
 					} else {
 						switch (customField.type) {
 							case "NUMBER": {
@@ -695,7 +718,7 @@ export function DataTable<T extends object>({
 					const originalValue = row[colName as keyof Sample];
 
 					if (value === "") {
-						updateData[colName] = null;
+						updateData[colName] = "";
 					} else if (typeof originalValue === "number") {
 						const numberValue = Number(value);
 
@@ -1089,8 +1112,8 @@ function TableCellViewer({
 	onUpdated?: () => void;
 }) {
 	const [loading, setLoading] = useState(false);
-
 	const [openDrawer, setOpenDrawer] = useState(false);
+	const [formValues, setFormValues] = useState<Record<string, string>>({});
 
 	const queryClient = useQueryClient();
 
@@ -1133,7 +1156,6 @@ function TableCellViewer({
 
 		try {
 			const formData = new FormData(e.currentTarget);
-
 			const updateData: Record<string, unknown> = {};
 
 			/*
@@ -1142,12 +1164,10 @@ function TableCellViewer({
 			for (const field of standardFields) {
 				const value = formData.get(field);
 
-				if (value === null) {
-					continue;
-				}
+				if (value === null) continue;
 
 				if (value === "") {
-					updateData[field] = null;
+					updateData[field] = "";
 					continue;
 				}
 
@@ -1158,9 +1178,7 @@ function TableCellViewer({
 
 				if (isNumberField) {
 					const numberValue = Number(value);
-
 					updateData[field] = Number.isNaN(numberValue) ? null : numberValue;
-
 					continue;
 				}
 
@@ -1178,7 +1196,7 @@ function TableCellViewer({
 					const value = formData.get(`customMetadata.${field.key}`);
 
 					if (value === null || value === "") {
-						customMetadata[field.key] = null;
+						customMetadata[field.key] = "";
 						continue;
 					}
 
@@ -1189,7 +1207,6 @@ function TableCellViewer({
 							customMetadata[field.key] = Number.isNaN(numberValue)
 								? null
 								: numberValue;
-
 							break;
 						}
 
@@ -1243,6 +1260,7 @@ function TableCellViewer({
 
 			onUpdated?.();
 			setOpenDrawer(false);
+			setFormValues({});
 		} catch (err: unknown) {
 			const message =
 				err instanceof Error
@@ -1261,19 +1279,26 @@ function TableCellViewer({
 		<Drawer
 			direction="right"
 			open={openDrawer}
-			onOpenChange={setOpenDrawer}
+			onOpenChange={(open) => {
+				setOpenDrawer(open);
+
+				if (open) {
+					setFormValues({});
+				}
+			}}
 			autoFocus={openDrawer}
 		>
 			<DrawerTrigger asChild>
 				<Button
 					variant="ghost"
 					className="text-foreground w-full justify-start gap-2 text-left"
-					size={"sm"}
+					size="sm"
 				>
 					<SquarePen size={6} />
 					Edit
 				</Button>
 			</DrawerTrigger>
+
 			<DrawerContent aria-describedby={undefined}>
 				<DrawerHeader className="gap-1">
 					<DrawerTitle className="text-xl">Edit {item.name}</DrawerTitle>
@@ -1287,7 +1312,6 @@ function TableCellViewer({
 					>
 						{standardFields.map((field) => {
 							const rawValue = item[field as keyof Sample];
-
 							const isDateField = DATE_FIELDS.has(field);
 
 							const isNumberField =
@@ -1298,6 +1322,8 @@ function TableCellViewer({
 							const formattedValue = isDateField
 								? formatDateToYMD(rawValue as string)
 								: String(rawValue ?? "");
+
+							const currentValue = formValues[field] ?? formattedValue;
 
 							const vocabularyTerms = getTerms(field);
 
@@ -1312,16 +1338,47 @@ function TableCellViewer({
 											terms={vocabularyTerms}
 										/>
 									) : (
-										<Input
-											id={field}
-											name={field}
-											type={
-												isDateField ? "date" : isNumberField ? "number" : "text"
-											}
-											onPointerDown={(e) => e.stopPropagation()}
-											defaultValue={formattedValue}
-											className="grid grid-cols-1 place-content-around"
-										/>
+										<InputGroup>
+											<InputGroupInput
+												id={field}
+												name={field}
+												type={
+													isDateField
+														? "date"
+														: isNumberField
+															? "number"
+															: "text"
+												}
+												value={currentValue}
+												onChange={(e) =>
+													setFormValues((prev) => ({
+														...prev,
+														[field]: e.target.value,
+													}))
+												}
+												onPointerDown={(e) => e.stopPropagation()}
+											/>
+
+											{currentValue !== "" && (
+												<InputGroupAddon align="inline-end">
+													<InputGroupButton
+														type="button"
+														variant="ghost"
+														size="icon-xs"
+														aria-label={`Clear ${getColumnNewName(field)}`}
+														title="Clear field"
+														onClick={() =>
+															setFormValues((prev) => ({
+																...prev,
+																[field]: "",
+															}))
+														}
+													>
+														<X />
+													</InputGroupButton>
+												</InputGroupAddon>
+											)}
+										</InputGroup>
 									)}
 								</div>
 							);
@@ -1329,7 +1386,12 @@ function TableCellViewer({
 
 						{dataType === "sample" &&
 							activeCustomFields.map((field) => {
-								const value = item.customMetadata?.[field.key] ?? "";
+								const originalValue = String(
+									item.customMetadata?.[field.key] ?? ""
+								);
+
+								const inputKey = `customMetadata.${field.key}`;
+								const currentValue = formValues[inputKey] ?? originalValue;
 
 								const vocabularyTerms = getTerms(field.key);
 
@@ -1342,25 +1404,52 @@ function TableCellViewer({
 
 										{vocabularyTerms.length > 0 ? (
 											<VocabularyCombobox
-												name={`customMetadata.${field.key}`}
-												value={String(value ?? "")}
+												name={inputKey}
+												value={originalValue}
 												terms={vocabularyTerms}
 											/>
 										) : (
-											<Input
-												id={`custom-${field.key}`}
-												name={`customMetadata.${field.key}`}
-												type={
-													field.type === "DATE"
-														? "date"
-														: field.type === "NUMBER"
-															? "number"
-															: "text"
-												}
-												defaultValue={String(value ?? "")}
-												onPointerDown={(e) => e.stopPropagation()}
-												className="grid grid-cols-1 place-content-around"
-											/>
+											<InputGroup>
+												<InputGroupInput
+													id={`custom-${field.key}`}
+													name={inputKey}
+													type={
+														field.type === "DATE"
+															? "date"
+															: field.type === "NUMBER"
+																? "number"
+																: "text"
+													}
+													value={currentValue}
+													onChange={(e) =>
+														setFormValues((prev) => ({
+															...prev,
+															[inputKey]: e.target.value,
+														}))
+													}
+													onPointerDown={(e) => e.stopPropagation()}
+												/>
+
+												{currentValue !== "" && (
+													<InputGroupAddon align="inline-end">
+														<InputGroupButton
+															type="button"
+															variant="ghost"
+															size="icon-xs"
+															aria-label={`Clear ${field.label}`}
+															title="Clear field"
+															onClick={() =>
+																setFormValues((prev) => ({
+																	...prev,
+																	[inputKey]: "",
+																}))
+															}
+														>
+															<X />
+														</InputGroupButton>
+													</InputGroupAddon>
+												)}
+											</InputGroup>
 										)}
 									</div>
 								);
@@ -1369,9 +1458,10 @@ function TableCellViewer({
 				</div>
 
 				<DrawerFooter>
-					<Button form="sampleForm" type="submit">
+					<Button form="sampleForm" type="submit" disabled={loading}>
 						{loading ? "Saving..." : "Save"}
 					</Button>
+
 					<DrawerClose asChild>
 						<Button variant="outline">Cancel</Button>
 					</DrawerClose>
