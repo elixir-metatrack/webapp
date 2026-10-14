@@ -9,8 +9,14 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { useState } from "react";
 
-export function NotificationPopover() {
+interface NotificationPopoverProps {
+	isCollapsed: boolean;
+}
+
+export function NotificationPopover({ isCollapsed }: NotificationPopoverProps) {
+	const [open, setOpen] = useState(false);
 	const { data, isLoading, isError } = useQuery({
 		queryKey: ["notifications"],
 		queryFn: () => getNotifications(0, 3),
@@ -20,20 +26,31 @@ export function NotificationPopover() {
 	const unreadCount = data?.unreadCount ?? 0;
 
 	return (
-		<Popover>
+		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<Button
 					variant="ghost"
-					className="-ml-1 h-8 w-full flex-none justify-start gap-2 px-2 font-normal hover:bg-neutral-300"
+					className={`-ml-1 h-8 w-full flex-none justify-start gap-2 px-2 font-normal hover:bg-neutral-300 ${
+						isCollapsed ? "relative justify-center overflow-visible" : ""
+					}`}
 				>
 					<Bell className="size-6 shrink-0" />
-					<span className="flex-1 text-left">Notifications</span>
+
+					{!isCollapsed && (
+						<span className="flex-1 text-left">Notifications</span>
+					)}
 
 					<Badge
 						variant={unreadCount === 0 ? "secondary" : "default"}
-						className={unreadCount > 0 ? "bg-chart-5 ml-auto" : "ml-auto"}
+						className={
+							isCollapsed
+								? "border-sidebar absolute -top-1 -right-1 z-10 flex size-4 items-center justify-center rounded-full border-2 p-0 text-[10px]"
+								: unreadCount > 0
+									? "bg-chart-5 ml-auto"
+									: "ml-auto"
+						}
 					>
-						{unreadCount}
+						{unreadCount > 99 ? "99+" : unreadCount}
 					</Badge>
 				</Button>
 			</PopoverTrigger>
@@ -92,7 +109,7 @@ export function NotificationPopover() {
 
 				<div className="p-2">
 					<Button asChild variant="ghost" className="w-full justify-between">
-						<Link to="/projects/notifications">
+						<Link to="/projects/notifications" onClick={() => setOpen(false)}>
 							View all notifications
 							<ChevronRight className="size-4" />
 						</Link>
