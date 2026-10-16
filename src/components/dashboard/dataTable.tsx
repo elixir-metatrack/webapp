@@ -93,6 +93,7 @@ import {
 	InputGroupButton,
 	InputGroupInput,
 } from "../ui/input-group";
+import { FastqFloatingActions } from "./fastq-floating-actions";
 
 interface DataTableProps<T extends object> {
 	data: T[];
@@ -270,6 +271,10 @@ export function DataTable<T extends object>({
 
 	const { getTerms } = useVocabularies(dataType ?? "sample", project?.id);
 
+	React.useEffect(() => {
+		setSelectedFastqFiles(new Set());
+	}, [project?.id, assay?.id]);
+
 	const { data: customMetadataFields = [] } = useQuery({
 		queryKey: ["sample-metadata-fields", project?.id],
 		enabled: Boolean(project?.id && dataType === "sample"),
@@ -280,6 +285,91 @@ export function DataTable<T extends object>({
 		data as Sample[],
 		dataType !== "assay"
 	);
+
+	// ===================================================================
+	// SELECT FASTQ FILES
+
+	type SelectableFastqFile = {
+		sampleName: string;
+		fileName: string;
+		key: string;
+	};
+
+	const [selectedFastqFiles, setSelectedFastqFiles] = React.useState<
+		Set<string>
+	>(() => new Set());
+
+	const fastqFiles = React.useMemo<SelectableFastqFile[]>(() => {
+		if (dataType !== "assay") return [];
+
+		return (
+			enrichedData as Array<{
+				name: string;
+				files?: SampleFile[];
+			}>
+		).flatMap((sample) =>
+			(sample.files ?? []).map((file) => ({
+				sampleName: sample.name,
+				fileName: file.name,
+				key: JSON.stringify([sample.name, file.name]),
+			}))
+		);
+	}, [dataType, enrichedData]);
+
+	const selectedFastqFilesToDownload = fastqFiles.filter((file) =>
+		selectedFastqFiles.has(file.key)
+	);
+
+	const toggleFastqFile = (key: string, checked: boolean) => {
+		setSelectedFastqFiles((previous) => {
+			const next = new Set(previous);
+
+			if (checked) {
+				next.add(key);
+			} else {
+				next.delete(key);
+			}
+
+			return next;
+		});
+	};
+
+	const handleDownloadFastqFiles = async (
+		filesToDownload: SelectableFastqFile[]
+	) => {
+		if (!project?.id || !assay?.id || filesToDownload.length === 0) {
+			return;
+		}
+
+		let failed = 0;
+
+		console.log("filesToDownload:", filesToDownload);
+
+		for (const file of filesToDownload) {
+			try {
+				const { url } = await requestPresignedDownload({
+					projectId: Number(project.id),
+					assayId: assay.id,
+					sampleName: file.sampleName,
+					fileName: file.fileName,
+				});
+
+				window.open(url, "_blank", "noopener,noreferrer");
+			} catch {
+				failed++;
+			}
+		}
+
+		if (failed > 0) {
+			toastError(
+				`Failed to download ${failed} of ${filesToDownload.length} file(s).`
+			);
+		} else {
+			toastSuccess(`Started downloading ${filesToDownload.length} file(s).`);
+		}
+	};
+
+	// =============================================================================
 
 	const autoColumns: ColumnDef<T>[] =
 		enrichedData.length === 0
@@ -374,43 +464,66 @@ export function DataTable<T extends object>({
 					title={getColumnNewName("files")}
 				/>
 			),
+
 			cell: ({ row }) => {
-				const sample = row.original as { name: string; files?: SampleFile[] };
+				const sample = row.original as {
+					name: string;
+					files?: SampleFile[];
+				};
 
 				if (!sample.files || sample.files.length === 0) {
 					return null;
 				}
 
 				return (
-					<div className="flex flex-col gap-1">
-						{sample.files.map((file, index) => (
-							<button
-								key={index}
-								onClick={async () => {
-									if (!project?.id) return;
-									try {
-										const { url } = await requestPresignedDownload({
-											projectId: Number(project.id),
-											assayId: assay?.id ?? "",
-											sampleName: sample.name,
-											fileName: file.name,
-										});
+					<div className="flex flex-col gap-2">
+						{sample.files.map((file) => {
+							const fileKey = JSON.stringify([sample.name, file.name]);
 
-										window.open(url, "_blank");
-									} catch (err: unknown) {
-										const message =
-											err instanceof Error ? err.message : "Download failed";
-										toastError(message);
-									}
-								}}
-								className="text-left text-blue-600 hover:underline"
-							>
-								{file.name}
-							</button>
-						))}
+							return (
+								<div key={fileKey} className="flex items-center gap-2">
+									<Checkbox
+										checked={selectedFastqFiles.has(fileKey)}
+										onCheckedChange={(checked) =>
+											toggleFastqFile(fileKey, checked === true)
+										}
+										aria-label={`Select ${file.name}`}
+									/>
+
+									<button
+										type="button"
+										onClick={async () => {
+											if (!project?.id || !assay?.id) return;
+
+											try {
+												const { url } = await requestPresignedDownload({
+													projectId: Number(project.id),
+													assayId: assay.id,
+													sampleName: sample.name,
+													fileName: file.name,
+												});
+
+												window.open(url, "_blank", "noopener,noreferrer");
+											} catch (err: unknown) {
+												const message =
+													err instanceof Error
+														? err.message
+														: "Download failed";
+
+												toastError(message);
+											}
+										}}
+										className="text-left text-blue-600 hover:underline"
+									>
+										{file.name}
+									</button>
+								</div>
+							);
+						})}
 					</div>
 				);
 			},
+
 			enableSorting: false,
 			enableHiding: true,
 		};
@@ -428,7 +541,7 @@ export function DataTable<T extends object>({
 									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent>
-									{onEdit && (
+									{onEdit && dataType === "sample" ? (
 										<TableCellViewer
 											item={row.original as Sample}
 											projectId={project?.id ?? ""}
@@ -437,7 +550,7 @@ export function DataTable<T extends object>({
 												if (onEdit) onEdit(row.original);
 											}}
 										/>
-									)}
+									) : null}
 
 									{dataType === "assay" ? (
 										<UploadDataDialog
@@ -841,6 +954,12 @@ export function DataTable<T extends object>({
 	const quickEditColumns = editableColumns.slice(1, QUICK_EDIT_LIMIT);
 	const moreEditColumns = editableColumns.slice(QUICK_EDIT_LIMIT);
 
+	const handleDeleteSelectedFastqFiles = () => {
+		toastError(
+			"FASTQ deletion is not connected yet. Connect this action to your file deletion API."
+		);
+	};
+
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-center space-x-2 lg:flex">
@@ -870,104 +989,27 @@ export function DataTable<T extends object>({
 						</div>
 
 						<Separator orientation="vertical" />
-						{quickEditColumns.map((col) => {
-							const fieldKey = String(col.id);
-							const terms = getTerms(fieldKey);
 
-							return (
-								<React.Fragment key={fieldKey}>
-									<DropdownMenu modal={false}>
-										<DropdownMenuTrigger asChild>
-											<Button
-												variant="ghost"
-												size="sm"
-												className="rounded-none"
-											>
-												{col.meta?.label}
-											</Button>
-										</DropdownMenuTrigger>
-
-										<DropdownMenuContent>
-											<QuickEditField
-												fieldKey={fieldKey}
-												label={String(col.meta?.label)}
-												terms={terms}
-												dataType={dataType}
-												onSubmit={(value) => handleBatchUpdate(fieldKey, value)}
-											/>
-										</DropdownMenuContent>
-									</DropdownMenu>
-
-									<Separator orientation="vertical" />
-								</React.Fragment>
-							);
-						})}
-
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="rounded-none"
-									onClick={() =>
-										downloadTSV(
-											table
-												.getSelectedRowModel()
-												.rows.map((r: Row<T>) =>
-													Object.fromEntries(
-														r
-															.getVisibleCells()
-															.map((cell: Cell<T, unknown>, i: number) => [
-																headers[i],
-																cell.getValue(),
-															])
-													)
-												),
-											"selected-rows"
-										)
-									}
-								>
-									<Download className="h-4 w-4" />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Download selected</p>
-							</TooltipContent>
-						</Tooltip>
-
-						<Separator orientation="vertical" />
-
-						<DropdownMenu modal={false}>
-							<DropdownMenuTrigger asChild>
-								<Button variant="ghost" size="sm" className="rounded-none">
-									<MoreHorizontal />
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuLabel className="flex w-full flex-row items-center gap-2 px-6">
-									<SquarePen size={18} />
-									Edit selected
-								</DropdownMenuLabel>
-
-								<DropdownMenuSeparator />
-
-								{moreEditColumns.map((col) => {
+						{dataType === "sample" ? (
+							<>
+								{quickEditColumns.map((col) => {
 									const fieldKey = String(col.id);
 									const terms = getTerms(fieldKey);
 
 									return (
-										<DropdownMenuItem key={fieldKey} asChild>
-											<Popover modal={false}>
-												<PopoverTrigger asChild>
+										<React.Fragment key={fieldKey}>
+											<DropdownMenu modal={false}>
+												<DropdownMenuTrigger asChild>
 													<Button
 														variant="ghost"
-														className="flex justify-start"
+														size="sm"
+														className="rounded-none"
 													>
-														{String(col.meta?.label)}
+														{col.meta?.label}
 													</Button>
-												</PopoverTrigger>
+												</DropdownMenuTrigger>
 
-												<PopoverContent className="p-1">
+												<DropdownMenuContent>
 													<QuickEditField
 														fieldKey={fieldKey}
 														label={String(col.meta?.label)}
@@ -977,26 +1019,148 @@ export function DataTable<T extends object>({
 															handleBatchUpdate(fieldKey, value)
 														}
 													/>
-												</PopoverContent>
-											</Popover>
-										</DropdownMenuItem>
+												</DropdownMenuContent>
+											</DropdownMenu>
+
+											<Separator orientation="vertical" />
+										</React.Fragment>
 									);
 								})}
 
-								{!project?.parentProjectId && (
-									<>
-										<DropdownMenuSeparator />
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Button
+											variant="ghost"
+											size="sm"
+											className="rounded-none"
+											onClick={() =>
+												downloadTSV(
+													table
+														.getSelectedRowModel()
+														.rows.map((r: Row<T>) =>
+															Object.fromEntries(
+																r
+																	.getVisibleCells()
+																	.map((cell: Cell<T, unknown>, i: number) => [
+																		headers[i],
+																		cell.getValue(),
+																	])
+															)
+														),
+													"selected-rows"
+												)
+											}
+										>
+											<Download className="h-4 w-4" />
+										</Button>
+									</TooltipTrigger>
 
-										<DeleteAlertButton
-											projectId={project?.id ?? ""}
-											item={selectedRows as { id: string }[]}
-											entityName="sample"
-											onDeleted={() => table.resetRowSelection()}
-										/>
-									</>
-								)}
-							</DropdownMenuContent>
-						</DropdownMenu>
+									<TooltipContent>
+										<p>Download selected</p>
+									</TooltipContent>
+								</Tooltip>
+
+								<Separator orientation="vertical" />
+							</>
+						) : (
+							<Button
+								variant="ghost"
+								size="sm"
+								className="rounded-none"
+								onClick={() =>
+									downloadTSV(
+										table
+											.getSelectedRowModel()
+											.rows.map((r: Row<T>) =>
+												Object.fromEntries(
+													r
+														.getVisibleCells()
+														.map((cell: Cell<T, unknown>, i: number) => [
+															headers[i],
+															cell.getValue(),
+														])
+												)
+											),
+										"selected-rows"
+									)
+								}
+							>
+								<Download className="h-4 w-4" />
+								Download Selected
+							</Button>
+						)}
+
+						{dataType === "sample" ? (
+							<DropdownMenu modal={false}>
+								<DropdownMenuTrigger asChild>
+									<Button variant="ghost" size="sm" className="rounded-none">
+										<MoreHorizontal />
+									</Button>
+								</DropdownMenuTrigger>
+
+								<DropdownMenuContent align="end">
+									<DropdownMenuLabel className="flex w-full flex-row items-center gap-2 px-6">
+										<SquarePen size={18} />
+										Edit selected
+									</DropdownMenuLabel>
+
+									<DropdownMenuSeparator />
+
+									{moreEditColumns.map((col) => {
+										const fieldKey = String(col.id);
+										const terms = getTerms(fieldKey);
+
+										return (
+											<DropdownMenuItem key={fieldKey} asChild>
+												<Popover modal={false}>
+													<PopoverTrigger asChild>
+														<Button
+															variant="ghost"
+															className="flex justify-start"
+														>
+															{String(col.meta?.label)}
+														</Button>
+													</PopoverTrigger>
+
+													<PopoverContent className="p-1">
+														<QuickEditField
+															fieldKey={fieldKey}
+															label={String(col.meta?.label)}
+															terms={terms}
+															dataType={dataType}
+															onSubmit={(value) =>
+																handleBatchUpdate(fieldKey, value)
+															}
+														/>
+													</PopoverContent>
+												</Popover>
+											</DropdownMenuItem>
+										);
+									})}
+
+									{!project?.parentProjectId && (
+										<>
+											<DropdownMenuSeparator />
+
+											<DeleteAlertButton
+												projectId={project?.id ?? ""}
+												item={selectedRows as { id: string }[]}
+												entityName="sample"
+												onDeleted={() => table.resetRowSelection()}
+											/>
+										</>
+									)}
+								</DropdownMenuContent>
+							</DropdownMenu>
+						) : (
+							<DeleteAlertButton
+								projectId={project?.id ?? ""}
+								item={selectedRows as { id: string }[]}
+								entityName="sample"
+								insideDropdown={false}
+								onDeleted={() => table.resetRowSelection()}
+							/>
+						)}
 					</div>
 				)}
 
@@ -1032,6 +1196,26 @@ export function DataTable<T extends object>({
 			<div className="rounded-md border">
 				<Table>
 					<TableHeader className="bg-muted sticky top-0">
+						{dataType === "assay" && (
+							<TableRow>
+								{table.getVisibleLeafColumns().map((column) => (
+									<TableHead key={column.id}>
+										{column.id === "files" ? (
+											<Button
+												variant="outline"
+												size="sm"
+												disabled={fastqFiles.length === 0}
+												onClick={() => handleDownloadFastqFiles(fastqFiles)}
+											>
+												<Download className="mr-2 h-4 w-4" />
+												Download All Files
+											</Button>
+										) : null}
+									</TableHead>
+								))}
+							</TableRow>
+						)}
+
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
@@ -1098,6 +1282,17 @@ export function DataTable<T extends object>({
 				</Table>
 			</div>
 			<DataTablePagination table={table} />
+
+			{dataType === "assay" && (
+				<FastqFloatingActions
+					count={selectedFastqFilesToDownload.length}
+					onDownload={() =>
+						handleDownloadFastqFiles(selectedFastqFilesToDownload)
+					}
+					onDelete={handleDeleteSelectedFastqFiles}
+					onClear={() => setSelectedFastqFiles(new Set())}
+				/>
+			)}
 		</div>
 	);
 }
@@ -1291,14 +1486,15 @@ function TableCellViewer({
 			autoFocus={openDrawer}
 		>
 			<DrawerTrigger asChild>
-				<Button
-					variant="ghost"
-					className="text-foreground w-full justify-start gap-2 text-left"
-					size="sm"
-				>
-					<SquarePen size={6} />
-					Edit
-				</Button>
+				<DrawerTrigger asChild>
+					<DropdownMenuItem
+						onSelect={(e) => e.preventDefault()}
+						className="gap-2"
+					>
+						<SquarePen className="size-5" />
+						{dataType === "sample" ? "Edit" : "Edit all samples"}
+					</DropdownMenuItem>
+				</DrawerTrigger>
 			</DrawerTrigger>
 
 			<DrawerContent aria-describedby={undefined}>
