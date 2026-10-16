@@ -18,8 +18,16 @@ export const NON_EDITABLE_COLUMNS = [
 	"id",
 	"actions",
 	"customMetadata",
+	"projectTitle",
+	"description",
 ];
-export const NON_VIEWED_COLUMNS = ["id", "lastUpdatedOn", "alias"];
+export const NON_VIEWED_COLUMNS = [
+	"id",
+	"lastUpdatedOn",
+	"alias",
+	"projectTitle",
+	"description",
+];
 
 export const SAMPLE_NUMBER_FIELDS = new Set([
 	"taxId",
