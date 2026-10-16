@@ -65,6 +65,7 @@ const fields: FieldConfig[] = [
 		label: "Instrument Model",
 		placeholder: "e.g. Illumina NovaSeq 6000",
 		tooltip: "Model of the sequencing instrument.",
+		advanced: true,
 	},
 	{
 		key: "libraryName",
@@ -79,12 +80,14 @@ const fields: FieldConfig[] = [
 		placeholder: "GENOMIC / TRANSCRIPTOMIC",
 		tooltip:
 			"The library_source specifies the type of source material that is being sequenced.",
+		advanced: true,
 	},
 	{
 		key: "libraryStrategy",
 		label: "Library Strategy",
 		placeholder: "e.g. WGS",
 		tooltip: "Sequencing technique intended for this library.",
+		advanced: true,
 	},
 	{
 		key: "librarySelection",
@@ -100,6 +103,7 @@ const fields: FieldConfig[] = [
 		placeholder: "PAIRED / SINGLE",
 		tooltip:
 			"Library_layout specifies whether to expect single, paired, or other configuration of reads. in the case of paired reads, information about the relative distance and orientation is specified.",
+		advanced: true,
 	},
 	{
 		key: "insertSize",
