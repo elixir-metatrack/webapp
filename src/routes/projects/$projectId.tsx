@@ -29,7 +29,7 @@ import { AddSubProjectDialog } from "@/components/dashboard/add-subproject";
 import { SubProjectsTable } from "@/components/dashboard/subproject-table";
 import { Badge } from "@/components/ui/badge";
 import { SquarePen, UserRoundCog } from "lucide-react";
-import { IconMicroscope, IconTestPipe. IconSitemap } from "@tabler/icons-react";
+import { IconMicroscope, IconTestPipe, IconSitemap } from "@tabler/icons-react";
 import { useUser } from "#/hooks/use-user";
 import { useSidebar } from "#/components/ui/sidebar";
 import { VocabulariesDialog } from "#/components/vocabulariesDialog";
@@ -186,7 +186,7 @@ function RouteComponent() {
 					<Tabs value={activeTab} onValueChange={setActiveTab}>
 						<CardHeader className="pb-0">
 							<div className="flex w-full items-center justify-between">
-								<TabsList className="w-[300px]">
+								<TabsList className="w-fit">
 									<TabsTrigger
 										value="samples"
 										className="text-lg font-semibold text-gray-500 [&_svg:not([class*='size-'])]:size-5"
@@ -204,19 +204,15 @@ function RouteComponent() {
 									</TabsTrigger>
 
 									{!project.parentProjectId && (
-									<TabsTrigger
-										value="subprojects"
-										className="text-lg font-semibold text-gray-500 [&_svg:not([class*='size-'])]:size-5"
-									>
-										<IconSitemap />
-										Sub-Projects
-									</TabsTrigger>
-								)}
+										<TabsTrigger
+											value="subprojects"
+											className="text-lg font-semibold text-gray-500 [&_svg:not([class*='size-'])]:size-5"
+										>
+											<IconSitemap />
+											Sub-Projects
+										</TabsTrigger>
+									)}
 								</TabsList>
-
-{!project.parentProjectId && (
-												<AddAssayDialog projectId={projectId} />
-											)}
 
 								<div className="flex items-center gap-2">
 									{/* Normal user vocabulary */}
