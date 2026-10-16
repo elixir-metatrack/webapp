@@ -12,11 +12,63 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteAssay, updateAssay } from "@/lib/api-keycloak";
 import type { Assay } from "@/lib/types";
 import { SquarePen } from "lucide-react";
+import { toastError, toastSuccess } from "#/lib/toast";
+import { VocabularyCombobox } from "../vocabulary-combobox";
+import { useVocabularies } from "#/hooks/use-vocabularies";
+import { FormField } from "../form-field";
+
+const fields = [
+	{
+		key: "name",
+		label: "Experiment Name",
+		placeholder: "Experiment name",
+	},
+	{
+		key: "studyAccession",
+		label: "Study Accession",
+		placeholder: "ENA study accession",
+	},
+	{
+		key: "instrumentModel",
+		label: "Instrument Model",
+		placeholder: "e.g. Illumina NovaSeq 6000",
+	},
+	{
+		key: "libraryName",
+		label: "Library Name",
+		placeholder: "Library name",
+	},
+	{
+		key: "librarySource",
+		label: "Library Source",
+		placeholder: "GENOMIC / TRANSCRIPTOMIC",
+	},
+	{
+		key: "libraryStrategy",
+		label: "Library Strategy",
+		placeholder: "e.g. WGS",
+	},
+	{
+		key: "librarySelection",
+		label: "Library Selection",
+		placeholder: "e.g. RANDOM",
+	},
+	{
+		key: "libraryLayout",
+		label: "Library Layout",
+		placeholder: "PAIRED / SINGLE",
+	},
+	{
+		key: "insertSize",
+		label: "Insert Size",
+		placeholder: "Insert size",
+		numeric: true,
+	},
+] as const;
 
 interface EditAssayDialogProps {
 	assay: Assay;
@@ -44,10 +96,12 @@ export function EditAssayDialog({
 
 	const queryClient = useQueryClient();
 
+	const { getTerms } = useVocabularies("assay", projectId);
+
 	const updateMutation = useMutation({
 		mutationFn: () => updateAssay(projectId, assay.id, form),
 		onSuccess: () => {
-			toast.success("Experiment updated successfully!");
+			toastSuccess("Experiment updated successfully!");
 			queryClient.invalidateQueries({
 				queryKey: ["assays"],
 				exact: false,
@@ -59,18 +113,18 @@ export function EditAssayDialog({
 			setOpen(false);
 		},
 		onError: (err: Error) =>
-			toast.error(err?.message ?? "Failed to update experiment"),
+			toastError(err?.message ?? "Failed to update experiment"),
 	});
 
 	const deleteMutation = useMutation({
 		mutationFn: () => deleteAssay(projectId, assay.id),
 		onSuccess: () => {
-			toast.success("Experiment deleted successfully!");
+			toastSuccess("Experiment deleted successfully!");
 			queryClient.invalidateQueries({ queryKey: ["assays", projectId] });
 			setOpen(false);
 		},
 		onError: (err: Error) =>
-			toast.error(err?.message ?? "Failed to delete experiment"),
+			toastError(err?.message ?? "Failed to delete experiment"),
 	});
 
 	const handleChange = (key: keyof typeof form, value: string | number) => {
@@ -92,23 +146,42 @@ export function EditAssayDialog({
 				</DialogHeader>
 
 				<div className="space-y-4">
-					{Object.keys(form).map((key) => (
-						<div key={key} className="space-y-1">
-							<label className="text-sm font-medium">{key}</label>
-							<Input
-								type={key === "insertSize" ? "number" : "text"}
-								value={form[key as keyof typeof form]}
-								onChange={(e) =>
-									handleChange(
-										key as keyof typeof form,
-										key === "insertSize"
-											? Number(e.target.value)
-											: e.target.value
-									)
-								}
-							/>
-						</div>
-					))}
+					{fields.map((field) => {
+						const key = field.key;
+						const value = form[key];
+						const vocabularyTerms = getTerms(key);
+
+						const input =
+							vocabularyTerms.length > 0 ? (
+								<VocabularyCombobox
+									value={String(value)}
+									terms={vocabularyTerms}
+									onChange={(newValue) => handleChange(key, newValue)}
+								/>
+							) : (
+								<Input
+									type={"numeric" in field && field.numeric ? "number" : "text"}
+									placeholder={field.placeholder}
+									value={value}
+									onChange={(e) =>
+										handleChange(
+											key,
+											"numeric" in field && field.numeric
+												? e.target.value === ""
+													? 0
+													: Number(e.target.value)
+												: e.target.value
+										)
+									}
+								/>
+							);
+
+						return (
+							<FormField key={key} label={field.label}>
+								{input}
+							</FormField>
+						);
+					})}
 				</div>
 
 				<DialogFooter className="w-full !justify-between">

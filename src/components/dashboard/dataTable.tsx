@@ -53,9 +53,8 @@ import {
 } from "../ui/drawer";
 import { Label } from "../ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DeleteAlertButton } from "../delete-alert-button";
-import { toast } from "sonner";
 import type {
 	Assay,
 	CreateSample,
@@ -64,24 +63,36 @@ import type {
 	SampleFile,
 } from "@/lib/types";
 import {
-	emptyToNull,
+	ASSAY_NUMBER_FIELDS,
+	DATE_FIELDS,
+	getColumnOrder,
 	NON_EDITABLE_COLUMNS,
 	NON_VIEWED_COLUMNS,
 	QUICK_EDIT_LIMIT,
+	SAMPLE_NUMBER_FIELDS,
 } from "@/lib/utils";
-import { ProjectTree } from "../projectTree";
-import {
-	buildProjectTree,
-	buildProjectTreeSampleAssay,
-} from "@/lib/projectTree";
+import { ProjectTree, type ProjectGraph } from "../projectTree";
+import { buildProjectGraph } from "@/lib/projectTree";
 import { UploadDataDialog } from "./upload-data";
 import {
 	batchEditSamples,
+	getAssaysInSample,
+	getSampleMetadataFields,
 	requestPresignedDownload,
+	updateAssay,
 	updateSample,
 } from "@/lib/api-keycloak";
 import { useEnrichedSamples } from "#/hooks/use-enrichedSamples";
 import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
+import { toastError, toastSuccess } from "#/lib/toast";
+import { VocabularyCombobox } from "../vocabulary-combobox";
+import { useVocabularies } from "#/hooks/use-vocabularies";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+} from "../ui/input-group";
 
 interface DataTableProps<T extends object> {
 	data: T[];
@@ -92,7 +103,7 @@ interface DataTableProps<T extends object> {
 	showAddButton?: React.ReactNode;
 	filterPlaceholder?: string;
 	project?: Project;
-	dataType?: "sample" | "assay";
+	dataType: "sample" | "assay";
 	assay?: Assay;
 }
 
@@ -101,7 +112,7 @@ const COLUMN_NAMES: Record<string, string> = {
 	alias: "Alias",
 	taxId: "Tax ID",
 	taxonName: "Scientific Name",
-	hostTaxId: "Host Taxonomic Identifier",
+	hostTaxId: "Host Tax ID",
 	hostTaxonName: "Host Scientific Name",
 	mlst: "MLST",
 	isolationSource: "Isolation Source",
@@ -110,6 +121,36 @@ const COLUMN_NAMES: Record<string, string> = {
 	sequencingLab: "Sequencing Lab",
 	institution: "Institution (Data owner)",
 	hostHealthState: "Host Health State",
+	projectTitle: "Project Title",
+	description: "Description",
+	isolate: "Isolate",
+	collectedBy: "Collected By",
+	latitude: "Latitude",
+	longitude: "Longitude",
+	environmentalSample: "Environmental Sample",
+	hostAssociated: "Host Associated",
+	hostCommonName: "Host Common Name",
+	hostSubjectId: "Host Subject ID",
+	collectorName: "Collector Name",
+	collectingInstitution: "Collecting Institution",
+	hostSex: "Host Sex",
+	influenzaTestMethod: "Influenza Test Method",
+	influenzaTestResult: "Influenza Test Result",
+	otherPathogensTested: "Other Pathogens Tested",
+	otherPathogensTestResult: "Other Pathogens Test Result",
+	hostHabitat: "Host Habitat",
+	isolationSourceHostAssociated: "Isolation Source Host Associated",
+	hostBehaviour: "Host Behaviour",
+	isolationSourceNonHostAssociated: "Isolation Source Non-Host Associated",
+	influenzaVirusType: "Influenza Virus Type",
+	influenzaSubType: "Influenza Subtype",
+	serovar: "Serovar",
+	strain: "Strain",
+	hostAge: "Host Age",
+	county: "County",
+	commune: "Commune",
+	hospitalHealthInstitution: "Hospital Health Institution",
+
 	createdOn: "Created On",
 	modifiedOn: "Modified On",
 	files: "FASTQ Files",
@@ -135,6 +176,76 @@ function getColumnNewName(key: string) {
 const formatDateToYMD = (dateStr?: string | null) =>
 	dateStr ? new Date(dateStr).toISOString().split("T")[0] : "";
 
+function QuickEditField({
+	fieldKey,
+	label,
+	terms,
+	dataType,
+	onSubmit,
+}: {
+	fieldKey: string;
+	label: string;
+	terms: string[];
+	dataType: "sample" | "assay";
+	onSubmit: (value: string) => void;
+}) {
+	const [value, setValue] = React.useState("");
+
+	const isNumberField =
+		dataType === "assay"
+			? ASSAY_NUMBER_FIELDS.has(fieldKey)
+			: SAMPLE_NUMBER_FIELDS.has(fieldKey);
+
+	const handleSubmit = (e?: React.FormEvent) => {
+		e?.preventDefault();
+
+		onSubmit(value);
+	};
+
+	return (
+		<form onSubmit={handleSubmit} className="flex flex-col gap-2 p-1">
+			{terms.length > 0 ? (
+				<VocabularyCombobox
+					name={fieldKey}
+					value={value}
+					terms={terms}
+					onChange={(newValue) => {
+						setValue(newValue);
+					}}
+				/>
+			) : (
+				<InputGroup>
+					<InputGroupInput
+						value={value}
+						onChange={(e) => setValue(e.target.value)}
+						placeholder={label}
+						type={isNumberField ? "number" : "text"}
+					/>
+
+					{value !== "" && (
+						<InputGroupAddon align="inline-end">
+							<InputGroupButton
+								type="button"
+								size="icon-xs"
+								variant="ghost"
+								aria-label="Limpar campo"
+								title="Limpar campo"
+								onClick={() => setValue("")}
+							>
+								<X />
+							</InputGroupButton>
+						</InputGroupAddon>
+					)}
+				</InputGroup>
+			)}
+
+			<Button type="submit" size="sm" className="w-full">
+				Apply
+			</Button>
+		</form>
+	);
+}
+
 export function DataTable<T extends object>({
 	data,
 	onEdit,
@@ -152,29 +263,18 @@ export function DataTable<T extends object>({
 		},
 	]);
 	const [globalFilter, setGlobalFilter] = React.useState("");
-	const [initialColumnOrder] = React.useState<string[]>(
-		dataType === "assay"
-			? []
-			: [
-					"name",
-					"alias",
-					"taxId",
-					"taxonName",
-					"hostTaxId",
-					"hostTaxonName",
-					"mlst",
-					"isolationSource",
-					"collectionDate",
-					"location",
-					"sequencingLab",
-					"institution",
-					"hostHealthState",
-					"createdOn",
-					"modifiedOn",
-					"lastUpdatedOn",
-				]
-	);
+
+	const initialColumnOrder = getColumnOrder(dataType);
+
 	const queryClient = useQueryClient();
+
+	const { getTerms } = useVocabularies(dataType ?? "sample", project?.id);
+
+	const { data: customMetadataFields = [] } = useQuery({
+		queryKey: ["sample-metadata-fields", project?.id],
+		enabled: Boolean(project?.id && dataType === "sample"),
+		queryFn: () => getSampleMetadataFields(project!.id!),
+	});
 
 	const enrichedData = useEnrichedSamples(
 		data as Sample[],
@@ -201,14 +301,47 @@ export function DataTable<T extends object>({
 						},
 					}));
 
+	const customColumns: ColumnDef<T>[] =
+		dataType === "sample"
+			? customMetadataFields
+					.filter((field) => !field.archived)
+					.map((field) => ({
+						id: field.key,
+						accessorFn: (row) => {
+							const sample = row as Sample;
+
+							return sample.customMetadata?.[field.key] ?? "";
+						},
+						enableHiding: true,
+						header: ({ column }) => (
+							<DataTableColumnHeader column={column} title={field.label} />
+						),
+						cell: ({ getValue }) => {
+							const value = getValue();
+
+							return value !== null && value !== undefined ? String(value) : "";
+						},
+						meta: {
+							label: field.label,
+						},
+					}))
+			: [];
+
+	const allDataColumns = [...autoColumns, ...customColumns];
+
 	const orderedColumns: ColumnDef<T>[] =
-		autoColumns.length === 0
+		allDataColumns.length === 0
 			? []
 			: initialColumnOrder.length === 0
-				? autoColumns
-				: (initialColumnOrder
-						.map((id) => autoColumns.find((col) => col.id === id))
-						.filter(Boolean) as ColumnDef<T>[]);
+				? allDataColumns
+				: ([
+						...initialColumnOrder
+							.map((id) => allDataColumns.find((col) => col.id === id))
+							.filter(Boolean),
+						...customColumns.filter(
+							(col) => !initialColumnOrder.includes(String(col.id))
+						),
+					] as ColumnDef<T>[]);
 
 	const enhancedColumns: ColumnDef<T>[] = (() => {
 		const selectionColumn: ColumnDef<T> = {
@@ -267,7 +400,7 @@ export function DataTable<T extends object>({
 									} catch (err: unknown) {
 										const message =
 											err instanceof Error ? err.message : "Download failed";
-										toast.error(message);
+										toastError(message);
 									}
 								}}
 								className="text-left text-blue-600 hover:underline"
@@ -299,6 +432,7 @@ export function DataTable<T extends object>({
 										<TableCellViewer
 											item={row.original as Sample}
 											projectId={project?.id ?? ""}
+											dataType={dataType}
 											onUpdated={() => {
 												if (onEdit) onEdit(row.original);
 											}}
@@ -368,7 +502,7 @@ export function DataTable<T extends object>({
 			hostTaxonName: true,
 			isolationSource: true,
 			collectionDate: true,
-			geoLocation: true,
+			location: true,
 			sequencingLab: false,
 			institution: false,
 			hostHealthState: false,
@@ -378,12 +512,42 @@ export function DataTable<T extends object>({
 			id: false,
 			mlst: false,
 			files: true,
+			isolate: false,
+			collectedBy: false,
+			latitude: false,
+			longitude: false,
+			environmentalSample: false,
+			hostAssociated: false,
+			hostCommonName: false,
+			hostSubjectId: false,
+			collectorName: false,
+			collectingInstitution: false,
+			hostSex: false,
+			influenzaTestMethod: false,
+			influenzaTestResult: false,
+			otherPathogensTested: false,
+			otherPathogensTestResult: false,
+			hostHabitat: false,
+			isolationSourceHostAssociated: false,
+			hostBehaviour: false,
+			isolationSourceNonHostAssociated: false,
+			influenzaVirusType: false,
+			influenzaSubType: false,
+			serovar: false,
+			strain: false,
+			hostAge: false,
+			county: false,
+			commune: false,
+			hospitalHealthInstitution: false,
+			projectTitle: false,
+			description: false,
 		});
 
 	// eslint-disable-next-line react-hooks/incompatible-library
 	const table = useReactTable({
 		data: enrichedData as T[],
 		columns: enhancedColumnsWithDates,
+		getRowId: (row) => String((row as { name: string }).name),
 		state: {
 			sorting,
 			globalFilter,
@@ -438,50 +602,240 @@ export function DataTable<T extends object>({
 
 	const handleBatchUpdate = async (colName: string, value: string) => {
 		try {
-			const sampleData = (selectedRows as unknown as Sample[]).map(
-				(row: Sample) => {
-					return {
-						name: row.name,
-						alias: row.alias,
-						taxId: row.taxId,
-						hostTaxId: row.hostTaxId,
-						mlst: row.mlst,
-						isolationSource: row.isolationSource,
-						collectionDate: row.collectionDate,
-						location: row.location,
-						sequencingLab: row.sequencingLab,
-						institution: row.institution,
-						hostHealthState: row.hostHealthState,
+			if (!project?.id) {
+				toastError("Project is required");
+				return;
+			}
 
-						[colName]: value,
-					};
-				}
+			/*
+			 * ============================================================
+			 * ASSAY / EXPERIMENT
+			 * ============================================================
+			 */
+			if (dataType === "assay") {
+				const assays = selectedRows as unknown as Assay[];
+
+				await Promise.all(
+					assays.map((row) => {
+						const updateData: Record<string, unknown> = {};
+
+						const originalValue = row[colName as keyof Assay];
+
+						if (value === "") {
+							updateData[colName] = "";
+						} else if (typeof originalValue === "number") {
+							const numberValue = Number(value);
+
+							updateData[colName] = Number.isNaN(numberValue)
+								? null
+								: numberValue;
+						} else if (typeof originalValue === "boolean") {
+							updateData[colName] = value === "true";
+						} else {
+							updateData[colName] = value;
+						}
+
+						return updateAssay(
+							project.id!,
+							row.id,
+							updateData as Partial<Assay>
+						);
+					})
+				);
+
+				toastSuccess("Experiments have been updated");
+
+				await queryClient.invalidateQueries({
+					queryKey: ["assays"],
+				});
+
+				return;
+			}
+
+			/*
+			 * ============================================================
+			 * SAMPLE
+			 * ============================================================
+			 */
+
+			const customField = customMetadataFields.find(
+				(field) => !field.archived && field.key === colName
 			);
 
-			await batchEditSamples(project?.id ?? "", { sampleData });
+			const sampleData = (selectedRows as unknown as Sample[]).map((row) => {
+				const updateData: Record<string, unknown> = {};
 
-			toast.success("Samples have been updated");
+				/*
+				 * Copy all editable standard columns dynamically
+				 */
+				Object.keys(row).forEach((field) => {
+					if (field === "id" || field === "alias") {
+						return;
+					}
 
-			queryClient.invalidateQueries({
+					updateData[field] = row[field as keyof Sample];
+				});
+
+				/*
+				 * Update custom metadata
+				 */
+				if (customField) {
+					const customMetadata = {
+						...(row.customMetadata ?? {}),
+					};
+
+					if (value === "") {
+						customMetadata[colName] = "";
+					} else {
+						switch (customField.type) {
+							case "NUMBER": {
+								const numberValue = Number(value);
+
+								customMetadata[colName] = Number.isNaN(numberValue)
+									? null
+									: numberValue;
+
+								break;
+							}
+
+							case "BOOLEAN":
+								customMetadata[colName] = value === "true";
+								break;
+
+							case "DATE":
+							case "TEXT":
+							default:
+								customMetadata[colName] = value;
+								break;
+						}
+					}
+
+					updateData.customMetadata = customMetadata;
+				} else {
+					/*
+					 * Update standard column
+					 */
+					const originalValue = row[colName as keyof Sample];
+
+					if (value === "") {
+						updateData[colName] = "";
+					} else if (typeof originalValue === "number") {
+						const numberValue = Number(value);
+
+						updateData[colName] = Number.isNaN(numberValue)
+							? null
+							: numberValue;
+					} else if (typeof originalValue === "boolean") {
+						updateData[colName] = value === "true";
+					} else {
+						updateData[colName] = value;
+					}
+				}
+
+				return updateData;
+			});
+
+			await batchEditSamples(project.id, {
+				sampleData,
+			});
+
+			toastSuccess("Samples have been updated");
+
+			await queryClient.invalidateQueries({
 				queryKey: ["samples"],
 			});
 		} catch (err: unknown) {
-			toast.error((err as Error)?.message ?? "Error updating samples");
+			const message =
+				err instanceof Error ? err.message : "Error updating data";
+
+			toastError(
+				dataType === "assay"
+					? "Error updating experiments"
+					: "Error updating samples",
+				{
+					description: (
+						<div className="flex flex-col gap-1 text-black">
+							{message.split("\n").map((line, index) => (
+								<div key={index}>{line}</div>
+							))}
+						</div>
+					),
+				}
+			);
 		}
 	};
 
-	const treeData = project
-		? dataType === "assay" && assay
-			? buildProjectTreeSampleAssay(
-					project,
-					selectedRows as unknown as Sample[],
-					assay
-				)
-			: buildProjectTree(project, selectedRows as unknown as Sample[])
-		: { name: "", children: [] };
+	/*
+	 * ============================================================
+	 * PROJECT TREE
+	 * ============================================================
+	 */
 
-	const editableColumns = autoColumns.filter(
-		(col) => !NON_EDITABLE_COLUMNS.includes(String(col.header))
+	const selectedSamples: Sample[] =
+		dataType === "sample" ? (selectedRows as Sample[]) : [];
+
+	const selectedAssays: Sample[] =
+		dataType === "assay" ? (selectedRows as Sample[]) : [];
+
+	const selectedSamplesForTree =
+		dataType === "sample" ? selectedSamples : selectedAssays;
+
+	/*
+	 * ============================================================
+	 * SAMPLE TAB
+	 *
+	 * Selected Samples
+	 *      ↓
+	 * GET /projects/{projectId}/samples/{sampleId}/assays
+	 *      ↓
+	 * Assays for each Sample
+	 *      ↓
+	 * Project -> Sample -> Assay
+	 * ============================================================
+	 */
+
+	const { data: treeAssaysBySample = {} } = useQuery({
+		queryKey: [
+			"tree-assays-by-sample",
+			project?.id,
+			selectedSamplesForTree.map((sample) => sample.id),
+		],
+
+		enabled: Boolean(project?.id) && selectedSamplesForTree.length > 0,
+
+		queryFn: async () => {
+			if (!project?.id) return {};
+
+			const entries = await Promise.all(
+				selectedSamplesForTree
+					.filter((sample) => Boolean(sample.id))
+					.map(async (sample) => {
+						const assays = await getAssaysInSample(project.id!, sample.id!);
+
+						return [sample.id!, assays] as const;
+					})
+			);
+
+			return Object.fromEntries(entries);
+		},
+	});
+
+	/*
+	 * ============================================================
+	 * BUILD GRAPH
+	 * ============================================================
+	 */
+
+	const treeData: ProjectGraph =
+		project && selectedSamplesForTree.length > 0
+			? buildProjectGraph(project, selectedSamplesForTree, treeAssaysBySample)
+			: {
+					nodes: [],
+					links: [],
+				};
+
+	const editableColumns = enhancedColumns.filter(
+		(col) => !NON_EDITABLE_COLUMNS.includes(String(col.id))
 	);
 
 	const quickEditColumns = editableColumns.slice(1, QUICK_EDIT_LIMIT);
@@ -516,39 +870,38 @@ export function DataTable<T extends object>({
 						</div>
 
 						<Separator orientation="vertical" />
-						{quickEditColumns.map((col) => (
-							<React.Fragment key={String(col.id)}>
-								<DropdownMenu modal={false}>
-									<DropdownMenuTrigger asChild>
-										<Button variant="ghost" size="sm" className="rounded-none">
-											{col.meta?.label}
-										</Button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent>
-										<form>
-											<Input
-												name="field"
-												placeholder={String(col.meta?.label)}
-												className="w-auto"
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														e.preventDefault();
-														const form = e.currentTarget.form;
-														if (form) {
-															const value = new FormData(form).get(
-																"field"
-															) as string;
-															handleBatchUpdate(String(col.id), value);
-														}
-													}
-												}}
+						{quickEditColumns.map((col) => {
+							const fieldKey = String(col.id);
+							const terms = getTerms(fieldKey);
+
+							return (
+								<React.Fragment key={fieldKey}>
+									<DropdownMenu modal={false}>
+										<DropdownMenuTrigger asChild>
+											<Button
+												variant="ghost"
+												size="sm"
+												className="rounded-none"
+											>
+												{col.meta?.label}
+											</Button>
+										</DropdownMenuTrigger>
+
+										<DropdownMenuContent>
+											<QuickEditField
+												fieldKey={fieldKey}
+												label={String(col.meta?.label)}
+												terms={terms}
+												dataType={dataType}
+												onSubmit={(value) => handleBatchUpdate(fieldKey, value)}
 											/>
-										</form>
-									</DropdownMenuContent>
-								</DropdownMenu>
-								<Separator orientation="vertical" />
-							</React.Fragment>
-						))}
+										</DropdownMenuContent>
+									</DropdownMenu>
+
+									<Separator orientation="vertical" />
+								</React.Fragment>
+							);
+						})}
 
 						<Tooltip>
 							<TooltipTrigger asChild>
@@ -598,32 +951,37 @@ export function DataTable<T extends object>({
 
 								<DropdownMenuSeparator />
 
-								{moreEditColumns.map((col) => (
-									<DropdownMenuItem key={String(col.meta?.label)} asChild>
-										<Popover>
-											<PopoverTrigger asChild>
-												<Button variant="ghost" className="flex justify-start">
-													{String(col.meta?.label)}
-												</Button>
-											</PopoverTrigger>
-											<PopoverContent className="p-1">
-												<Input
-													placeholder={String(col.meta?.label)}
-													className="w-auto"
-													onKeyDown={(e) => {
-														if (e.key === "Enter") {
-															e.preventDefault();
-															handleBatchUpdate(
-																String(col.id),
-																e.currentTarget.value
-															);
+								{moreEditColumns.map((col) => {
+									const fieldKey = String(col.id);
+									const terms = getTerms(fieldKey);
+
+									return (
+										<DropdownMenuItem key={fieldKey} asChild>
+											<Popover modal={false}>
+												<PopoverTrigger asChild>
+													<Button
+														variant="ghost"
+														className="flex justify-start"
+													>
+														{String(col.meta?.label)}
+													</Button>
+												</PopoverTrigger>
+
+												<PopoverContent className="p-1">
+													<QuickEditField
+														fieldKey={fieldKey}
+														label={String(col.meta?.label)}
+														terms={terms}
+														dataType={dataType}
+														onSubmit={(value) =>
+															handleBatchUpdate(fieldKey, value)
 														}
-													}}
-												/>
-											</PopoverContent>
-										</Popover>
-									</DropdownMenuItem>
-								))}
+													/>
+												</PopoverContent>
+											</Popover>
+										</DropdownMenuItem>
+									);
+								})}
 
 								{!project?.parentProjectId && (
 									<>
@@ -642,7 +1000,11 @@ export function DataTable<T extends object>({
 					</div>
 				)}
 
-				<DataTableViewOptions table={table} />
+				<DataTableViewOptions
+					table={table}
+					projectId={project?.id ?? ""}
+					dataType={dataType!}
+				/>
 				{showAddButton}
 				<Button
 					disabled={rows.length === 0}
@@ -676,19 +1038,27 @@ export function DataTable<T extends object>({
 									<TableHead key={header.id}>
 										{header.isPlaceholder ? null : (
 											<div className="flex items-center gap-1">
-												<Tooltip>
-													<TooltipTrigger asChild>
-														<div>
-															{flexRender(
-																header.column.columnDef.header,
-																header.getContext()
-															)}
-														</div>
-													</TooltipTrigger>
-													<TooltipContent className="max-w-xs">
-														<p>{getColumnTooltip(header.id)}</p>
-													</TooltipContent>
-												</Tooltip>
+												{getColumnTooltip(header.id) ? (
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<div>
+																{flexRender(
+																	header.column.columnDef.header,
+																	header.getContext()
+																)}
+															</div>
+														</TooltipTrigger>
+
+														<TooltipContent className="max-w-xs">
+															<p>{getColumnTooltip(header.id)}</p>
+														</TooltipContent>
+													</Tooltip>
+												) : (
+													flexRender(
+														header.column.columnDef.header,
+														header.getContext()
+													)
+												)}
 											</div>
 										)}
 									</TableHead>
@@ -735,81 +1105,202 @@ export function DataTable<T extends object>({
 function TableCellViewer({
 	item,
 	projectId,
+	dataType,
 	onUpdated,
 }: {
 	item: Sample;
 	projectId: string;
+	dataType?: "sample" | "assay";
 	onUpdated?: () => void;
 }) {
 	const [loading, setLoading] = useState(false);
-
 	const [openDrawer, setOpenDrawer] = useState(false);
+	const [formValues, setFormValues] = useState<Record<string, string>>({});
 
 	const queryClient = useQueryClient();
 
+	const { data: customMetadataFields = [] } = useQuery({
+		queryKey: ["sample-metadata-fields", projectId],
+		enabled: Boolean(projectId && dataType === "sample"),
+		queryFn: () => getSampleMetadataFields(projectId),
+	});
+
+	const columnOrder = getColumnOrder(dataType ?? "sample");
+
+	const standardFields = Object.keys(item)
+		.filter(
+			(field) =>
+				!NON_EDITABLE_COLUMNS.includes(field) &&
+				field !== "id" &&
+				field !== "customMetadata"
+		)
+		.sort((a, b) => {
+			const indexA = columnOrder.indexOf(a);
+			const indexB = columnOrder.indexOf(b);
+
+			if (indexA === -1 && indexB === -1) return 0;
+			if (indexA === -1) return 1;
+			if (indexB === -1) return -1;
+
+			return indexA - indexB;
+		});
+
+	const activeCustomFields = customMetadataFields.filter(
+		(field) => !field.archived
+	);
+
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
+
 		if (!projectId) return;
+
 		setLoading(true);
 
 		try {
 			const formData = new FormData(e.currentTarget);
+			const updateData: Record<string, unknown> = {};
 
-			const rawData: Partial<CreateSample> = {
-				name: formData.get("name") as string,
-				alias: formData.get("alias") as string,
-				taxId: formData.get("taxId") ? Number(formData.get("taxId")) : null,
-				hostTaxId: formData.get("hostTaxId")
-					? Number(formData.get("hostTaxId"))
-					: null,
-				mlst: formData.get("mlst") as string,
-				isolationSource: formData.get("isolationSource") as string,
-				collectionDate: formData.get("collectionDate") as string,
-				location: formData.get("location") as string,
-				sequencingLab: formData.get("sequencingLab") as string,
-				institution: formData.get("institution") as string,
-				hostHealthState: formData.get("hostHealthState") as string,
-			};
+			/*
+			 * Standard columns
+			 */
+			for (const field of standardFields) {
+				const value = formData.get(field);
 
-			const updateData = emptyToNull(rawData);
+				if (value === null) continue;
 
-			await updateSample(projectId, item.id, updateData);
+				if (value === "") {
+					updateData[field] = "";
+					continue;
+				}
 
-			toast.success("Sample has been updated", {
-				description: `${new Date().toLocaleString()}.`,
-			});
+				const isNumberField =
+					dataType === "assay"
+						? ASSAY_NUMBER_FIELDS.has(field)
+						: SAMPLE_NUMBER_FIELDS.has(field);
 
-			queryClient.invalidateQueries({
+				if (isNumberField) {
+					const numberValue = Number(value);
+					updateData[field] = Number.isNaN(numberValue) ? null : numberValue;
+					continue;
+				}
+
+				updateData[field] = String(value);
+			}
+
+			/*
+			 * Custom columns only belong to Samples.
+			 */
+			if (dataType === "sample" && activeCustomFields.length > 0) {
+				const customMetadata: Record<string, string | number | boolean | null> =
+					{};
+
+				for (const field of activeCustomFields) {
+					const value = formData.get(`customMetadata.${field.key}`);
+
+					if (value === null || value === "") {
+						customMetadata[field.key] = "";
+						continue;
+					}
+
+					switch (field.type) {
+						case "NUMBER": {
+							const numberValue = Number(value);
+
+							customMetadata[field.key] = Number.isNaN(numberValue)
+								? null
+								: numberValue;
+							break;
+						}
+
+						case "BOOLEAN":
+							customMetadata[field.key] = value === "true";
+							break;
+
+						case "DATE":
+						case "TEXT":
+						default:
+							customMetadata[field.key] = String(value);
+							break;
+					}
+				}
+
+				updateData.customMetadata = customMetadata;
+			}
+
+			/*
+			 * Update the correct entity.
+			 */
+			if (dataType === "assay") {
+				await updateAssay(projectId, item.id, updateData as Partial<Assay>);
+
+				toastSuccess("Experiment has been updated", {
+					description: `${new Date().toLocaleString()}.`,
+				});
+			} else {
+				await updateSample(
+					projectId,
+					item.id,
+					updateData as Partial<CreateSample>
+				);
+
+				toastSuccess("Sample has been updated", {
+					description: `${new Date().toLocaleString()}.`,
+				});
+
+				await queryClient.invalidateQueries({
+					queryKey: ["sample-metadata-fields", projectId],
+				});
+			}
+
+			await queryClient.invalidateQueries({
 				queryKey: ["samples"],
 			});
 
-			if (onUpdated) onUpdated();
+			await queryClient.invalidateQueries({
+				queryKey: ["assays"],
+			});
+
+			onUpdated?.();
+			setOpenDrawer(false);
+			setFormValues({});
 		} catch (err: unknown) {
 			const message =
-				err instanceof Error ? err.message : "Error updating sample";
-			toast.error(message);
+				err instanceof Error
+					? err.message
+					: `Error updating ${dataType === "assay" ? "experiment" : "sample"}`;
+
+			toastError(message);
 		} finally {
 			setLoading(false);
 		}
 	};
 
+	const { getTerms } = useVocabularies(dataType ?? "sample", projectId);
+
 	return (
 		<Drawer
 			direction="right"
 			open={openDrawer}
-			onOpenChange={setOpenDrawer}
+			onOpenChange={(open) => {
+				setOpenDrawer(open);
+
+				if (open) {
+					setFormValues({});
+				}
+			}}
 			autoFocus={openDrawer}
 		>
 			<DrawerTrigger asChild>
 				<Button
 					variant="ghost"
 					className="text-foreground w-full justify-start gap-2 text-left"
-					size={"sm"}
+					size="sm"
 				>
 					<SquarePen size={6} />
 					Edit
 				</Button>
 			</DrawerTrigger>
+
 			<DrawerContent aria-describedby={undefined}>
 				<DrawerHeader className="gap-1">
 					<DrawerTitle className="text-xl">Edit {item.name}</DrawerTitle>
@@ -821,32 +1312,147 @@ function TableCellViewer({
 						onSubmit={handleSubmit}
 						className="flex flex-col gap-4"
 					>
-						{Object.keys(item)
-							.filter(
-								(field) =>
-									!NON_EDITABLE_COLUMNS.includes(field) && field !== "id"
-							)
-							.map((field) => {
-								const rawValue = item[field as keyof Sample];
+						{standardFields.map((field) => {
+							const rawValue = item[field as keyof Sample];
+							const isDateField = DATE_FIELDS.has(field);
 
-								const isDateField = field.toLowerCase().includes("date");
+							const isNumberField =
+								dataType === "assay"
+									? ASSAY_NUMBER_FIELDS.has(field)
+									: SAMPLE_NUMBER_FIELDS.has(field);
 
-								const formattedValue = isDateField
-									? formatDateToYMD(rawValue as string)
-									: String(rawValue ?? "");
+							const formattedValue = isDateField
+								? formatDateToYMD(rawValue as string)
+								: String(rawValue ?? "");
+
+							const currentValue = formValues[field] ?? formattedValue;
+
+							const vocabularyTerms = getTerms(field);
+
+							return (
+								<div key={field} className="flex flex-col gap-3">
+									<Label htmlFor={field}>{getColumnNewName(field)}</Label>
+
+									{vocabularyTerms.length > 0 ? (
+										<VocabularyCombobox
+											name={field}
+											value={formattedValue}
+											terms={vocabularyTerms}
+										/>
+									) : (
+										<InputGroup>
+											<InputGroupInput
+												id={field}
+												name={field}
+												type={
+													isDateField
+														? "date"
+														: isNumberField
+															? "number"
+															: "text"
+												}
+												value={currentValue}
+												onChange={(e) =>
+													setFormValues((prev) => ({
+														...prev,
+														[field]: e.target.value,
+													}))
+												}
+												onPointerDown={(e) => e.stopPropagation()}
+											/>
+
+											{currentValue !== "" && (
+												<InputGroupAddon align="inline-end">
+													<InputGroupButton
+														type="button"
+														variant="ghost"
+														size="icon-xs"
+														aria-label={`Clear ${getColumnNewName(field)}`}
+														title="Clear field"
+														onClick={() =>
+															setFormValues((prev) => ({
+																...prev,
+																[field]: "",
+															}))
+														}
+													>
+														<X />
+													</InputGroupButton>
+												</InputGroupAddon>
+											)}
+										</InputGroup>
+									)}
+								</div>
+							);
+						})}
+
+						{dataType === "sample" &&
+							activeCustomFields.map((field) => {
+								const originalValue = String(
+									item.customMetadata?.[field.key] ?? ""
+								);
+
+								const inputKey = `customMetadata.${field.key}`;
+								const currentValue = formValues[inputKey] ?? originalValue;
+
+								const vocabularyTerms = getTerms(field.key);
 
 								return (
-									<div key={field} className="flex flex-col gap-3">
-										<Label htmlFor={field}>{getColumnNewName(field)}</Label>
+									<div
+										key={`custom-${field.id}`}
+										className="flex flex-col gap-3"
+									>
+										<Label htmlFor={`custom-${field.key}`}>{field.label}</Label>
 
-										<Input
-											id={field}
-											name={field}
-											type={isDateField ? "date" : "text"}
-											onPointerDown={(e) => e.stopPropagation()}
-											defaultValue={formattedValue}
-											className="grid grid-cols-1 place-content-around"
-										/>
+										{vocabularyTerms.length > 0 ? (
+											<VocabularyCombobox
+												name={inputKey}
+												value={originalValue}
+												terms={vocabularyTerms}
+											/>
+										) : (
+											<InputGroup>
+												<InputGroupInput
+													id={`custom-${field.key}`}
+													name={inputKey}
+													type={
+														field.type === "DATE"
+															? "date"
+															: field.type === "NUMBER"
+																? "number"
+																: "text"
+													}
+													value={currentValue}
+													onChange={(e) =>
+														setFormValues((prev) => ({
+															...prev,
+															[inputKey]: e.target.value,
+														}))
+													}
+													onPointerDown={(e) => e.stopPropagation()}
+												/>
+
+												{currentValue !== "" && (
+													<InputGroupAddon align="inline-end">
+														<InputGroupButton
+															type="button"
+															variant="ghost"
+															size="icon-xs"
+															aria-label={`Clear ${field.label}`}
+															title="Clear field"
+															onClick={() =>
+																setFormValues((prev) => ({
+																	...prev,
+																	[inputKey]: "",
+																}))
+															}
+														>
+															<X />
+														</InputGroupButton>
+													</InputGroupAddon>
+												)}
+											</InputGroup>
+										)}
 									</div>
 								);
 							})}
@@ -854,9 +1460,10 @@ function TableCellViewer({
 				</div>
 
 				<DrawerFooter>
-					<Button form="sampleForm" type="submit">
+					<Button form="sampleForm" type="submit" disabled={loading}>
 						{loading ? "Saving..." : "Save"}
 					</Button>
+
 					<DrawerClose asChild>
 						<Button variant="outline">Cancel</Button>
 					</DrawerClose>

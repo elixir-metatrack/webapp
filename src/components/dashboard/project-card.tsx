@@ -314,7 +314,10 @@ export function ProjectsDataTable({
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
-									<TableHead key={header.id}>
+									<TableHead
+										key={header.id}
+										className={header.id === "name" ? "pl-7" : ""}
+									>
 										{header.isPlaceholder ? null : (
 											<div className="flex items-center gap-1">
 												<Tooltip>
@@ -347,7 +350,10 @@ export function ProjectsDataTable({
 									onClick={() => onOpen(row.original)}
 								>
 									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>
+										<TableCell
+											key={cell.id}
+											className={cell.column.id === "name" ? "pl-6" : ""}
+										>
 											{flexRender(
 												cell.column.columnDef.cell,
 												cell.getContext()

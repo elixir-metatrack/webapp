@@ -10,10 +10,10 @@ export function LogosModeToggle({
 	width?: number;
 	height?: number;
 }) {
-	const { theme } = useTheme();
+	const { resolvedTheme } = useTheme();
 	let src;
 
-	switch (theme) {
+	switch (resolvedTheme) {
 		case "light":
 			src = "/elixir-no-logo-black.svg";
 			break;

@@ -10,10 +10,12 @@ export function Sigma2Logo({
 	width?: number;
 	height?: number;
 }) {
-	const { theme } = useTheme();
+	const { resolvedTheme } = useTheme();
 
 	const src =
-		theme === "dark" ? "/Sigma2 Logo Negativ.png" : "/Sigma2 Logo Hoved.png";
+		resolvedTheme === "dark"
+			? "/Sigma2 Logo Negativ.png"
+			: "/Sigma2 Logo Hoved.png";
 
 	return (
 		<div className={cn("flex flex-col items-center gap-2", className)}>

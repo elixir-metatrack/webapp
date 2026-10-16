@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "./ui/button";
-import { toast } from "sonner";
 import { deleteProject, deleteSelectedSamples } from "@/lib/api-keycloak";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 interface DeleteAlertButtonProps {
 	projectId?: string;
@@ -48,12 +48,12 @@ export const DeleteAlertButton = ({
 				}
 
 				if (failed.length > 0) {
-					toast.error(
+					toastError(
 						`${failed.length} sample(s) could not be deleted. Check your project permissions; linked samples must be managed in the parent project.`
 					);
 				}
 				if (success.length > 0) {
-					toast.success(`${success.length} sample(s) deleted successfully!`);
+					toastSuccess(`${success.length} sample(s) deleted successfully!`);
 				}
 				return;
 			} else if (entityName === "project") {
@@ -64,10 +64,15 @@ export const DeleteAlertButton = ({
 				});
 			}
 
-			toast.success(`${entityName} deleted successfully!`);
+			toastSuccess(`${entityName} deleted successfully!`, {
+				action: {
+					label: "Undo",
+					onClick: () => console.log("Undo"),
+				},
+			});
 		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Error deleting";
-			toast.error(message);
+			const message = (error as Error)?.message || "Error deleting";
+			toastError(message);
 		}
 	};
 

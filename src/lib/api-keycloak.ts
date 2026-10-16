@@ -2,20 +2,28 @@ import { keycloak } from "./keycloak";
 import type {
 	Assay,
 	CreateSample,
+	InvitationRole,
 	Member,
+	NotificationPage,
 	PresignDownloadRequest,
 	PresignDownloadResponse,
 	PresignUploadRequest,
 	PresignUploadResponse,
 	Project,
+	ProjectInvitation,
 	Sample,
 	SampleFile,
+	SampleMetadataField,
+	SampleMetadataFieldType,
 	SampleStatsByDateResponse,
 	StatisticsResponse,
+	StorageStats,
 	Taxon,
 	TemplateType,
+	Vocabulary,
 } from "./types";
 import { API_URL, API_BASE_URL } from "./config";
+import { getApiErrorMessage } from "./utils";
 
 // ============================================================
 // API
@@ -46,10 +54,12 @@ export async function api<T = unknown>(
 
 		if (contentType?.includes("application/json")) {
 			const data = await res.json();
-			throw new Error(data?.message || data?.details || "API error");
+
+			throw new Error(getApiErrorMessage(data));
 		}
 
 		const text = await res.text();
+
 		throw new Error(text || "API error");
 	}
 
@@ -238,6 +248,68 @@ export async function deleteJoinRequest(
 	});
 }
 
+export async function inviteProjectMember(
+	projectId: string,
+	email: string,
+	role: InvitationRole
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(`projects/${projectId}/invitations`, {
+		method: "POST",
+		body: JSON.stringify({
+			email: email.trim(),
+			role,
+		}),
+	});
+}
+
+export async function resendProjectInvitation(
+	projectId: string,
+	invitationId: string
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(
+		`projects/${projectId}/invitations/${invitationId}/resend`,
+		{
+			method: "POST",
+		}
+	);
+}
+
+export async function getProjectInvitations(
+	projectId: string,
+	page = 0,
+	size = 20
+): Promise<ProjectInvitation[]> {
+	return api<ProjectInvitation[]>(
+		`projects/${projectId}/invitations?page=${page}&size=${size}`,
+		{ method: "GET" }
+	);
+}
+
+export async function revokeProjectInvitation(
+	projectId: string,
+	invitationId: string
+): Promise<void> {
+	await api(`projects/${projectId}/invitations/${invitationId}`, {
+		method: "DELETE",
+	});
+}
+
+export async function acceptProjectInvitation(
+	invitationId: string
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(`invitations/${invitationId}/accept`, {
+		method: "POST",
+	});
+}
+
+export async function declineProjectInvitation(
+	invitationId: string
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(`invitations/${invitationId}/decline`, {
+		method: "POST",
+	});
+}
+
 // ============================================================
 // Samples
 // ============================================================
@@ -333,14 +405,27 @@ export async function uploadSamplesheet(
 	});
 }
 
+export async function getAssaysInSample(
+	projectId: string,
+	sampleId: string
+): Promise<Assay[]> {
+	const data = await api<Assay[] | { assays: Assay[] }>(
+		`projects/${projectId}/samples/${sampleId}/assays`
+	);
+
+	return Array.isArray(data) ? data : (data.assays ?? []);
+}
+
 // ============================================================
 // Sample Metadata Fields
 // ============================================================
 
 export async function getSampleMetadataFields(
 	projectId: string
-): Promise<unknown[]> {
-	return api<unknown[]>(`projects/${projectId}/sample-metadata-fields`);
+): Promise<SampleMetadataField[]> {
+	return api<SampleMetadataField[]>(
+		`projects/${projectId}/sample-metadata-fields`
+	);
 }
 
 export async function createSampleMetadataField(
@@ -348,13 +433,16 @@ export async function createSampleMetadataField(
 	data: {
 		key: string;
 		label: string;
-		type: string;
+		type: SampleMetadataFieldType;
 	}
-): Promise<void> {
-	await api(`projects/${projectId}/sample-metadata-fields`, {
-		method: "POST",
-		body: JSON.stringify(data),
-	});
+): Promise<SampleMetadataField> {
+	return api<SampleMetadataField>(
+		`projects/${projectId}/sample-metadata-fields`,
+		{
+			method: "POST",
+			body: JSON.stringify(data),
+		}
+	);
 }
 
 export async function updateSampleMetadataField(
@@ -364,11 +452,14 @@ export async function updateSampleMetadataField(
 		label?: string;
 		archived?: boolean;
 	}
-): Promise<void> {
-	await api(`projects/${projectId}/sample-metadata-fields/${fieldId}`, {
-		method: "PATCH",
-		body: JSON.stringify(data),
-	});
+): Promise<SampleMetadataField> {
+	return api<SampleMetadataField>(
+		`projects/${projectId}/sample-metadata-fields/${fieldId}`,
+		{
+			method: "PATCH",
+			body: JSON.stringify(data),
+		}
+	);
 }
 
 export async function deleteSampleMetadataField(
@@ -386,15 +477,17 @@ export async function deleteSampleMetadataField(
 
 export async function getSampleVocabularies(
 	projectId: string
-): Promise<unknown[]> {
-	return api<unknown[]>(`projects/${projectId}/sample-vocabularies`);
+): Promise<Vocabulary[]> {
+	return api<Vocabulary[]>(`projects/${projectId}/sample-vocabularies`);
 }
 
 export async function getSampleVocabulary(
 	projectId: string,
 	fieldKey: string
-): Promise<unknown> {
-	return api<unknown>(`projects/${projectId}/sample-vocabularies/${fieldKey}`);
+): Promise<Vocabulary> {
+	return api<Vocabulary>(
+		`projects/${projectId}/sample-vocabularies/${fieldKey}`
+	);
 }
 
 export async function updateSampleVocabulary(
@@ -413,6 +506,52 @@ export async function deleteSampleVocabulary(
 	fieldKey: string
 ): Promise<void> {
 	await api(`projects/${projectId}/sample-vocabularies/${fieldKey}`, {
+		method: "DELETE",
+	});
+}
+
+export async function createSampleVocabulary(
+	projectId: string,
+	fieldKey: string,
+	terms: string[]
+): Promise<Vocabulary> {
+	return api<Vocabulary>(`projects/${projectId}/sample-vocabularies`, {
+		method: "POST",
+		body: JSON.stringify({ fieldKey, terms }),
+	});
+}
+
+// ============================================================
+// Global Sample Vocabularies
+// ============================================================
+
+export async function getGlobalSampleVocabularies(): Promise<Vocabulary[]> {
+	return api<Vocabulary[]>("sample-vocabularies");
+}
+
+export async function getGlobalSampleVocabulary(
+	fieldKey: string
+): Promise<Vocabulary> {
+	return api<Vocabulary>(`sample-vocabularies/${encodeURIComponent(fieldKey)}`);
+}
+
+export async function updateGlobalSampleVocabulary(
+	fieldKey: string,
+	terms: string[]
+): Promise<Vocabulary> {
+	return api<Vocabulary>(
+		`sample-vocabularies/${encodeURIComponent(fieldKey)}`,
+		{
+			method: "PUT",
+			body: JSON.stringify({ terms }),
+		}
+	);
+}
+
+export async function deleteGlobalSampleVocabulary(
+	fieldKey: string
+): Promise<void> {
+	await api(`sample-vocabularies/${encodeURIComponent(fieldKey)}`, {
 		method: "DELETE",
 	});
 }
@@ -488,6 +627,38 @@ export async function addSamplesToAssay(
 	return api(`projects/${projectId}/assays/${assayId}/samples`, {
 		method: "PUT",
 		body: JSON.stringify({ sampleNames }),
+	});
+}
+
+// ============================================================
+// Global Assay Vocabularies
+// ============================================================
+
+export async function getGlobalAssayVocabularies(): Promise<Vocabulary[]> {
+	return api<Vocabulary[]>("assay-vocabularies");
+}
+
+export async function getGlobalAssayVocabulary(
+	fieldKey: string
+): Promise<Vocabulary> {
+	return api<Vocabulary>(`assay-vocabularies/${encodeURIComponent(fieldKey)}`);
+}
+
+export async function updateGlobalAssayVocabulary(
+	fieldKey: string,
+	terms: string[]
+): Promise<Vocabulary> {
+	return api<Vocabulary>(`assay-vocabularies/${encodeURIComponent(fieldKey)}`, {
+		method: "PUT",
+		body: JSON.stringify({ terms }),
+	});
+}
+
+export async function deleteGlobalAssayVocabulary(
+	fieldKey: string
+): Promise<void> {
+	await api(`assay-vocabularies/${encodeURIComponent(fieldKey)}`, {
+		method: "DELETE",
 	});
 }
 
@@ -607,10 +778,14 @@ export async function getTaxon(taxon_id: string): Promise<Taxon> {
 	return api<Taxon>(`../taxon/${taxon_id}`);
 }
 
-export async function getSamplesByDate(
-	size = 1000
-): Promise<SampleStatsByDateResponse> {
+export async function getSamplesByDate(): Promise<SampleStatsByDateResponse> {
 	return apiPublic<SampleStatsByDateResponse>(`statistics/samples-by-date`);
+}
+
+export async function getProjectStorageStatistics(
+	projectId: string
+): Promise<StorageStats> {
+	return api<StorageStats>(`projects/${projectId}/statistics/storage`);
 }
 
 // ============================================================
@@ -622,14 +797,16 @@ export async function downloadTemplate(type: TemplateType): Promise<void> {
 		sample: "/templates/samples/sample.csv",
 		sample_extended: "/templates/samples/sample_extended.csv",
 		sample_virus: "/templates/samples/sample_virus.csv",
-		experiment: "/templates/experiments/experiment.csv",
+		experiment_PE: "/templates/experiments/experiment_PE.csv",
+		experiment_SE: "/templates/experiments/experiment_SE.csv",
 	};
 
 	const TEMPLATE_FILENAMES: Record<TemplateType, string> = {
 		sample: "sample.csv",
 		sample_extended: "sample_extended.csv",
 		sample_virus: "sample_virus.csv",
-		experiment: "experiment.csv",
+		experiment_PE: "experiment_PE.csv",
+		experiment_SE: "experiment_SE.csv",
 	};
 
 	const path = TEMPLATE_PATHS[type];
@@ -653,4 +830,43 @@ export async function downloadTemplate(type: TemplateType): Promise<void> {
 
 	a.remove();
 	window.URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// Notifications
+// ============================================================
+
+export async function getNotifications(
+	page = 0,
+	size = 20,
+	unread = false
+): Promise<NotificationPage> {
+	const params = new URLSearchParams({
+		page: String(page),
+		size: String(size),
+	});
+
+	if (unread) {
+		params.set("unread", "true");
+	}
+
+	return api<NotificationPage>(`notifications?${params.toString()}`);
+}
+
+export async function syncNotifications(): Promise<{
+	created: number;
+}> {
+	return api<{ created: number }>("notifications/sync", {
+		method: "POST",
+	});
+}
+
+export async function markNotificationRead(
+	notificationId: string,
+	read: boolean
+): Promise<void> {
+	await api(`notifications/${notificationId}`, {
+		method: "PATCH",
+		body: JSON.stringify({ read }),
+	});
 }

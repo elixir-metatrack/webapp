@@ -41,8 +41,3 @@ export function formatStorage(usedBytes: number, totalGB: number = 500) {
 		label: `${usedGB.toFixed(2)} GB / ${totalGB} GB`,
 	};
 }
-
-export function getMockStorageBytes(sampleCount: number) {
-	const avgMB = 2.5;
-	return sampleCount * avgMB * 1024 * 1024;
-}

@@ -11,9 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { uploadSamplesheet as uploadSampleFileNew } from "@/lib/api-keycloak";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { Input } from "../ui/input";
 import { HardDriveUpload } from "lucide-react";
+import { toastError, toastSuccess } from "#/lib/toast";
 
 interface UploadSampleDialogProps {
 	projectId: string;
@@ -41,12 +41,8 @@ export function UploadSampleDialog({
 			const now = new Date();
 			const formattedDate = now.toLocaleString();
 
-			toast.success("Upload completed successfully", {
+			toastSuccess("Upload completed successfully", {
 				description: `${formattedDate}.`,
-				action: {
-					label: "Undo",
-					onClick: () => console.log("Undo"),
-				},
 			});
 			setFile(null);
 			setOpen(false);
@@ -55,12 +51,7 @@ export function UploadSampleDialog({
 			console.error(error);
 			const message = error?.message || "Uploading error";
 
-			toast.error(message, {
-				action: {
-					label: "Undo",
-					onClick: () => console.log("Undo"),
-				},
-			});
+			toastError(message);
 		},
 	});
 
@@ -102,7 +93,7 @@ export function UploadSampleDialog({
 					<p className="text-muted-foreground text-sm">
 						Drag & drop your file here
 					</p>
-					<p className="text-muted-foreground text-xs">CSV, TSV, XLSX or TXT</p>
+					<p className="text-muted-foreground text-xs">CSV, TSV or TXT</p>
 
 					<Button
 						variant="secondary"
@@ -115,13 +106,12 @@ export function UploadSampleDialog({
 					<Input
 						ref={fileInputRef}
 						type="file"
-						accept=".csv,.xlsx,.tsv,.txt"
+						accept=".csv,.tsv,.txt"
 						className="hidden"
 						onChange={(e) => setFile(e.target.files?.[0] || null)}
 					/>
 				</div>
 
-				{/* Nome do arquivo */}
 				{file && (
 					<p className="mt-2 text-sm">
 						Selected file: <strong>{file.name}</strong>

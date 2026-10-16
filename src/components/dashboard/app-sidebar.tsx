@@ -30,6 +30,8 @@ import { getProjectsByUser } from "@/lib/api-keycloak";
 import type { MeResponse } from "@/lib/types";
 import { NavUser } from "./nav-user";
 import { Link } from "@tanstack/react-router";
+import { NotificationPopover } from "../notification-popover";
+import { useTheme } from "@/providers/theme-provider";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	user: MeResponse;
@@ -44,6 +46,8 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 
 	const { state } = useSidebar();
 	const isCollapsed = state === "collapsed";
+	const { resolvedTheme } = useTheme();
+	const isDark = resolvedTheme === "dark";
 
 	const data = {
 		navPlatform: [
@@ -99,7 +103,9 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 									src={
 										isCollapsed
 											? "/Metatrack-logo.svg"
-											: "/Metatrack_logo_advanced.svg"
+											: isDark
+												? "/Metatrack_logo_advanced_dark.svg"
+												: "/Metatrack_logo_advanced.svg"
 									}
 									alt="MetaTrack Logo"
 									className={isCollapsed ? "w-auto" : "h-16 w-auto"}
@@ -111,6 +117,13 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 			</SidebarHeader>
 
 			<SidebarContent>
+				<SidebarMenu className="px-2">
+					<SidebarMenuItem>
+						<SidebarMenuItem>
+							<NotificationPopover isCollapsed={isCollapsed} />
+						</SidebarMenuItem>
+					</SidebarMenuItem>
+				</SidebarMenu>
 				<NavProjects projects={projects} isLoading={isLoading} />
 				<SidebarSeparator className="mx-0" />
 				<NavMain items={data.navPlatform} />
@@ -118,7 +131,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 				<NavSecondary items={data.navSecondary} className="mt-auto" />
 			</SidebarContent>
 			<SidebarFooter>
-				<NavUser user={user} />
+				<NavUser user={user} isCollapsed={isCollapsed} />
 			</SidebarFooter>
 		</Sidebar>
 	);
