@@ -3,7 +3,6 @@
 import * as React from "react";
 import {
 	IconBook,
-	IconBriefcase,
 	IconDatabase,
 	IconFileInfo,
 	IconMessageDots,
@@ -12,6 +11,7 @@ import {
 } from "@tabler/icons-react";
 
 import { NavMain } from "@/components/dashboard/nav-main";
+import { NavProjects } from "@/components/dashboard/nav-projects";
 import { NavSecondary } from "@/components/dashboard/nav-secondary";
 import {
 	Sidebar,
@@ -27,7 +27,7 @@ import {
 
 import { useQuery } from "@tanstack/react-query";
 import { getProjectsByUser } from "@/lib/api-keycloak";
-import type { MeResponse, Project } from "@/lib/types";
+import type { MeResponse } from "@/lib/types";
 import { NavUser } from "./nav-user";
 import { Link } from "@tanstack/react-router";
 import { NotificationPopover } from "../notification-popover";
@@ -70,25 +70,6 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 				title: "Resources",
 				url: "/resources",
 				icon: IconBook,
-			},
-		],
-
-		navMain: [
-			{
-				title: "My Projects",
-				url: "/projects",
-				icon: IconBriefcase,
-				items: isLoading
-					? [
-							{
-								title: "Loading...",
-								url: "#",
-							},
-						]
-					: projects.map((project: Project) => ({
-							title: project.name,
-							url: `/projects/${project.id}`,
-						})),
 			},
 		],
 
@@ -143,7 +124,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 						</SidebarMenuItem>
 					</SidebarMenuItem>
 				</SidebarMenu>
-				<NavMain items={data.navMain} />
+				<NavProjects projects={projects} isLoading={isLoading} />
 				<SidebarSeparator className="mx-0" />
 				<NavMain items={data.navPlatform} />
 

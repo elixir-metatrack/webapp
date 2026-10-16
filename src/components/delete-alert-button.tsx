@@ -48,8 +48,14 @@ export const DeleteAlertButton = ({
 				}
 
 				if (failed.length > 0) {
-					console.error("Failed to delete:", failed);
+					toastError(
+						`${failed.length} sample(s) could not be deleted. Check your project permissions; linked samples must be managed in the parent project.`
+					);
 				}
+				if (success.length > 0) {
+					toastSuccess(`${success.length} sample(s) deleted successfully!`);
+				}
+				return;
 			} else if (entityName === "project") {
 				await deleteProject(projectId!);
 				onDeleted?.([projectId!]);

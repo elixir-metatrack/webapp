@@ -334,7 +334,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 							>
 								<div>
 									<p className="text-sm font-medium">
-										{member.email ?? member.memberId}
+										{member.email ?? member.username ?? member.memberId}
 									</p>
 
 									<Badge
@@ -669,7 +669,9 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 
 								<div className="space-y-4">
 									<p className="text-muted-foreground text-sm">
-										{editingMember?.email ?? editingMember?.memberId}
+										{editingMember?.email ??
+											editingMember?.username ??
+											editingMember?.memberId}
 									</p>
 
 									<Select value={editRole} onValueChange={setEditRole}>
@@ -869,7 +871,9 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 							<AlertDialogDescription>
 								This will remove{" "}
 								<strong>
-									{removingMember?.email ?? removingMember?.memberId}
+									{removingMember?.email ??
+										removingMember?.username ??
+										removingMember?.memberId}
 								</strong>{" "}
 								from the project.
 							</AlertDialogDescription>
