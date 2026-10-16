@@ -3,7 +3,6 @@ import type { Assay, Project, Sample } from "@/lib/types";
 import { DataTable } from "./dataTable";
 import { getFilesSampleAssay, getSamplesInAssay } from "@/lib/api-keycloak";
 import { AddSamplesToAssayDialog } from "./add-samples-assay";
-import { DownloadTemplateButton } from "./download-template-button";
 import { EditAssayDialog } from "./edit-assay-dialog";
 
 interface AssayTableProps {
@@ -79,7 +78,6 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 						projectId={project?.id ?? ""}
 						isSubProject={!!project?.parentProjectId}
 					/>
-					<DownloadTemplateButton type="experiment" />
 					<AddSamplesToAssayDialog
 						projectId={project?.id ?? ""}
 						assayId={assay.id}
