@@ -630,6 +630,20 @@ export async function addSamplesToAssay(
 	});
 }
 
+export async function uploadExperiments(
+	projectId: string,
+	assayId: string,
+	file: File
+): Promise<void> {
+	const formData = new FormData();
+	formData.append("file", file);
+
+	await api(`projects/${projectId}/assays/${assayId}/experiments`, {
+		method: "POST",
+		body: formData,
+	});
+}
+
 // ============================================================
 // Global Assay Vocabularies
 // ============================================================
