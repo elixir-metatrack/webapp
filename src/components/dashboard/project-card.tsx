@@ -105,42 +105,9 @@ export function ProjectsDataTable({
 
 	const columns: ColumnDef<Project>[] = [
 		{
-			id: "select",
-			header: ({ table }) => {
-				const visibleRows = table.getRowModel().rows;
-				const allSelected =
-					visibleRows.length > 0 &&
-					visibleRows.every((row) => row.getIsSelected());
-				const someSelected = visibleRows.some((row) => row.getIsSelected());
-				return (
-					<Checkbox
-						checked={allSelected || (someSelected && "indeterminate")}
-						disabled={visibleRows.length === 0}
-						onClick={(event) => event.stopPropagation()}
-						onCheckedChange={(value) =>
-							table.toggleAllPageRowsSelected(!!value)
-						}
-						aria-label="Select all visible projects"
-						className="border-neutral-900"
-					/>
-				);
-			},
-			cell: ({ row }) => (
-				<Checkbox
-					checked={row.getIsSelected()}
-					onClick={(event) => event.stopPropagation()}
-					onCheckedChange={(value) => row.toggleSelected(!!value)}
-					aria-label={`Select ${row.original.name}`}
-					className="border-neutral-900"
-				/>
-			),
-			enableSorting: false,
-			enableHiding: false,
-		},
-		{
 			accessorKey: "name",
 			header: ({ column }) => (
-				<DataTableColumnHeader column={column} title="Title" />
+				<DataTableColumnHeader column={column} title="Title" className="pl-9" />
 			),
 			cell: ({ row }) => (
 				<div
