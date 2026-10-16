@@ -33,6 +33,7 @@ import { IconMicroscope, IconTestPipe, IconSitemap } from "@tabler/icons-react";
 import { useUser } from "#/hooks/use-user";
 import { useSidebar } from "#/components/ui/sidebar";
 import { VocabulariesDialog } from "#/components/vocabulariesDialog";
+import { UploadExperimentDialog } from "#/components/dashboard/upload-experiment";
 
 export const Route = createFileRoute("/projects/$projectId")({
 	component: RouteComponent,
@@ -131,7 +132,18 @@ function RouteComponent() {
 			<SiteHeader
 				items={[
 					{ label: "My Projects", href: "/projects" },
-					{ label: project.name, href: `/projects/${project.id}` },
+					...(parentProject
+						? [
+								{
+									label: parentProject.name,
+									href: `/projects/${parentProject.id}`,
+								},
+							]
+						: []),
+					{
+						label: project.name,
+						href: `/projects/${project.id}`,
+					},
 				]}
 			/>
 			<div className="space-y-6 p-4">
@@ -236,6 +248,10 @@ function RouteComponent() {
 
 						<CardContent className="pt-6">
 							<TabsContent value="samples">
+								<div className="flex justify-end gap-2 py-8">
+									<DownloadTemplateButton type="sample" />
+									<UploadSampleDialog projectId={projectId} />
+								</div>
 								<DataTable
 									data={samples}
 									columns={dynamicColumns}
@@ -245,9 +261,7 @@ function RouteComponent() {
 									project={project}
 									showAddButton={
 										<div className="flex gap-2">
-											<DownloadTemplateButton type="sample" />
 											<AddSampleDialog projectId={projectId} />
-											<UploadSampleDialog projectId={projectId} />
 										</div>
 									}
 								/>
@@ -277,6 +291,14 @@ function RouteComponent() {
 											<TabsContent key={assay.id} value={assay.id}>
 												<Card>
 													<CardContent className="pt-6">
+														<div className="mb-4 flex justify-end gap-2">
+															<DownloadTemplateButton type="experiment" />
+															<UploadExperimentDialog
+																projectId={projectId}
+																assayId={String(assay.id)}
+															/>
+														</div>
+
 														<AssayTable assay={assay} project={project} />
 													</CardContent>
 												</Card>
