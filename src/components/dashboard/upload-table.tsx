@@ -9,7 +9,7 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { uploadSamplesheet, uploadExperimentsheet } from "@/lib/api-keycloak";
+import { uploadSamplesheet, uploadExperiments } from "@/lib/api-keycloak";
 import {
 	isTableFile,
 	TABLE_FILE_ACCEPT,
@@ -20,15 +20,15 @@ import { Input } from "../ui/input";
 import { HardDriveUpload } from "lucide-react";
 import { toastError, toastSuccess } from "#/lib/toast";
 
-interface UploadSampleDialogProps {
+interface UploadTableDialogProps {
 	projectId: string;
 	assayId?: string;
 }
 
-export function UploadSampleDialog({
+export function UploadTableDialog({
 	projectId,
 	assayId,
-}: UploadSampleDialogProps) {
+}: UploadTableDialogProps) {
 	const [file, setFile] = useState<File | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [open, setOpen] = useState(false);
@@ -40,7 +40,7 @@ export function UploadSampleDialog({
 	const uploadMutation = useMutation({
 		mutationFn: (selectedFile: File) =>
 			assayId
-				? uploadExperimentsheet(projectId, assayId, selectedFile)
+				? uploadExperiments(projectId, assayId, selectedFile)
 				: uploadSamplesheet(projectId, selectedFile),
 		onSuccess: () => {
 			toastSuccess(`${entity} import completed successfully`);
@@ -54,20 +54,21 @@ export function UploadSampleDialog({
 		},
 		onSettled: () => {
 			// A failed import can still save valid rows and vocabulary definitions.
-			queryClient.invalidateQueries({ queryKey: ["samples", projectId] });
+			// Refresh every scope because parent and sub-project views share these records.
+			queryClient.invalidateQueries({ queryKey: ["samples"] });
 			if (assayId) {
-				queryClient.invalidateQueries({ queryKey: ["assays", projectId] });
+				queryClient.invalidateQueries({ queryKey: ["assays"] });
 				queryClient.invalidateQueries({ queryKey: ["assaySamples", assayId] });
 			} else {
 				queryClient.invalidateQueries({
-					queryKey: ["sample-vocabularies", projectId],
+					queryKey: ["sample-vocabularies"],
 				});
 			}
 		},
 	});
 
 	const handleUpload = () => {
-		if (!file) return;
+		if (!file || uploadMutation.isPending) return;
 		setImportError(null);
 		setPartialImport(false);
 		uploadMutation.mutate(file);
@@ -136,6 +137,7 @@ export function UploadSampleDialog({
 					<Button
 						variant="secondary"
 						className="mt-3"
+						disabled={uploadMutation.isPending}
 						onClick={() => fileInputRef.current?.click()}
 					>
 						Choose file

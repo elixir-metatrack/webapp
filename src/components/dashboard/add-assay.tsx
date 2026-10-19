@@ -15,6 +15,8 @@ import { createAssay } from "@/lib/api-keycloak";
 import { ChevronDown, ChevronUp, SquarePlus } from "lucide-react";
 import { FormField } from "../form-field";
 import { toastSuccess, toastError } from "#/lib/toast";
+import { VocabularyCombobox } from "../vocabulary-combobox";
+import { useVocabularies } from "#/hooks/use-vocabularies";
 
 interface AddAssayDialogProps {
 	projectId: string;
@@ -49,6 +51,7 @@ const fields: FieldConfig[] = [
 		label: "Experiment Name",
 		placeholder: "Experiment name",
 		tooltip: "Unique name for this sequencing experiment.",
+		required: true,
 	},
 	{
 		key: "studyAccession",
@@ -62,6 +65,7 @@ const fields: FieldConfig[] = [
 		label: "Instrument Model",
 		placeholder: "e.g. Illumina NovaSeq 6000",
 		tooltip: "Model of the sequencing instrument.",
+		advanced: true,
 	},
 	{
 		key: "libraryName",
@@ -76,12 +80,14 @@ const fields: FieldConfig[] = [
 		placeholder: "GENOMIC / TRANSCRIPTOMIC",
 		tooltip:
 			"The library_source specifies the type of source material that is being sequenced.",
+		advanced: true,
 	},
 	{
 		key: "libraryStrategy",
 		label: "Library Strategy",
 		placeholder: "e.g. WGS",
 		tooltip: "Sequencing technique intended for this library.",
+		advanced: true,
 	},
 	{
 		key: "librarySelection",
@@ -97,6 +103,7 @@ const fields: FieldConfig[] = [
 		placeholder: "PAIRED / SINGLE",
 		tooltip:
 			"Library_layout specifies whether to expect single, paired, or other configuration of reads. in the case of paired reads, information about the relative distance and orientation is specified.",
+		advanced: true,
 	},
 	{
 		key: "insertSize",
@@ -114,35 +121,44 @@ function RenderField({
 	field,
 	value,
 	onChange,
+	vocabularyTerms,
 }: {
 	field: FieldConfig;
 	value: string | number;
 	onChange: (value: string | number) => void;
+	vocabularyTerms: string[];
 }) {
-	const input = (
-		<Input
-			type={field.type ?? "text"}
-			placeholder={field.placeholder}
-			value={value}
-			required={field.required}
-			onChange={(e) => {
-				const val = e.target.value;
+	const input =
+		vocabularyTerms.length > 0 ? (
+			<VocabularyCombobox
+				value={String(value)}
+				terms={vocabularyTerms}
+				onChange={onChange}
+			/>
+		) : (
+			<Input
+				type={field.type ?? "text"}
+				placeholder={field.placeholder}
+				value={value}
+				required={field.required}
+				onChange={(e) => {
+					const val = e.target.value;
 
-				if (field.numeric) {
-					onChange(val === "" ? 0 : Number(val));
-				} else {
-					onChange(val);
-				}
-			}}
-			inputMode={field.numeric ? "numeric" : undefined}
-		/>
-	);
+					if (field.numeric) {
+						onChange(val === "" ? 0 : Number(val));
+					} else {
+						onChange(val);
+					}
+				}}
+				inputMode={field.numeric ? "numeric" : undefined}
+			/>
+		);
 
 	return (
 		<FormField
 			label={field.label}
-			required={field.required}
 			tooltip={field.tooltip}
+			required={field.required}
 		>
 			{input}
 		</FormField>
@@ -170,6 +186,8 @@ export function AddAssayDialog({ projectId }: AddAssayDialogProps) {
 	const [open, setOpen] = useState(false);
 
 	const queryClient = useQueryClient();
+
+	const { getTerms } = useVocabularies("assay", projectId);
 
 	const mutation = useMutation({
 		mutationFn: () =>
@@ -230,6 +248,7 @@ export function AddAssayDialog({ projectId }: AddAssayDialogProps) {
 								field={field}
 								value={form[field.key]}
 								onChange={(value) => updateField(field.key, value)}
+								vocabularyTerms={getTerms(field.key)}
 							/>
 						))}
 
@@ -247,6 +266,7 @@ export function AddAssayDialog({ projectId }: AddAssayDialogProps) {
 										field={field}
 										value={form[field.key]}
 										onChange={(value) => updateField(field.key, value)}
+										vocabularyTerms={getTerms(field.key)}
 									/>
 								))}
 						</div>

@@ -3,12 +3,15 @@ import { keycloak } from "./keycloak";
 import type {
 	Assay,
 	CreateSample,
+	InvitationRole,
 	Member,
+	NotificationPage,
 	PresignDownloadRequest,
 	PresignDownloadResponse,
 	PresignUploadRequest,
 	PresignUploadResponse,
 	Project,
+	ProjectInvitation,
 	Sample,
 	SampleFile,
 	SampleMetadataField,
@@ -144,6 +147,44 @@ export async function deleteProject(projectId: string): Promise<void> {
 }
 
 // ============================================================
+// Sub-Projects
+// ============================================================
+
+export async function createSubProject(
+	parentProjectId: string,
+	data: { name: string; description?: string; sampleIds: string[] }
+): Promise<Project> {
+	return api<Project>(`projects/${parentProjectId}/subprojects`, {
+		method: "POST",
+		body: JSON.stringify(data),
+	});
+}
+
+export async function getSubProjects(projectId: string): Promise<Project[]> {
+	return api<Project[]>(`projects/${projectId}/subprojects`);
+}
+
+export async function linkSamplesToProject(
+	projectId: string,
+	sampleIds: string[]
+): Promise<void> {
+	await api(`projects/${projectId}/samples/link`, {
+		method: "PUT",
+		body: JSON.stringify({ sampleIds }),
+	});
+}
+
+export async function unlinkSamplesFromProject(
+	projectId: string,
+	sampleIds: string[]
+): Promise<void> {
+	await api(`projects/${projectId}/samples/link`, {
+		method: "DELETE",
+		body: JSON.stringify({ sampleIds }),
+	});
+}
+
+// ============================================================
 // Project Members & Join Requests
 // ============================================================
 
@@ -211,6 +252,68 @@ export async function deleteJoinRequest(
 ): Promise<void> {
 	await api(`projects/${projectId}/joingrequests/${userId}`, {
 		method: "DELETE",
+	});
+}
+
+export async function inviteProjectMember(
+	projectId: string,
+	email: string,
+	role: InvitationRole
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(`projects/${projectId}/invitations`, {
+		method: "POST",
+		body: JSON.stringify({
+			email: email.trim(),
+			role,
+		}),
+	});
+}
+
+export async function resendProjectInvitation(
+	projectId: string,
+	invitationId: string
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(
+		`projects/${projectId}/invitations/${invitationId}/resend`,
+		{
+			method: "POST",
+		}
+	);
+}
+
+export async function getProjectInvitations(
+	projectId: string,
+	page = 0,
+	size = 20
+): Promise<ProjectInvitation[]> {
+	return api<ProjectInvitation[]>(
+		`projects/${projectId}/invitations?page=${page}&size=${size}`,
+		{ method: "GET" }
+	);
+}
+
+export async function revokeProjectInvitation(
+	projectId: string,
+	invitationId: string
+): Promise<void> {
+	await api(`projects/${projectId}/invitations/${invitationId}`, {
+		method: "DELETE",
+	});
+}
+
+export async function acceptProjectInvitation(
+	invitationId: string
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(`invitations/${invitationId}/accept`, {
+		method: "POST",
+	});
+}
+
+export async function declineProjectInvitation(
+	invitationId: string
+): Promise<ProjectInvitation> {
+	return api<ProjectInvitation>(`invitations/${invitationId}/decline`, {
+		method: "POST",
 	});
 }
 
@@ -304,19 +407,6 @@ export async function uploadSamplesheet(
 	formData.append("file", file);
 
 	return api(`projects/${projectId}/samples/samplesheet`, {
-		method: "POST",
-		body: formData,
-	});
-}
-
-export async function uploadExperimentsheet(
-	projectId: string,
-	assayId: string,
-	file: File
-): Promise<unknown> {
-	const formData = new FormData();
-	formData.append("file", file);
-	return api(`projects/${projectId}/assays/${assayId}/experiments`, {
 		method: "POST",
 		body: formData,
 	});
@@ -544,6 +634,20 @@ export async function addSamplesToAssay(
 	return api(`projects/${projectId}/assays/${assayId}/samples`, {
 		method: "PUT",
 		body: JSON.stringify({ sampleNames }),
+	});
+}
+
+export async function uploadExperiments(
+	projectId: string,
+	assayId: string,
+	file: File
+): Promise<void> {
+	const formData = new FormData();
+	formData.append("file", file);
+
+	await api(`projects/${projectId}/assays/${assayId}/experiments`, {
+		method: "POST",
+		body: formData,
 	});
 }
 
@@ -779,4 +883,43 @@ function downloadBlob(blob: Blob, filename: string): void {
 		anchor.remove();
 		URL.revokeObjectURL(url);
 	}
+}
+
+// ============================================================
+// Notifications
+// ============================================================
+
+export async function getNotifications(
+	page = 0,
+	size = 20,
+	unread = false
+): Promise<NotificationPage> {
+	const params = new URLSearchParams({
+		page: String(page),
+		size: String(size),
+	});
+
+	if (unread) {
+		params.set("unread", "true");
+	}
+
+	return api<NotificationPage>(`notifications?${params.toString()}`);
+}
+
+export async function syncNotifications(): Promise<{
+	created: number;
+}> {
+	return api<{ created: number }>("notifications/sync", {
+		method: "POST",
+	});
+}
+
+export async function markNotificationRead(
+	notificationId: string,
+	read: boolean
+): Promise<void> {
+	await api(`notifications/${notificationId}`, {
+		method: "PATCH",
+		body: JSON.stringify({ read }),
+	});
 }

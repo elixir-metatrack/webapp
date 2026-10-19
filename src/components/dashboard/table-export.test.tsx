@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DataTable } from "./dataTable";
 import { exportExcelData } from "@/lib/api-keycloak";
 import type * as ApiClient from "@/lib/api-keycloak";
-import type { Project } from "@/lib/types";
+import type { Assay, Project } from "@/lib/types";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import downloadTSV from "@/lib/data/dataExport";
 
@@ -41,9 +41,14 @@ afterEach(() => {
 	vi.clearAllMocks();
 });
 
-it.each(["XLS", "TSV"])(
-	"%s exports all filtered pages, then only the selected sample",
-	async (format) => {
+it.each([
+	["XLS", "sample"],
+	["TSV", "sample"],
+	["XLS", "assay"],
+	["TSV", "assay"],
+] as const)(
+	"%s exports all filtered pages, then only selected rows in the %s table",
+	async (format, dataType) => {
 		const data = Array.from({ length: 25 }, (_, index) => ({
 			id: `id-${index}`,
 			name: `sample-${String(index).padStart(2, "0")}`,
@@ -58,7 +63,10 @@ it.each(["XLS", "TSV"])(
 				<TooltipProvider>
 					<DataTable
 						data={data}
-						dataType="sample"
+						dataType={dataType}
+						assay={
+							dataType === "assay" ? ({ id: "assay-1" } as Assay) : undefined
+						}
 						project={{ id: "42" } as Project}
 					/>
 				</TooltipProvider>
@@ -75,7 +83,7 @@ it.each(["XLS", "TSV"])(
 					expect(exportExcelData).toHaveBeenLastCalledWith(
 						"42",
 						expected.map((row) => row.name),
-						undefined
+						dataType === "assay" ? "assay-1" : undefined
 					);
 				} else {
 					expect(downloadTSV).toHaveBeenLastCalledWith(

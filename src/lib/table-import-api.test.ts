@@ -4,7 +4,7 @@ import {
 	downloadExcelTemplate,
 	downloadTemplate,
 	exportExcelData,
-	uploadExperimentsheet,
+	uploadExperiments,
 	uploadSamplesheet,
 } from "./api-keycloak";
 import { TableImportError } from "./table-import";
@@ -77,7 +77,7 @@ it("keeps multipart uploads on the existing sample and experiment endpoints", as
 	vi.stubGlobal("fetch", fetch);
 	const file = new File(["workbook"], "samples.xlsx");
 	await uploadSamplesheet("42", file);
-	await uploadExperimentsheet("42", "assay-id", file);
+	await uploadExperiments("42", "assay-id", file);
 	expect(fetch.mock.calls[0][0]).toBe(
 		"http://localhost/api/projects/42/samples/samplesheet"
 	);
@@ -110,7 +110,7 @@ it("retains structured row errors for table imports only", async () => {
 		)
 	);
 	await expect(
-		uploadExperimentsheet("42", "assay-id", new File([], "table.xls"))
+		uploadExperiments("42", "assay-id", new File([], "table.xls"))
 	).rejects.toBeInstanceOf(TableImportError);
 	await expect(api("projects/42/assays")).rejects.toThrow("Sample not found");
 });

@@ -86,18 +86,11 @@ export function AddSamplesToAssayDialog({
 
 	const toggleSelectAll = () => {
 		const visibleNames = filteredSamples.map((sample) => sample.name);
-
-		const allVisibleSelected =
-			visibleNames.length > 0 &&
-			visibleNames.every((name) => selectedSamples.includes(name));
-
-		if (allVisibleSelected) {
-			setSelectedSamples((prev) =>
-				prev.filter((name) => !visibleNames.includes(name))
-			);
-		} else {
-			setSelectedSamples((prev) => [...new Set([...prev, ...visibleNames])]);
-		}
+		setSelectedSamples((prev) =>
+			visibleNames.every((name) => prev.includes(name))
+				? prev.filter((name) => !visibleNames.includes(name))
+				: [...new Set([...prev, ...visibleNames])]
+		);
 	};
 
 	return (
@@ -135,12 +128,14 @@ export function AddSamplesToAssayDialog({
 					{/* SELECT ALL */}
 					<div className="flex items-center gap-2 border-b pb-2">
 						<Checkbox
+							aria-label="Select all visible samples"
 							checked={
 								filteredSamples.length > 0 &&
 								filteredSamples.every((sample) =>
 									selectedSamples.includes(sample.name)
 								)
 							}
+							disabled={filteredSamples.length === 0}
 							onCheckedChange={toggleSelectAll}
 						/>
 						<span className="text-sm font-medium">Select All</span>
@@ -154,6 +149,7 @@ export function AddSamplesToAssayDialog({
 							filteredSamples.map((sample) => (
 								<div key={sample.id} className="flex items-center gap-2">
 									<Checkbox
+										aria-label={`Select ${sample.name}`}
 										checked={selectedSamples.includes(sample.name)}
 										onCheckedChange={() => toggleSample(sample.name)}
 									/>

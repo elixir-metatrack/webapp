@@ -12,6 +12,7 @@ import { Fragment } from "react";
 import { AlertTriangleIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useUser } from "@/hooks/use-user";
+import { Link } from "@tanstack/react-router";
 
 interface BreadcrumbItemProps {
 	label: string;
@@ -56,8 +57,8 @@ export function SiteHeader({ items = [] }: SiteHeaderProps) {
 								<Fragment key={item.href ?? item.label}>
 									<BreadcrumbItem>
 										{item.href ? (
-											<BreadcrumbLink href={item.href}>
-												{item.label}
+											<BreadcrumbLink asChild>
+												<Link to={item.href}>{item.label}</Link>
 											</BreadcrumbLink>
 										) : (
 											<BreadcrumbPage>{item.label}</BreadcrumbPage>

@@ -16,6 +16,7 @@ import { CheckCircle, HardDriveUpload, Loader2, XCircle } from "lucide-react";
 import { progressUploadFile, requestPresignedUpload } from "@/lib/api-keycloak";
 import { Progress } from "../ui/progress";
 import { toastSuccess } from "#/lib/toast";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 interface UploadSampleDialogProps {
 	projectId: string;
@@ -61,6 +62,7 @@ export function UploadDataDialog({
 
 	const handleUpload = async () => {
 		if (fileStates.length === 0) return;
+
 		setUploading(true);
 		let failed = 0;
 
@@ -69,6 +71,7 @@ export function UploadDataDialog({
 
 		const uploadOne = async (index: number) => {
 			const state = fileStates[index];
+
 			try {
 				updateFile(index, { status: "uploading" });
 
@@ -86,6 +89,7 @@ export function UploadDataDialog({
 				updateFile(index, { status: "done", progress: 100 });
 			} catch (err) {
 				failed++;
+
 				updateFile(index, {
 					status: "error",
 					error: err instanceof Error ? err.message : "Upload failed",
@@ -100,18 +104,41 @@ export function UploadDataDialog({
 			}
 		};
 
-		await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
-
-		setUploading(false);
-		await queryClient.invalidateQueries({ queryKey: ["samples", projectId] });
-
-		const succeeded = fileStates.length - failed;
-		if (failed === 0) {
-			toastSuccess(
-				`${succeeded} file${succeeded > 1 ? "s" : ""} uploaded successfully`
+		try {
+			await Promise.all(
+				Array.from({ length: Math.min(CONCURRENCY, queue.length) }, () =>
+					worker()
+				)
 			);
-		} else {
-			toast.warning(`${succeeded} uploaded, ${failed} failed`);
+
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: ["samples", projectId],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: ["assays", projectId],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: ["assaySamples"],
+				}),
+			]);
+
+			const succeeded = fileStates.length - failed;
+
+			if (failed === 0) {
+				toastSuccess(
+					`${succeeded} file${succeeded > 1 ? "s" : ""} uploaded successfully`
+				);
+
+				setOpen(false);
+				setFileStates([]);
+			} else {
+				toast.warning(`${succeeded} uploaded, ${failed} failed`);
+			}
+		} catch {
+			toast.error("Failed to refresh project data");
+		} finally {
+			setUploading(false);
 		}
 	};
 
@@ -133,10 +160,13 @@ export function UploadDataDialog({
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogTrigger asChild>
-				<Button className="flex w-full gap-2 !px-2" variant={"ghost"}>
-					<HardDriveUpload />
+				<DropdownMenuItem
+					onSelect={(e) => e.preventDefault()}
+					className="gap-2"
+				>
+					<HardDriveUpload className="size-5" />
 					Upload Data
-				</Button>
+				</DropdownMenuItem>
 			</DialogTrigger>
 
 			<DialogContent className="sm:max-w-2xl" aria-describedby={undefined}>

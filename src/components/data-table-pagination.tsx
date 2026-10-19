@@ -16,20 +16,22 @@ import { Button } from "./ui/button";
 
 interface DataTablePaginationProps<TData> {
 	table: Table<TData>;
+	pageSizeLabel?: string;
 }
 
 export function DataTablePagination<TData>({
 	table,
+	pageSizeLabel = "Rows per page",
 }: DataTablePaginationProps<TData>) {
 	return (
 		<div className="flex items-center justify-between px-2">
 			<div className="text-muted-foreground flex-1 text-sm">
-				{table.getFilteredSelectedRowModel().rows.length} of{" "}
-				{table.getFilteredRowModel().rows.length} row(s) selected.
+				{table.getFilteredSelectedRowModel().flatRows.length} of{" "}
+				{table.getFilteredRowModel().flatRows.length} row(s) selected.
 			</div>
 			<div className="flex items-center space-x-6 lg:space-x-8">
 				<div className="flex items-center space-x-2">
-					<p className="text-sm font-medium">Rows per page</p>
+					<p className="text-sm font-medium">{pageSizeLabel}</p>
 					<Select
 						value={`${table.getState().pagination.pageSize}`}
 						onValueChange={(value) => {

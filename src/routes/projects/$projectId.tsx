@@ -1,6 +1,6 @@
 "use client";
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,23 +10,27 @@ import {
 	getAssays,
 	getProjectsByUser,
 	getSamples as getSamplesNew,
+	getSubProjects,
 } from "@/lib/api-keycloak";
 import { DataTable } from "@/components/dashboard/dataTable";
 import { AddSampleDialog } from "@/components/dashboard/add-sample";
 import type { Assay, Project, Sample } from "@/lib/types";
-import { UploadSampleDialog } from "@/components/dashboard/upload-sample";
+import { UploadTableDialog } from "@/components/dashboard/upload-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { cn, NON_VIEWED_COLUMNS } from "@/lib/utils";
 import { DownloadTemplateButton } from "@/components/dashboard/download-template-button";
 import { TableActionGroup } from "@/components/dashboard/table-action-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AssayTable } from "@/components/dashboard/assayTable";
 import { AddAssayDialog } from "@/components/dashboard/add-assay";
 import { Button } from "@/components/ui/button";
 import { EditProjectDialog } from "@/components/dashboard/edit-project-dialog";
+import { AddSubProjectDialog } from "@/components/dashboard/add-subproject";
+import { SubProjectsTable } from "@/components/dashboard/subproject-table";
+import { Badge } from "@/components/ui/badge";
 import { SquarePen, UserRoundCog } from "lucide-react";
-import { IconMicroscope, IconTestPipe } from "@tabler/icons-react";
+import { IconMicroscope, IconTestPipe, IconSitemap } from "@tabler/icons-react";
 import { useUser } from "#/hooks/use-user";
 import { useSidebar } from "#/components/ui/sidebar";
 import { VocabulariesDialog } from "#/components/vocabulariesDialog";
@@ -37,11 +41,16 @@ export const Route = createFileRoute("/projects/$projectId")({
 
 function RouteComponent() {
 	const { projectId } = Route.useParams();
+	const navigate = useNavigate();
 	const [activeTab, setActiveTab] = useState("samples");
 	const [editDialogOpen, setEditDialogOpen] = useState(false);
 	const [editDialogInitialTab, setEditDialogInitialTab] = useState<
 		"general" | "members"
 	>("general");
+
+	useEffect(() => {
+		setActiveTab("samples");
+	}, [projectId]);
 
 	const { data: user } = useUser();
 
@@ -74,6 +83,16 @@ function RouteComponent() {
 		queryFn: () => getAssays(projectId),
 		enabled: !!projectId,
 	});
+
+	const { data: subProjects = [] } = useQuery<Project[]>({
+		queryKey: ["subprojects", projectId],
+		queryFn: () => getSubProjects(projectId),
+		enabled: !!projectId,
+	});
+
+	const parentProject = project?.parentProjectId
+		? projects?.find((p) => String(p.id) === String(project.parentProjectId))
+		: undefined;
 
 	const [activeAssayTab, setActiveAssayTab] = useState<string | undefined>(
 		undefined
@@ -113,13 +132,43 @@ function RouteComponent() {
 			<SiteHeader
 				items={[
 					{ label: "My Projects", href: "/projects" },
-					{ label: project.name, href: `/projects/${project.id}` },
+					...(parentProject
+						? [
+								{
+									label: parentProject.name,
+									href: `/projects/${parentProject.id}`,
+								},
+							]
+						: []),
+					{
+						label: project.name,
+						href: `/projects/${project.id}`,
+					},
 				]}
 			/>
 			<div className="space-y-6 p-4">
 				<Card className="grid grid-flow-col grid-rows-3 gap-4">
 					<CardHeader className="row-span-1">
-						<CardTitle className="text-2xl font-bold">{project.name}</CardTitle>
+						<CardTitle className="flex items-center gap-2 text-2xl font-bold">
+							{project.name}
+							{project.parentProjectId && (
+								<Badge variant="secondary">
+									Sub-project
+									{parentProject ? (
+										<>
+											{" of "}
+											<Link
+												to="/projects/$projectId"
+												params={{ projectId: String(parentProject.id) }}
+												className="underline"
+											>
+												{parentProject.name}
+											</Link>
+										</>
+									) : null}
+								</Badge>
+							)}
+						</CardTitle>
 					</CardHeader>
 
 					<CardContent className="row-span-2 space-y-4">
@@ -149,7 +198,7 @@ function RouteComponent() {
 					<Tabs value={activeTab} onValueChange={setActiveTab}>
 						<CardHeader className="pb-0">
 							<div className="flex w-full items-center justify-between">
-								<TabsList className="w-[300px]">
+								<TabsList className="w-fit">
 									<TabsTrigger
 										value="samples"
 										className="text-lg font-semibold text-gray-500 [&_svg:not([class*='size-'])]:size-5"
@@ -165,6 +214,16 @@ function RouteComponent() {
 										<IconMicroscope />
 										Experiments
 									</TabsTrigger>
+
+									{!project.parentProjectId && (
+										<TabsTrigger
+											value="subprojects"
+											className="text-lg font-semibold text-gray-500 [&_svg:not([class*='size-'])]:size-5"
+										>
+											<IconSitemap />
+											Sub-Projects
+										</TabsTrigger>
+									)}
 								</TabsList>
 
 								<div className="flex items-center gap-2">
@@ -200,7 +259,7 @@ function RouteComponent() {
 										<>
 											<TableActionGroup label="Add data">
 												<AddSampleDialog projectId={projectId} />
-												<UploadSampleDialog projectId={projectId} />
+												<UploadTableDialog projectId={projectId} />
 											</TableActionGroup>
 											<TableActionGroup label="Templates">
 												<DownloadTemplateButton type="sample" />
@@ -217,17 +276,18 @@ function RouteComponent() {
 										value={activeAssayTab ?? assays[0].id}
 										onValueChange={setActiveAssayTab}
 									>
-										<div className="mb-4 flex items-center justify-between gap-2">
-											<div className="flex items-center gap-2">
-												<TabsList>
-													{assays.map((assay) => (
-														<TabsTrigger key={assay.id} value={assay.id}>
-															{assay.name}
-														</TabsTrigger>
-													))}
-												</TabsList>
-												<AddAssayDialog projectId={projectId}></AddAssayDialog>
-											</div>
+										<div className="mb-4 flex items-center gap-2">
+											<TabsList>
+												{assays.map((assay) => (
+													<TabsTrigger key={assay.id} value={assay.id}>
+														{assay.name}
+													</TabsTrigger>
+												))}
+											</TabsList>
+
+											{!project.parentProjectId && (
+												<AddAssayDialog projectId={projectId} />
+											)}
 										</div>
 
 										{assays.map((assay) => (
@@ -242,9 +302,15 @@ function RouteComponent() {
 									</Tabs>
 								) : (
 									<div className="flex flex-wrap justify-center gap-x-6 gap-y-3 py-8">
-										<TableActionGroup label="Add data">
-											<AddAssayDialog projectId={projectId} />
-										</TableActionGroup>
+										{project.parentProjectId ? (
+											<p className="text-muted-foreground">
+												No experiments are linked to this sub-project's samples.
+											</p>
+										) : (
+											<TableActionGroup label="Add data">
+												<AddAssayDialog projectId={projectId} />
+											</TableActionGroup>
+										)}
 										<TableActionGroup label="Templates">
 											<DownloadTemplateButton type="experiment" />
 											<DownloadTemplateButton type="experiment" format="xlsx" />
@@ -252,6 +318,23 @@ function RouteComponent() {
 									</div>
 								)}
 							</TabsContent>
+
+							{!project.parentProjectId && (
+								<TabsContent value="subprojects">
+									<SubProjectsTable
+										subProjects={subProjects}
+										onOpen={(subProject) =>
+											navigate({
+												to: "/projects/$projectId",
+												params: { projectId: subProject.id! },
+											})
+										}
+										showAddButton={
+											<AddSubProjectDialog parentProjectId={projectId} />
+										}
+									/>
+								</TabsContent>
+							)}
 						</CardContent>
 					</Tabs>
 				</Card>

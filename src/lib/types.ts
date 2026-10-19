@@ -78,6 +78,7 @@ export type MeResponse = {
 export type Member = {
 	memberId: string;
 	role: string;
+	username?: string | null;
 	email?: string | null;
 };
 
@@ -90,6 +91,40 @@ export interface Project {
 	sampleCount?: number;
 	createdOn?: string; // Date
 	modifiedOn?: string;
+	parentProjectId?: number | null;
+}
+
+export type InvitationRole = "VIEWER" | "EDITOR" | "ADMIN";
+
+export type DeliveryStatus =
+	| "NOT_ATTEMPTED"
+	| "SENDING"
+	| "SENT"
+	| "FAILED"
+	| "UNKNOWN";
+
+export type InvitationStatus =
+	| "PENDING"
+	| "ACCEPTED"
+	| "DECLINED"
+	| "REVOKED"
+	| "EXPIRED";
+
+export interface ProjectInvitation {
+	id: string;
+	projectId: number;
+	recipientEmail: string;
+	inviterId: string;
+	inviterDisplayName: string;
+	role: InvitationRole;
+	status: InvitationStatus;
+	createdOn: string;
+	expiresOn: string;
+	respondedOn: string | null;
+	deliveryStatus: DeliveryStatus;
+	deliveryAttemptedOn: string | null;
+	deliveryCompletedOn: string | null;
+	deliveryRetryAfter: string | null;
 }
 
 export interface StatisticsResponse {
@@ -198,3 +233,32 @@ export interface SampleMetadataField {
 	type: SampleMetadataFieldType;
 	archived: boolean;
 }
+
+export type NotificationType = "PROJECT_INVITATION";
+
+export type NotificationInvitation = {
+	id: string;
+	projectId: number;
+	role: string;
+	status: "PENDING" | "ACCEPTED" | "DECLINED" | "REVOKED" | "EXPIRED";
+	expiresOn: string;
+	actionable: boolean;
+};
+
+export type AppNotification = {
+	id: string;
+	type: NotificationType;
+	createdOn: string;
+	readOn: string | null;
+	title: string;
+	content: string;
+	invitation: NotificationInvitation | null;
+};
+
+export type NotificationPage = {
+	items: AppNotification[];
+	page: number;
+	size: number;
+	total: number;
+	unreadCount: number;
+};

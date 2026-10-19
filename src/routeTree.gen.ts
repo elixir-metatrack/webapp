@@ -23,6 +23,7 @@ import { Route as HelpAndSupportIndexRouteImport } from './routes/help-and-suppo
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
 import { Route as ProjectsMyProfileRouteImport } from './routes/projects/my-profile'
+import { Route as ProjectsNotificationsRouteImport } from './routes/projects/notifications'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -94,6 +95,11 @@ const ProjectsMyProfileRoute = ProjectsMyProfileRouteImport.update({
   path: '/my-profile',
   getParentRoute: () => ProjectsRouteRoute,
 } as any)
+const ProjectsNotificationsRoute = ProjectsNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => ProjectsRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/terms-of-use': typeof TermsOfUseRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/projects/my-profile': typeof ProjectsMyProfileRoute
+  '/projects/notifications': typeof ProjectsNotificationsRoute
   '/about/': typeof AboutIndexRoute
   '/help-and-support/': typeof HelpAndSupportIndexRoute
   '/projects/': typeof ProjectsIndexRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/terms-of-use': typeof TermsOfUseRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/projects/my-profile': typeof ProjectsMyProfileRoute
+  '/projects/notifications': typeof ProjectsNotificationsRoute
   '/about': typeof AboutIndexRoute
   '/help-and-support': typeof HelpAndSupportIndexRoute
   '/projects': typeof ProjectsIndexRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/terms-of-use': typeof TermsOfUseRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/projects/my-profile': typeof ProjectsMyProfileRoute
+  '/projects/notifications': typeof ProjectsNotificationsRoute
   '/about/': typeof AboutIndexRoute
   '/help-and-support/': typeof HelpAndSupportIndexRoute
   '/projects/': typeof ProjectsIndexRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/terms-of-use'
     | '/projects/$projectId'
     | '/projects/my-profile'
+    | '/projects/notifications'
     | '/about/'
     | '/help-and-support/'
     | '/projects/'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/terms-of-use'
     | '/projects/$projectId'
     | '/projects/my-profile'
+    | '/projects/notifications'
     | '/about'
     | '/help-and-support'
     | '/projects'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/terms-of-use'
     | '/projects/$projectId'
     | '/projects/my-profile'
+    | '/projects/notifications'
     | '/about/'
     | '/help-and-support/'
     | '/projects/'
@@ -307,18 +319,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsMyProfileRouteImport
       parentRoute: typeof ProjectsRouteRoute
     }
+    '/projects/notifications': {
+      id: '/projects/notifications'
+      path: '/notifications'
+      fullPath: '/projects/notifications'
+      preLoaderRoute: typeof ProjectsNotificationsRouteImport
+      parentRoute: typeof ProjectsRouteRoute
+    }
   }
 }
 
 interface ProjectsRouteRouteChildren {
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
   ProjectsMyProfileRoute: typeof ProjectsMyProfileRoute
+  ProjectsNotificationsRoute: typeof ProjectsNotificationsRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
 }
 
 const ProjectsRouteRouteChildren: ProjectsRouteRouteChildren = {
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
   ProjectsMyProfileRoute: ProjectsMyProfileRoute,
+  ProjectsNotificationsRoute: ProjectsNotificationsRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
 }
 

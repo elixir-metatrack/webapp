@@ -74,7 +74,6 @@ import {
 	batchEditSamples,
 	getAssaysInSample,
 	getSampleMetadataFields,
-	getSamplesInAssay,
 	requestPresignedDownload,
 	updateAssay,
 	updateSample,
@@ -86,6 +85,13 @@ import { VocabularyCombobox } from "../vocabulary-combobox";
 import { useVocabularies } from "#/hooks/use-vocabularies";
 import { ExportExcelButton } from "./export-excel-button";
 import { TableActionGroup } from "./table-action-group";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+} from "../ui/input-group";
+import { FastqFloatingActions } from "./fastq-floating-actions";
 
 interface DataTableProps<T extends object> {
 	data: T[];
@@ -207,12 +213,29 @@ function QuickEditField({
 					}}
 				/>
 			) : (
-				<Input
-					value={value}
-					onChange={(e) => setValue(e.target.value)}
-					placeholder={label}
-					type={isNumberField ? "number" : "text"}
-				/>
+				<InputGroup>
+					<InputGroupInput
+						value={value}
+						onChange={(e) => setValue(e.target.value)}
+						placeholder={label}
+						type={isNumberField ? "number" : "text"}
+					/>
+
+					{value !== "" && (
+						<InputGroupAddon align="inline-end">
+							<InputGroupButton
+								type="button"
+								size="icon-xs"
+								variant="ghost"
+								aria-label="Limpar campo"
+								title="Limpar campo"
+								onClick={() => setValue("")}
+							>
+								<X />
+							</InputGroupButton>
+						</InputGroupAddon>
+					)}
+				</InputGroup>
 			)}
 
 			<Button type="submit" size="sm" className="w-full">
@@ -246,6 +269,10 @@ export function DataTable<T extends object>({
 
 	const { getTerms } = useVocabularies(dataType ?? "sample", project?.id);
 
+	React.useEffect(() => {
+		setSelectedFastqFiles(new Set());
+	}, [project?.id, assay?.id]);
+
 	const { data: customMetadataFields = [] } = useQuery({
 		queryKey: ["sample-metadata-fields", project?.id],
 		enabled: Boolean(project?.id && dataType === "sample"),
@@ -256,6 +283,91 @@ export function DataTable<T extends object>({
 		data as Sample[],
 		dataType !== "assay"
 	);
+
+	// ===================================================================
+	// SELECT FASTQ FILES
+
+	type SelectableFastqFile = {
+		sampleName: string;
+		fileName: string;
+		key: string;
+	};
+
+	const [selectedFastqFiles, setSelectedFastqFiles] = React.useState<
+		Set<string>
+	>(() => new Set());
+
+	const fastqFiles = React.useMemo<SelectableFastqFile[]>(() => {
+		if (dataType !== "assay") return [];
+
+		return (
+			enrichedData as Array<{
+				name: string;
+				files?: SampleFile[];
+			}>
+		).flatMap((sample) =>
+			(sample.files ?? []).map((file) => ({
+				sampleName: sample.name,
+				fileName: file.name,
+				key: JSON.stringify([sample.name, file.name]),
+			}))
+		);
+	}, [dataType, enrichedData]);
+
+	const selectedFastqFilesToDownload = fastqFiles.filter((file) =>
+		selectedFastqFiles.has(file.key)
+	);
+
+	const toggleFastqFile = (key: string, checked: boolean) => {
+		setSelectedFastqFiles((previous) => {
+			const next = new Set(previous);
+
+			if (checked) {
+				next.add(key);
+			} else {
+				next.delete(key);
+			}
+
+			return next;
+		});
+	};
+
+	const handleDownloadFastqFiles = async (
+		filesToDownload: SelectableFastqFile[]
+	) => {
+		if (!project?.id || !assay?.id || filesToDownload.length === 0) {
+			return;
+		}
+
+		let failed = 0;
+
+		console.log("filesToDownload:", filesToDownload);
+
+		for (const file of filesToDownload) {
+			try {
+				const { url } = await requestPresignedDownload({
+					projectId: Number(project.id),
+					assayId: assay.id,
+					sampleName: file.sampleName,
+					fileName: file.fileName,
+				});
+
+				window.open(url, "_blank", "noopener,noreferrer");
+			} catch {
+				failed++;
+			}
+		}
+
+		if (failed > 0) {
+			toastError(
+				`Failed to download ${failed} of ${filesToDownload.length} file(s).`
+			);
+		} else {
+			toastSuccess(`Started downloading ${filesToDownload.length} file(s).`);
+		}
+	};
+
+	// =============================================================================
 
 	const autoColumns: ColumnDef<T>[] =
 		enrichedData.length === 0
@@ -350,43 +462,66 @@ export function DataTable<T extends object>({
 					title={getColumnNewName("files")}
 				/>
 			),
+
 			cell: ({ row }) => {
-				const sample = row.original as { name: string; files?: SampleFile[] };
+				const sample = row.original as {
+					name: string;
+					files?: SampleFile[];
+				};
 
 				if (!sample.files || sample.files.length === 0) {
 					return null;
 				}
 
 				return (
-					<div className="flex flex-col gap-1">
-						{sample.files.map((file, index) => (
-							<button
-								key={index}
-								onClick={async () => {
-									if (!project?.id) return;
-									try {
-										const { url } = await requestPresignedDownload({
-											projectId: Number(project.id),
-											assayId: assay?.id ?? "",
-											sampleName: sample.name,
-											fileName: file.name,
-										});
+					<div className="flex flex-col gap-2">
+						{sample.files.map((file) => {
+							const fileKey = JSON.stringify([sample.name, file.name]);
 
-										window.open(url, "_blank");
-									} catch (err: unknown) {
-										const message =
-											err instanceof Error ? err.message : "Download failed";
-										toastError(message);
-									}
-								}}
-								className="text-left text-blue-600 hover:underline"
-							>
-								{file.name}
-							</button>
-						))}
+							return (
+								<div key={fileKey} className="flex items-center gap-2">
+									<Checkbox
+										checked={selectedFastqFiles.has(fileKey)}
+										onCheckedChange={(checked) =>
+											toggleFastqFile(fileKey, checked === true)
+										}
+										aria-label={`Select ${file.name}`}
+									/>
+
+									<button
+										type="button"
+										onClick={async () => {
+											if (!project?.id || !assay?.id) return;
+
+											try {
+												const { url } = await requestPresignedDownload({
+													projectId: Number(project.id),
+													assayId: assay.id,
+													sampleName: sample.name,
+													fileName: file.name,
+												});
+
+												window.open(url, "_blank", "noopener,noreferrer");
+											} catch (err: unknown) {
+												const message =
+													err instanceof Error
+														? err.message
+														: "Download failed";
+
+												toastError(message);
+											}
+										}}
+										className="text-left text-blue-600 hover:underline"
+									>
+										{file.name}
+									</button>
+								</div>
+							);
+						})}
 					</div>
 				);
 			},
+
 			enableSorting: false,
 			enableHiding: true,
 		};
@@ -404,7 +539,7 @@ export function DataTable<T extends object>({
 									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent>
-									{onEdit && (
+									{onEdit && dataType === "sample" ? (
 										<TableCellViewer
 											item={row.original as Sample}
 											projectId={project?.id ?? ""}
@@ -413,7 +548,7 @@ export function DataTable<T extends object>({
 												if (onEdit) onEdit(row.original);
 											}}
 										/>
-									)}
+									) : null}
 
 									{dataType === "assay" ? (
 										<UploadDataDialog
@@ -422,7 +557,7 @@ export function DataTable<T extends object>({
 											sampleName={(row.original as Sample).name}
 										/>
 									) : null}
-									{onDelete && (
+									{onDelete && !project?.parentProjectId && (
 										<DeleteAlertButton
 											projectId={project?.id ?? ""}
 											item={row.original as { id: string }[]}
@@ -582,7 +717,7 @@ export function DataTable<T extends object>({
 						const originalValue = row[colName as keyof Assay];
 
 						if (value === "") {
-							updateData[colName] = null;
+							updateData[colName] = "";
 						} else if (typeof originalValue === "number") {
 							const numberValue = Number(value);
 
@@ -645,7 +780,7 @@ export function DataTable<T extends object>({
 					};
 
 					if (value === "") {
-						customMetadata[colName] = null;
+						customMetadata[colName] = "";
 					} else {
 						switch (customField.type) {
 							case "NUMBER": {
@@ -678,7 +813,7 @@ export function DataTable<T extends object>({
 					const originalValue = row[colName as keyof Sample];
 
 					if (value === "") {
-						updateData[colName] = null;
+						updateData[colName] = "";
 					} else if (typeof originalValue === "number") {
 						const numberValue = Number(value);
 
@@ -782,115 +917,6 @@ export function DataTable<T extends object>({
 
 	/*
 	 * ============================================================
-	 * ASSAY TAB
-	 *
-	 * Keep the existing reverse relationship:
-	 *
-	 * Selected Assays
-	 *      ↓
-	 * GET /projects/{projectId}/assays/{assayId}/samples
-	 *      ↓
-	 * Samples
-	 *      ↓
-	 * GET /projects/{projectId}/samples/{sampleId}/assays
-	 *      ↓
-	 * Assays
-	 * ============================================================
-	 */
-
-	const selectedAssayIds =
-		dataType === "assay"
-			? selectedAssays
-					.map((assay) => assay.id)
-					.filter((id): id is string => Boolean(id))
-			: [];
-
-	const { data: samplesBySelectedAssay = {} } = useQuery({
-		queryKey: ["selected-assay-samples", project?.id, selectedAssayIds],
-
-		enabled:
-			Boolean(project?.id) &&
-			dataType === "assay" &&
-			selectedAssayIds.length > 0,
-
-		queryFn: async () => {
-			if (!project?.id || selectedAssayIds.length === 0) {
-				return {};
-			}
-
-			const entries = await Promise.all(
-				selectedAssayIds.map(async (assayId) => {
-					const samples = await getSamplesInAssay(project.id!, assayId);
-
-					return [assayId, samples] as const;
-				})
-			);
-
-			return Object.fromEntries(entries);
-		},
-	});
-
-	/*
-	 * ------------------------------------------------------------
-	 * Samples returned from selected Assays
-	 * ------------------------------------------------------------
-	 */
-
-	const samplesFromSelectedAssays: Sample[] =
-		dataType === "assay"
-			? Array.from(
-					new Map(
-						Object.values(samplesBySelectedAssay)
-							.flat()
-							.map((sample) => [sample.id, sample])
-					).values()
-				)
-			: [];
-
-	/*
-	 * ------------------------------------------------------------
-	 * For Assay tab, retrieve all Assays for those Samples.
-	 * ------------------------------------------------------------
-	 */
-
-	const assayTabSampleIds =
-		dataType === "assay"
-			? samplesFromSelectedAssays
-					.map((sample) => sample.id)
-					.filter((id): id is string => Boolean(id))
-			: [];
-
-	const { data: assaysForAssayTab = {} } = useQuery({
-		queryKey: [
-			"selected-sample-assays-from-assays",
-			project?.id,
-			assayTabSampleIds,
-		],
-
-		enabled:
-			Boolean(project?.id) &&
-			dataType === "assay" &&
-			assayTabSampleIds.length > 0,
-
-		queryFn: async () => {
-			if (!project?.id || assayTabSampleIds.length === 0) {
-				return {};
-			}
-
-			const entries = await Promise.all(
-				assayTabSampleIds.map(async (sampleId) => {
-					const assays = await getAssaysInSample(project.id!, sampleId);
-
-					return [sampleId, assays] as const;
-				})
-			);
-
-			return Object.fromEntries(entries);
-		},
-	});
-
-	/*
-	 * ============================================================
 	 * BUILD GRAPH
 	 * ============================================================
 	 */
@@ -909,6 +935,12 @@ export function DataTable<T extends object>({
 
 	const quickEditColumns = editableColumns.slice(1, QUICK_EDIT_LIMIT);
 	const moreEditColumns = editableColumns.slice(QUICK_EDIT_LIMIT);
+
+	const handleDeleteSelectedFastqFiles = () => {
+		toastError(
+			"FASTQ deletion is not connected yet. Connect this action to your file deletion API."
+		);
+	};
 
 	return (
 		<div className="space-y-4">
@@ -939,70 +971,27 @@ export function DataTable<T extends object>({
 						</div>
 
 						<Separator orientation="vertical" />
-						{quickEditColumns.map((col) => {
-							const fieldKey = String(col.id);
-							const terms = getTerms(fieldKey);
 
-							return (
-								<React.Fragment key={fieldKey}>
-									<DropdownMenu modal={false}>
-										<DropdownMenuTrigger asChild>
-											<Button
-												variant="ghost"
-												size="sm"
-												className="rounded-none"
-											>
-												{col.meta?.label}
-											</Button>
-										</DropdownMenuTrigger>
-
-										<DropdownMenuContent>
-											<QuickEditField
-												fieldKey={fieldKey}
-												label={String(col.meta?.label)}
-												terms={terms}
-												dataType={dataType}
-												onSubmit={(value) => handleBatchUpdate(fieldKey, value)}
-											/>
-										</DropdownMenuContent>
-									</DropdownMenu>
-
-									<Separator orientation="vertical" />
-								</React.Fragment>
-							);
-						})}
-
-						<DropdownMenu modal={false}>
-							<DropdownMenuTrigger asChild>
-								<Button variant="ghost" size="sm" className="rounded-none">
-									<MoreHorizontal />
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuLabel className="flex w-full flex-row items-center gap-2 px-6">
-									<SquarePen size={18} />
-									Edit selected
-								</DropdownMenuLabel>
-
-								<DropdownMenuSeparator />
-
-								{moreEditColumns.map((col) => {
+						{dataType === "sample" ? (
+							<>
+								{quickEditColumns.map((col) => {
 									const fieldKey = String(col.id);
 									const terms = getTerms(fieldKey);
 
 									return (
-										<DropdownMenuItem key={fieldKey} asChild>
-											<Popover modal={false}>
-												<PopoverTrigger asChild>
+										<React.Fragment key={fieldKey}>
+											<DropdownMenu modal={false}>
+												<DropdownMenuTrigger asChild>
 													<Button
 														variant="ghost"
-														className="flex justify-start"
+														size="sm"
+														className="rounded-none"
 													>
-														{String(col.meta?.label)}
+														{col.meta?.label}
 													</Button>
-												</PopoverTrigger>
+												</DropdownMenuTrigger>
 
-												<PopoverContent className="p-1">
+												<DropdownMenuContent>
 													<QuickEditField
 														fieldKey={fieldKey}
 														label={String(col.meta?.label)}
@@ -1012,24 +1001,87 @@ export function DataTable<T extends object>({
 															handleBatchUpdate(fieldKey, value)
 														}
 													/>
-												</PopoverContent>
-											</Popover>
-										</DropdownMenuItem>
+												</DropdownMenuContent>
+											</DropdownMenu>
+
+											<Separator orientation="vertical" />
+										</React.Fragment>
 									);
 								})}
+							</>
+						) : null}
 
-								{/* Separator */}
-								<DropdownMenuSeparator />
+						{dataType === "sample" ? (
+							<DropdownMenu modal={false}>
+								<DropdownMenuTrigger asChild>
+									<Button variant="ghost" size="sm" className="rounded-none">
+										<MoreHorizontal />
+									</Button>
+								</DropdownMenuTrigger>
 
-								{/* Delete */}
-								<DeleteAlertButton
-									projectId={project?.id ?? ""}
-									item={selectedRows as { id: string }[]}
-									entityName="sample"
-									onDeleted={() => table.resetRowSelection()}
-								/>
-							</DropdownMenuContent>
-						</DropdownMenu>
+								<DropdownMenuContent align="end">
+									<DropdownMenuLabel className="flex w-full flex-row items-center gap-2 px-6">
+										<SquarePen size={18} />
+										Edit selected
+									</DropdownMenuLabel>
+
+									<DropdownMenuSeparator />
+
+									{moreEditColumns.map((col) => {
+										const fieldKey = String(col.id);
+										const terms = getTerms(fieldKey);
+
+										return (
+											<DropdownMenuItem key={fieldKey} asChild>
+												<Popover modal={false}>
+													<PopoverTrigger asChild>
+														<Button
+															variant="ghost"
+															className="flex justify-start"
+														>
+															{String(col.meta?.label)}
+														</Button>
+													</PopoverTrigger>
+
+													<PopoverContent className="p-1">
+														<QuickEditField
+															fieldKey={fieldKey}
+															label={String(col.meta?.label)}
+															terms={terms}
+															dataType={dataType}
+															onSubmit={(value) =>
+																handleBatchUpdate(fieldKey, value)
+															}
+														/>
+													</PopoverContent>
+												</Popover>
+											</DropdownMenuItem>
+										);
+									})}
+
+									{!project?.parentProjectId && (
+										<>
+											<DropdownMenuSeparator />
+
+											<DeleteAlertButton
+												projectId={project?.id ?? ""}
+												item={selectedRows as { id: string }[]}
+												entityName="sample"
+												onDeleted={() => table.resetRowSelection()}
+											/>
+										</>
+									)}
+								</DropdownMenuContent>
+							</DropdownMenu>
+						) : (
+							<DeleteAlertButton
+								projectId={project?.id ?? ""}
+								item={selectedRows as { id: string }[]}
+								entityName="sample"
+								insideDropdown={false}
+								onDeleted={() => table.resetRowSelection()}
+							/>
+						)}
 					</div>
 				)}
 
@@ -1063,6 +1115,26 @@ export function DataTable<T extends object>({
 			<div className="rounded-md border">
 				<Table>
 					<TableHeader className="bg-muted sticky top-0">
+						{dataType === "assay" && (
+							<TableRow>
+								{table.getVisibleLeafColumns().map((column) => (
+									<TableHead key={column.id}>
+										{column.id === "files" ? (
+											<Button
+												variant="outline"
+												size="sm"
+												disabled={fastqFiles.length === 0}
+												onClick={() => handleDownloadFastqFiles(fastqFiles)}
+											>
+												<Download className="mr-2 h-4 w-4" />
+												Download All Files
+											</Button>
+										) : null}
+									</TableHead>
+								))}
+							</TableRow>
+						)}
+
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
@@ -1129,6 +1201,17 @@ export function DataTable<T extends object>({
 				</Table>
 			</div>
 			<DataTablePagination table={table} />
+
+			{dataType === "assay" && (
+				<FastqFloatingActions
+					count={selectedFastqFilesToDownload.length}
+					onDownload={() =>
+						handleDownloadFastqFiles(selectedFastqFilesToDownload)
+					}
+					onDelete={handleDeleteSelectedFastqFiles}
+					onClear={() => setSelectedFastqFiles(new Set())}
+				/>
+			)}
 		</div>
 	);
 }
@@ -1145,8 +1228,8 @@ function TableCellViewer({
 	onUpdated?: () => void;
 }) {
 	const [loading, setLoading] = useState(false);
-
 	const [openDrawer, setOpenDrawer] = useState(false);
+	const [formValues, setFormValues] = useState<Record<string, string>>({});
 
 	const queryClient = useQueryClient();
 
@@ -1189,7 +1272,6 @@ function TableCellViewer({
 
 		try {
 			const formData = new FormData(e.currentTarget);
-
 			const updateData: Record<string, unknown> = {};
 
 			/*
@@ -1198,12 +1280,10 @@ function TableCellViewer({
 			for (const field of standardFields) {
 				const value = formData.get(field);
 
-				if (value === null) {
-					continue;
-				}
+				if (value === null) continue;
 
 				if (value === "") {
-					updateData[field] = null;
+					updateData[field] = "";
 					continue;
 				}
 
@@ -1214,9 +1294,7 @@ function TableCellViewer({
 
 				if (isNumberField) {
 					const numberValue = Number(value);
-
 					updateData[field] = Number.isNaN(numberValue) ? null : numberValue;
-
 					continue;
 				}
 
@@ -1234,7 +1312,7 @@ function TableCellViewer({
 					const value = formData.get(`customMetadata.${field.key}`);
 
 					if (value === null || value === "") {
-						customMetadata[field.key] = null;
+						customMetadata[field.key] = "";
 						continue;
 					}
 
@@ -1245,7 +1323,6 @@ function TableCellViewer({
 							customMetadata[field.key] = Number.isNaN(numberValue)
 								? null
 								: numberValue;
-
 							break;
 						}
 
@@ -1299,6 +1376,7 @@ function TableCellViewer({
 
 			onUpdated?.();
 			setOpenDrawer(false);
+			setFormValues({});
 		} catch (err: unknown) {
 			const message =
 				err instanceof Error
@@ -1317,19 +1395,27 @@ function TableCellViewer({
 		<Drawer
 			direction="right"
 			open={openDrawer}
-			onOpenChange={setOpenDrawer}
+			onOpenChange={(open) => {
+				setOpenDrawer(open);
+
+				if (open) {
+					setFormValues({});
+				}
+			}}
 			autoFocus={openDrawer}
 		>
 			<DrawerTrigger asChild>
-				<Button
-					variant="ghost"
-					className="text-foreground w-full justify-start gap-2 text-left"
-					size={"sm"}
-				>
-					<SquarePen size={6} />
-					Edit
-				</Button>
+				<DrawerTrigger asChild>
+					<DropdownMenuItem
+						onSelect={(e) => e.preventDefault()}
+						className="gap-2"
+					>
+						<SquarePen className="size-5" />
+						{dataType === "sample" ? "Edit" : "Edit all samples"}
+					</DropdownMenuItem>
+				</DrawerTrigger>
 			</DrawerTrigger>
+
 			<DrawerContent aria-describedby={undefined}>
 				<DrawerHeader className="gap-1">
 					<DrawerTitle className="text-xl">Edit {item.name}</DrawerTitle>
@@ -1343,7 +1429,6 @@ function TableCellViewer({
 					>
 						{standardFields.map((field) => {
 							const rawValue = item[field as keyof Sample];
-
 							const isDateField = DATE_FIELDS.has(field);
 
 							const isNumberField =
@@ -1354,6 +1439,8 @@ function TableCellViewer({
 							const formattedValue = isDateField
 								? formatDateToYMD(rawValue as string)
 								: String(rawValue ?? "");
+
+							const currentValue = formValues[field] ?? formattedValue;
 
 							const vocabularyTerms = getTerms(field);
 
@@ -1368,16 +1455,47 @@ function TableCellViewer({
 											terms={vocabularyTerms}
 										/>
 									) : (
-										<Input
-											id={field}
-											name={field}
-											type={
-												isDateField ? "date" : isNumberField ? "number" : "text"
-											}
-											onPointerDown={(e) => e.stopPropagation()}
-											defaultValue={formattedValue}
-											className="grid grid-cols-1 place-content-around"
-										/>
+										<InputGroup>
+											<InputGroupInput
+												id={field}
+												name={field}
+												type={
+													isDateField
+														? "date"
+														: isNumberField
+															? "number"
+															: "text"
+												}
+												value={currentValue}
+												onChange={(e) =>
+													setFormValues((prev) => ({
+														...prev,
+														[field]: e.target.value,
+													}))
+												}
+												onPointerDown={(e) => e.stopPropagation()}
+											/>
+
+											{currentValue !== "" && (
+												<InputGroupAddon align="inline-end">
+													<InputGroupButton
+														type="button"
+														variant="ghost"
+														size="icon-xs"
+														aria-label={`Clear ${getColumnNewName(field)}`}
+														title="Clear field"
+														onClick={() =>
+															setFormValues((prev) => ({
+																...prev,
+																[field]: "",
+															}))
+														}
+													>
+														<X />
+													</InputGroupButton>
+												</InputGroupAddon>
+											)}
+										</InputGroup>
 									)}
 								</div>
 							);
@@ -1385,7 +1503,12 @@ function TableCellViewer({
 
 						{dataType === "sample" &&
 							activeCustomFields.map((field) => {
-								const value = item.customMetadata?.[field.key] ?? "";
+								const originalValue = String(
+									item.customMetadata?.[field.key] ?? ""
+								);
+
+								const inputKey = `customMetadata.${field.key}`;
+								const currentValue = formValues[inputKey] ?? originalValue;
 
 								const vocabularyTerms = getTerms(field.key);
 
@@ -1398,25 +1521,52 @@ function TableCellViewer({
 
 										{vocabularyTerms.length > 0 ? (
 											<VocabularyCombobox
-												name={`customMetadata.${field.key}`}
-												value={String(value ?? "")}
+												name={inputKey}
+												value={originalValue}
 												terms={vocabularyTerms}
 											/>
 										) : (
-											<Input
-												id={`custom-${field.key}`}
-												name={`customMetadata.${field.key}`}
-												type={
-													field.type === "DATE"
-														? "date"
-														: field.type === "NUMBER"
-															? "number"
-															: "text"
-												}
-												defaultValue={String(value ?? "")}
-												onPointerDown={(e) => e.stopPropagation()}
-												className="grid grid-cols-1 place-content-around"
-											/>
+											<InputGroup>
+												<InputGroupInput
+													id={`custom-${field.key}`}
+													name={inputKey}
+													type={
+														field.type === "DATE"
+															? "date"
+															: field.type === "NUMBER"
+																? "number"
+																: "text"
+													}
+													value={currentValue}
+													onChange={(e) =>
+														setFormValues((prev) => ({
+															...prev,
+															[inputKey]: e.target.value,
+														}))
+													}
+													onPointerDown={(e) => e.stopPropagation()}
+												/>
+
+												{currentValue !== "" && (
+													<InputGroupAddon align="inline-end">
+														<InputGroupButton
+															type="button"
+															variant="ghost"
+															size="icon-xs"
+															aria-label={`Clear ${field.label}`}
+															title="Clear field"
+															onClick={() =>
+																setFormValues((prev) => ({
+																	...prev,
+																	[inputKey]: "",
+																}))
+															}
+														>
+															<X />
+														</InputGroupButton>
+													</InputGroupAddon>
+												)}
+											</InputGroup>
 										)}
 									</div>
 								);
@@ -1425,9 +1575,10 @@ function TableCellViewer({
 				</div>
 
 				<DrawerFooter>
-					<Button form="sampleForm" type="submit">
+					<Button form="sampleForm" type="submit" disabled={loading}>
 						{loading ? "Saving..." : "Save"}
 					</Button>
+
 					<DrawerClose asChild>
 						<Button variant="outline">Cancel</Button>
 					</DrawerClose>

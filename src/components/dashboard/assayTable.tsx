@@ -5,7 +5,7 @@ import { getFilesSampleAssay, getSamplesInAssay } from "@/lib/api-keycloak";
 import { AddSamplesToAssayDialog } from "./add-samples-assay";
 import { DownloadTemplateButton } from "./download-template-button";
 import { EditAssayDialog } from "./edit-assay-dialog";
-import { UploadSampleDialog } from "./upload-sample";
+import { UploadTableDialog } from "./upload-table";
 import { TableActionGroup } from "./table-action-group";
 
 interface AssayTableProps {
@@ -15,7 +15,8 @@ interface AssayTableProps {
 
 export function AssayTable({ assay, project }: AssayTableProps) {
 	const { data } = useQuery({
-		queryKey: ["assaySamples", assay.id, assay.modifiedOn],
+		queryKey: ["assaySamples", assay.id, String(project?.id), assay.modifiedOn],
+		enabled: !!project?.id,
 		queryFn: async () => {
 			const samples: Sample[] = await getSamplesInAssay(
 				project?.id ?? "",
@@ -83,9 +84,13 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 							assayId={assay.id}
 						/>
 						{project?.id && (
-							<UploadSampleDialog projectId={project.id} assayId={assay.id} />
+							<UploadTableDialog projectId={project.id} assayId={assay.id} />
 						)}
-						<EditAssayDialog assay={assay} projectId={project?.id ?? ""} />
+						<EditAssayDialog
+							assay={assay}
+							projectId={project?.id ?? ""}
+							isSubProject={!!project?.parentProjectId}
+						/>
 					</TableActionGroup>
 					<TableActionGroup label="Templates">
 						<DownloadTemplateButton type="experiment" />

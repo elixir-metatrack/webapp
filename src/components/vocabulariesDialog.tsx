@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, NotebookPen, Settings2 } from "lucide-react";
+import { Globe, NotebookPen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {

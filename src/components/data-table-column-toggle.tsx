@@ -148,15 +148,21 @@ export function DataTableViewOptions<TData>({
 		return table.getColumn(field.key);
 	};
 
-	const availableCustomColumns = customColumns.filter((field) => {
-		if (field.archived) {
-			return false;
+	const availableCustomColumns = useMemo(() => {
+		if (dataType !== "sample") {
+			return [];
 		}
 
-		const column = table.getColumn(field.key);
+		return customColumns.filter((field) => {
+			if (field.archived) {
+				return false;
+			}
 
-		return Boolean(column?.getCanHide());
-	});
+			const column = table.getColumn(field.key);
+
+			return Boolean(column?.getCanHide());
+		});
+	}, [customColumns, table, dataType]);
 
 	const filteredCustomColumns = useMemo(() => {
 		const value = search.toLowerCase().trim();

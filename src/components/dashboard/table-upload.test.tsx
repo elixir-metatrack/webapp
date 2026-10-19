@@ -7,12 +7,12 @@ import {
 	waitFor,
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { UploadSampleDialog } from "./upload-sample";
+import { UploadTableDialog } from "./upload-table";
 import { DownloadTemplateButton } from "./download-template-button";
 import {
 	downloadExcelTemplate,
 	downloadTemplate,
-	uploadExperimentsheet,
+	uploadExperiments,
 	uploadSamplesheet,
 } from "@/lib/api-keycloak";
 import { TableImportError } from "@/lib/table-import";
@@ -20,7 +20,7 @@ import { TableImportError } from "@/lib/table-import";
 vi.mock("@/lib/api-keycloak", () => ({
 	downloadExcelTemplate: vi.fn(),
 	downloadTemplate: vi.fn(),
-	uploadExperimentsheet: vi.fn(),
+	uploadExperiments: vi.fn(),
 	uploadSamplesheet: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -35,7 +35,7 @@ function uploadDialog(assayId?: string) {
 	const invalidate = vi.spyOn(client, "invalidateQueries");
 	render(
 		<QueryClientProvider client={client}>
-			<UploadSampleDialog projectId="42" assayId={assayId} />
+			<UploadTableDialog projectId="42" assayId={assayId} />
 		</QueryClientProvider>
 	);
 	fireEvent.click(
@@ -62,18 +62,22 @@ describe("table uploads", () => {
 			await waitFor(() =>
 				expect(uploadSamplesheet).toHaveBeenCalledWith("42", file)
 			);
-			expect(uploadExperimentsheet).not.toHaveBeenCalled();
+			expect(uploadExperiments).not.toHaveBeenCalled();
 		}
 	);
 
 	it("sends experiment workbooks to the selected assay", async () => {
-		uploadDialog("assay-1");
+		const invalidate = uploadDialog("assay-1");
 		const file = new File(["contents"], "experiments.xlsx");
 		choose(file);
 		await waitFor(() =>
-			expect(uploadExperimentsheet).toHaveBeenCalledWith("42", "assay-1", file)
+			expect(uploadExperiments).toHaveBeenCalledWith("42", "assay-1", file)
 		);
 		expect(uploadSamplesheet).not.toHaveBeenCalled();
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: ["assays"] });
+		expect(invalidate).toHaveBeenCalledWith({
+			queryKey: ["assaySamples", "assay-1"],
+		});
 	});
 
 	it("shows row errors and refreshes data after a partial import", async () => {
@@ -94,9 +98,9 @@ describe("table uploads", () => {
 		expect(alert.textContent).toContain(
 			"Valid rows may already have been imported"
 		);
-		expect(invalidate).toHaveBeenCalledWith({ queryKey: ["samples", "42"] });
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: ["samples"] });
 		expect(invalidate).toHaveBeenCalledWith({
-			queryKey: ["sample-vocabularies", "42"],
+			queryKey: ["sample-vocabularies"],
 		});
 		expect(screen.getByRole("dialog")).toBeTruthy();
 	});
