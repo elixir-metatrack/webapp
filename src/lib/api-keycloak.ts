@@ -104,6 +104,28 @@ export async function apiPublic<T = unknown>(
 // Projects
 // ============================================================
 
+export async function downloadProjectIsaJson(projectId: string): Promise<void> {
+	const response = await fetch(
+		`${API_URL}/projects/${encodeURIComponent(projectId)}/exports/isa-json`,
+		{ headers: { Authorization: `Bearer ${keycloak.token}` } }
+	);
+	if (!response.ok) {
+		throw new Error(`ISA-JSON export failed (HTTP ${response.status})`);
+	}
+	// Download the original bytes: parsing numbers in JavaScript can lose decimal precision.
+	const url = URL.createObjectURL(await response.blob());
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = `project-${projectId}-isa.json`;
+	document.body.appendChild(link);
+	try {
+		link.click();
+	} finally {
+		link.remove();
+		setTimeout(() => URL.revokeObjectURL(url), 1000);
+	}
+}
+
 export async function getProjects() {
 	return api<Project[]>("projects");
 }

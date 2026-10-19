@@ -33,6 +33,7 @@ import { IconMicroscope, IconTestPipe, IconSitemap } from "@tabler/icons-react";
 import { useUser } from "#/hooks/use-user";
 import { useSidebar } from "#/components/ui/sidebar";
 import { VocabulariesDialog } from "#/components/vocabulariesDialog";
+import { ExportIsaJsonButton } from "@/components/dashboard/export-isa-json-button";
 import { UploadExperimentDialog } from "#/components/dashboard/upload-experiment";
 
 export const Route = createFileRoute("/projects/$projectId")({
@@ -186,6 +187,8 @@ function RouteComponent() {
 						</Button>
 					</div>
 				</Card>
+
+				<ExportIsaJsonButton projectId={projectId} />
 
 				<EditProjectDialog
 					project={project}
