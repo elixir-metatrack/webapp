@@ -433,6 +433,7 @@ export async function createSampleMetadataField(
 	data: {
 		key: string;
 		label: string;
+		tooltip: string;
 		type: SampleMetadataFieldType;
 	}
 ): Promise<SampleMetadataField> {
@@ -450,6 +451,7 @@ export async function updateSampleMetadataField(
 	fieldId: string,
 	data: {
 		label?: string;
+		tooltip?: string;
 		archived?: boolean;
 	}
 ): Promise<SampleMetadataField> {
@@ -727,6 +729,15 @@ export async function requestPresignedDownload(
 			sampleName: data.sampleName,
 			fileName: data.fileName,
 		}),
+	});
+}
+
+export async function deleteProjectFile(
+	projectId: number,
+	fileUuid: string
+): Promise<void> {
+	await api<void>(`projects/${projectId}/files/${fileUuid}`, {
+		method: "DELETE",
 	});
 }
 

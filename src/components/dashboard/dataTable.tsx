@@ -76,6 +76,7 @@ import { buildProjectGraph } from "@/lib/projectTree";
 import { UploadDataDialog } from "./upload-data";
 import {
 	batchEditSamples,
+	deleteProjectFile,
 	getAssaysInSample,
 	getSampleMetadataFields,
 	requestPresignedDownload,
@@ -286,10 +287,19 @@ export function DataTable<T extends object>({
 		dataType !== "assay"
 	);
 
+	const getHeaderTooltip = (columnId: string): string | undefined => {
+		const customField = customMetadataFields.find(
+			(field) => field.key === columnId
+		);
+
+		return customField?.tooltip || getColumnTooltip(columnId);
+	};
+
 	// ===================================================================
 	// SELECT FASTQ FILES
 
 	type SelectableFastqFile = {
+		uuid: string;
 		sampleName: string;
 		fileName: string;
 		key: string;
@@ -309,6 +319,7 @@ export function DataTable<T extends object>({
 			}>
 		).flatMap((sample) =>
 			(sample.files ?? []).map((file) => ({
+				uuid: file.uuid,
 				sampleName: sample.name,
 				fileName: file.name,
 				key: JSON.stringify([sample.name, file.name]),
@@ -954,10 +965,36 @@ export function DataTable<T extends object>({
 	const quickEditColumns = editableColumns.slice(1, QUICK_EDIT_LIMIT);
 	const moreEditColumns = editableColumns.slice(QUICK_EDIT_LIMIT);
 
-	const handleDeleteSelectedFastqFiles = () => {
-		toastError(
-			"FASTQ deletion is not connected yet. Connect this action to your file deletion API."
+	const handleDeleteSelectedFastqFiles = async (
+		filesToDelete: SelectableFastqFile[]
+	) => {
+		if (!project?.id || !assay?.id || filesToDelete.length === 0) {
+			return;
+		}
+
+		const results = await Promise.allSettled(
+			filesToDelete.map((file) => {
+				return deleteProjectFile(Number(project.id), file.uuid);
+			})
 		);
+
+		const succeeded = results.filter(
+			(result) => result.status === "fulfilled"
+		).length;
+
+		const failed = results.length - succeeded;
+
+		await queryClient.invalidateQueries({
+			queryKey: ["assaySamples", assay.id, String(project.id)],
+		});
+
+		if (failed > 0) {
+			toastError(`Failed to delete ${failed} of ${results.length} file(s).`);
+		}
+
+		if (succeeded > 0) {
+			toastSuccess(`${succeeded} file(s) deleted successfully.`);
+		}
 	};
 
 	return (
@@ -1218,35 +1255,39 @@ export function DataTable<T extends object>({
 
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
-								{headerGroup.headers.map((header) => (
-									<TableHead key={header.id}>
-										{header.isPlaceholder ? null : (
-											<div className="flex items-center gap-1">
-												{getColumnTooltip(header.id) ? (
-													<Tooltip>
-														<TooltipTrigger asChild>
-															<div>
-																{flexRender(
-																	header.column.columnDef.header,
-																	header.getContext()
-																)}
-															</div>
-														</TooltipTrigger>
+								{headerGroup.headers.map((header) => {
+									const tooltip = getHeaderTooltip(header.column.id);
 
-														<TooltipContent className="max-w-xs">
-															<p>{getColumnTooltip(header.id)}</p>
-														</TooltipContent>
-													</Tooltip>
-												) : (
-													flexRender(
-														header.column.columnDef.header,
-														header.getContext()
-													)
-												)}
-											</div>
-										)}
-									</TableHead>
-								))}
+									return (
+										<TableHead key={header.id}>
+											{header.isPlaceholder ? null : (
+												<div className="flex items-center gap-1">
+													{tooltip ? (
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<div>
+																	{flexRender(
+																		header.column.columnDef.header,
+																		header.getContext()
+																	)}
+																</div>
+															</TooltipTrigger>
+
+															<TooltipContent className="max-w-xs">
+																<p>{tooltip}</p>
+															</TooltipContent>
+														</Tooltip>
+													) : (
+														flexRender(
+															header.column.columnDef.header,
+															header.getContext()
+														)
+													)}
+												</div>
+											)}
+										</TableHead>
+									);
+								})}
 							</TableRow>
 						))}
 					</TableHeader>
@@ -1289,8 +1330,22 @@ export function DataTable<T extends object>({
 					onDownload={() =>
 						handleDownloadFastqFiles(selectedFastqFilesToDownload)
 					}
-					onDelete={handleDeleteSelectedFastqFiles}
+					onDelete={() =>
+						handleDeleteSelectedFastqFiles(selectedFastqFilesToDownload)
+					}
 					onClear={() => setSelectedFastqFiles(new Set())}
+					deleteAction={
+						<DeleteAlertButton
+							projectId={String(project?.id)}
+							assayId={String(assay?.id)}
+							entityName="fastq"
+							insideDropdown={false}
+							item={selectedFastqFilesToDownload.map((file) => ({
+								id: file.uuid,
+							}))}
+							onDeleted={() => setSelectedFastqFiles(new Set())}
+						/>
+					}
 				/>
 			)}
 		</div>
