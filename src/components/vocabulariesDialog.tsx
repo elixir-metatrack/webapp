@@ -21,12 +21,14 @@ interface VocabulariesDialogProps {
 	projectId: string;
 	dataType: VocabularyDataType;
 	isSystemAdmin: boolean;
+	disable?: boolean;
 }
 
 export function VocabulariesDialog({
 	projectId,
 	dataType,
 	isSystemAdmin,
+	disable,
 }: VocabulariesDialogProps) {
 	const [open, setOpen] = useState(false);
 
@@ -35,7 +37,10 @@ export function VocabulariesDialog({
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
-				<Button variant={isSystemAdmin ? "destructive" : "default"}>
+				<Button
+					variant={isSystemAdmin ? "destructive" : "outline"}
+					disabled={disable}
+				>
 					{isSystemAdmin ? (
 						<>
 							<Globe />
@@ -44,7 +49,7 @@ export function VocabulariesDialog({
 					) : (
 						<>
 							<NotebookPen />
-							Add Vocabulary
+							Add control vocabulary
 						</>
 					)}
 				</Button>
@@ -61,7 +66,7 @@ export function VocabulariesDialog({
 					<DialogDescription>
 						{isSystemAdmin
 							? `Manage global ${entityLabel.toLowerCase()} vocabularies available across the system.`
-							: `Manage ${entityLabel.toLowerCase()} vocabularies for this project.`}
+							: `Manage ${entityLabel.toLowerCase()} custom field vocabularies for this project.`}
 					</DialogDescription>
 				</DialogHeader>
 
