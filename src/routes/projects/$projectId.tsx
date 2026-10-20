@@ -227,13 +227,6 @@ function RouteComponent() {
 								</TabsList>
 
 								<div className="flex items-center gap-2">
-									{/* Normal user vocabulary */}
-									<VocabulariesDialog
-										projectId={projectId}
-										dataType={activeTab === "samples" ? "sample" : "assay"}
-										isSystemAdmin={false}
-									/>
-
 									{/* Admin global vocabulary */}
 									{isSystemAdmin && (
 										<VocabulariesDialog
