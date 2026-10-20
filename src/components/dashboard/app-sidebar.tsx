@@ -119,9 +119,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 			<SidebarContent>
 				<SidebarMenu className="px-2">
 					<SidebarMenuItem>
-						<SidebarMenuItem>
-							<NotificationPopover isCollapsed={isCollapsed} />
-						</SidebarMenuItem>
+						<NotificationPopover isCollapsed={isCollapsed} />
 					</SidebarMenuItem>
 				</SidebarMenu>
 				<NavProjects projects={projects} isLoading={isLoading} />
