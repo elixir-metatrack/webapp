@@ -65,6 +65,7 @@ import type {
 import {
 	ASSAY_NUMBER_FIELDS,
 	DATE_FIELDS,
+	formatDateToYMD,
 	getColumnOrder,
 	NON_EDITABLE_COLUMNS,
 	NON_VIEWED_COLUMNS,
@@ -174,9 +175,6 @@ function getColumnTooltip(key: string) {
 function getColumnNewName(key: string) {
 	return COLUMN_NAMES[key] ?? "";
 }
-
-const formatDateToYMD = (dateStr?: string | null) =>
-	dateStr ? new Date(dateStr).toISOString().split("T")[0] : "";
 
 function QuickEditField({
 	fieldKey,

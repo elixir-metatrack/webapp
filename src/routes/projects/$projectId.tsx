@@ -17,7 +17,7 @@ import { AddSampleDialog } from "@/components/dashboard/add-sample";
 import type { Assay, Project, Sample } from "@/lib/types";
 import { UploadSampleDialog } from "@/components/dashboard/upload-sample";
 import type { ColumnDef } from "@tanstack/react-table";
-import { cn, NON_VIEWED_COLUMNS } from "@/lib/utils";
+import { cn, formatDateToYMD, NON_VIEWED_COLUMNS } from "@/lib/utils";
 import { DownloadTemplateButton } from "@/components/dashboard/download-template-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
@@ -34,6 +34,7 @@ import { useUser } from "#/hooks/use-user";
 import { useSidebar } from "#/components/ui/sidebar";
 import { VocabulariesDialog } from "#/components/vocabulariesDialog";
 import { UploadExperimentDialog } from "#/components/dashboard/upload-experiment";
+import { CalendarDays, Database, FileText, UserRound } from "lucide-react";
 
 export const Route = createFileRoute("/projects/$projectId")({
 	component: RouteComponent,
@@ -147,41 +148,103 @@ function RouteComponent() {
 				]}
 			/>
 			<div className="space-y-6 p-4">
-				<Card className="grid grid-flow-col grid-rows-3 gap-4">
-					<CardHeader className="row-span-1">
-						<CardTitle className="flex items-center gap-2 text-2xl font-bold">
-							{project.name}
+				<Card className="grid grid-cols-1 gap-2 rounded-2xl border shadow-sm lg:grid-cols-[minmax(0,1fr)_220px]">
+					<CardHeader className="pb-2">
+						<div className="flex flex-wrap items-center gap-3">
+							<CardTitle className="text-2xl font-bold tracking-tight break-words">
+								{project.name}
+							</CardTitle>
+
 							{project.parentProjectId && (
-								<Badge variant="secondary">
+								<Badge
+									variant="secondary"
+									className="rounded-full px-3 py-1 text-xs font-medium"
+								>
 									Sub-project
-									{parentProject ? (
+									{parentProject && (
 										<>
 											{" of "}
 											<Link
 												to="/projects/$projectId"
 												params={{ projectId: String(parentProject.id) }}
-												className="underline"
+												className="underline underline-offset-4"
 											>
 												{parentProject.name}
 											</Link>
 										</>
-									) : null}
+									)}
 								</Badge>
 							)}
-						</CardTitle>
+						</div>
 					</CardHeader>
 
-					<CardContent className="row-span-2 space-y-4">
-						<p>Number of samples: {samples.length}</p>
-						<p>Description: {project.description}</p>
+					<CardContent className="space-y-5 lg:col-start-1 lg:row-start-2">
+						<div className="space-y-2">
+							<div className="flex items-center gap-2 text-sm font-medium">
+								<FileText className="text-muted-foreground size-4" />
+								Description
+							</div>
+							<p className="text-muted-foreground text-sm leading-6 break-words whitespace-pre-wrap">
+								{project.description || "No description provided."}
+							</p>
+						</div>
+
+						<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+							<div className="bg-muted/30 rounded-2xl border p-4">
+								<div className="text-muted-foreground mb-3 flex items-center gap-2 text-sm">
+									<Database className="size-4" />
+									<span>Samples</span>
+								</div>
+								<p className="text-2xl font-semibold tracking-tight">
+									{samples.length}
+								</p>
+								<p className="text-muted-foreground mt-1 text-xs">
+									Total samples
+								</p>
+							</div>
+
+							<div className="bg-muted/30 rounded-2xl border p-4">
+								<div className="text-muted-foreground mb-3 flex items-center gap-2 text-sm">
+									<CalendarDays className="size-4" />
+									<span>Created on</span>
+								</div>
+								<p className="text-lg font-semibold tracking-tight">
+									{formatDateToYMD(project.createdOn)}
+								</p>
+							</div>
+						</div>
+
+						<div className="flex items-center gap-3 border-t pt-4">
+							<div className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full">
+								<UserRound className="text-muted-foreground size-5" />
+							</div>
+
+							<div className="min-w-0 flex-1 space-y-1">
+								<p className="text-muted-foreground text-xs">Project owner</p>
+								<p className="truncate text-sm font-medium">
+									{project.ownerUsername}
+								</p>
+							</div>
+						</div>
 					</CardContent>
-					<div className="col-span-1 row-span-2 row-start-2 space-x-6 justify-self-center">
-						<Button size="lg" onClick={() => openEditProjectDialog("general")}>
-							<SquarePen />
+
+					<div className="flex flex-col gap-3 px-6 pb-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:justify-center lg:border-l lg:py-6">
+						<Button
+							size="lg"
+							className="w-full justify-start rounded-xl"
+							onClick={() => openEditProjectDialog("general")}
+						>
+							<SquarePen className="mr-1 size-4" />
 							Edit Project
 						</Button>
-						<Button size="lg" onClick={() => openEditProjectDialog("members")}>
-							<UserRoundCog />
+
+						<Button
+							size="lg"
+							variant="outline"
+							className="w-full justify-start rounded-xl"
+							onClick={() => openEditProjectDialog("members")}
+						>
+							<UserRoundCog className="mr-1 size-4" />
 							Manage Members
 						</Button>
 					</div>
