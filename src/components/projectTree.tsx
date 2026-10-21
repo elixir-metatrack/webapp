@@ -22,6 +22,7 @@ export interface ProjectGraph {
 interface ProjectTreeProps {
 	data: ProjectGraph;
 	width?: number;
+	onAssayClick?: (assayId: string) => void;
 }
 
 interface PositionedNode extends GraphNode {
@@ -32,7 +33,11 @@ interface PositionedNode extends GraphNode {
 const NODE_WIDTH = 160;
 const NODE_HEIGHT = 40;
 
-export function ProjectTree({ data, width = 1200 }: ProjectTreeProps) {
+export function ProjectTree({
+	data,
+	width = 1200,
+	onAssayClick,
+}: ProjectTreeProps) {
 	const svgRef = useRef<SVGSVGElement | null>(null);
 
 	useEffect(() => {
@@ -202,6 +207,26 @@ export function ProjectTree({ data, width = 1200 }: ProjectTreeProps) {
 				"g"
 			);
 
+			if (node.type === "assay" && onAssayClick) {
+				nodeGroup.style.cursor = "pointer";
+				nodeGroup.setAttribute("role", "button");
+				nodeGroup.setAttribute("tabindex", "0");
+				nodeGroup.setAttribute("aria-label", `Open assay ${node.name}`);
+
+				const handleClick = () => {
+					onAssayClick(node.id.replace(/^assay-/, ""));
+				};
+
+				nodeGroup.addEventListener("click", handleClick);
+
+				nodeGroup.addEventListener("keydown", (event) => {
+					if (event.key === "Enter" || event.key === " ") {
+						event.preventDefault();
+						handleClick();
+					}
+				});
+			}
+
 			nodeGroup.setAttribute(
 				"transform",
 				`translate(
@@ -253,6 +278,47 @@ export function ProjectTree({ data, width = 1200 }: ProjectTreeProps) {
 
 			nodeGroup.appendChild(text);
 
+			if (node.type === "assay") {
+				const icon = document.createElementNS(
+					"http://www.w3.org/2000/svg",
+					"svg"
+				);
+
+				icon.setAttribute("width", "14");
+				icon.setAttribute("height", "14");
+				icon.setAttribute("viewBox", "0 0 24 24");
+				icon.setAttribute("fill", "none");
+				icon.setAttribute("stroke", "#166534");
+				icon.setAttribute("stroke-width", "2");
+				icon.setAttribute("stroke-linecap", "round");
+				icon.setAttribute("stroke-linejoin", "round");
+
+				icon.setAttribute("x", String(NODE_WIDTH - 22));
+				icon.setAttribute("y", String((NODE_HEIGHT - 14) / 2));
+
+				const path = document.createElementNS(
+					"http://www.w3.org/2000/svg",
+					"path"
+				);
+
+				path.setAttribute("d", "M 15 3 h 6 v 6 M 10 14 L 21 3");
+
+				icon.appendChild(path);
+
+				const rect = document.createElementNS(
+					"http://www.w3.org/2000/svg",
+					"path"
+				);
+
+				rect.setAttribute(
+					"d",
+					"M 18 13 v 6 a 2 2 0 0 1 -2 2 H 5 a 2 2 0 0 1 -2 -2 V 8 a 2 2 0 0 1 2 -2 h 6"
+				);
+
+				icon.appendChild(rect);
+				nodeGroup.appendChild(icon);
+			}
+
 			const title = document.createElementNS(
 				"http://www.w3.org/2000/svg",
 				"title"
@@ -264,7 +330,7 @@ export function ProjectTree({ data, width = 1200 }: ProjectTreeProps) {
 
 			nodesGroup.appendChild(nodeGroup);
 		}
-	}, [data, width]);
+	}, [data, width, onAssayClick]);
 
 	return (
 		<div className="w-full overflow-x-auto">

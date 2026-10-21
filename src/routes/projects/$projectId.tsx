@@ -49,6 +49,11 @@ function RouteComponent() {
 		"general" | "members"
 	>("general");
 
+	const handleAssayClick = (assayId: string) => {
+		setActiveTab("experiments");
+		setActiveAssayTab(assayId);
+	};
+
 	useEffect(() => {
 		setActiveTab("samples");
 	}, [projectId]);
@@ -320,6 +325,7 @@ function RouteComponent() {
 											<AddSampleDialog projectId={projectId} />
 										</div>
 									}
+									onAssayClick={handleAssayClick}
 								/>
 							</TabsContent>
 

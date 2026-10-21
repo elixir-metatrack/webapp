@@ -108,6 +108,7 @@ interface DataTableProps<T extends object> {
 	project?: Project;
 	dataType: "sample" | "assay";
 	assay?: Assay;
+	onAssayClick?: (assayId: string) => void;
 }
 
 const COLUMN_NAMES: Record<string, string> = {
@@ -255,6 +256,7 @@ export function DataTable<T extends object>({
 	filterPlaceholder = "Filter...",
 	dataType,
 	assay,
+	onAssayClick,
 }: DataTableProps<T>) {
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{
@@ -1000,7 +1002,7 @@ export function DataTable<T extends object>({
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-center space-x-2 lg:flex">
-				<ProjectTree data={treeData} width={1200} />
+				<ProjectTree data={treeData} width={1200} onAssayClick={onAssayClick} />
 			</div>
 
 			<div className="items-center justify-between space-x-2 lg:flex">
