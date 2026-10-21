@@ -73,7 +73,7 @@ import {
 	SAMPLE_NUMBER_FIELDS,
 } from "@/lib/utils";
 import { ProjectTree, type ProjectGraph } from "../projectTree";
-import { buildProjectGraph } from "@/lib/projectTree";
+import { buildAssaySelectionTree, buildProjectGraph } from "@/lib/projectTree";
 import { UploadDataDialog } from "./upload-data";
 import {
 	batchEditSamples,
@@ -896,11 +896,8 @@ export function DataTable<T extends object>({
 	const selectedSamples: Sample[] =
 		dataType === "sample" ? (selectedRows as Sample[]) : [];
 
-	const selectedAssays: Sample[] =
-		dataType === "assay" ? (selectedRows as Sample[]) : [];
-
-	const selectedSamplesForTree =
-		dataType === "sample" ? selectedSamples : selectedAssays;
+	const selectedAssays: Assay[] =
+		dataType === "assay" ? (selectedRows as Assay[]) : [];
 
 	/*
 	 * ============================================================
@@ -920,21 +917,24 @@ export function DataTable<T extends object>({
 		queryKey: [
 			"tree-assays-by-sample",
 			project?.id,
-			selectedSamplesForTree.map((sample) => sample.id),
+			selectedSamples.map((sample) => sample.id),
 		],
 
-		enabled: Boolean(project?.id) && selectedSamplesForTree.length > 0,
+		enabled:
+			dataType === "sample" &&
+			Boolean(project?.id) &&
+			selectedSamples.length > 0,
 
 		queryFn: async () => {
 			if (!project?.id) return {};
 
 			const entries = await Promise.all(
-				selectedSamplesForTree
+				selectedSamples
 					.filter((sample) => Boolean(sample.id))
 					.map(async (sample) => {
 						const assays = await getAssaysInSample(project.id!, sample.id!);
 
-						return [sample.id!, assays] as const;
+						return [sample.id, assays] as const;
 					})
 			);
 
@@ -948,13 +948,15 @@ export function DataTable<T extends object>({
 	 * ============================================================
 	 */
 
-	const treeData: ProjectGraph =
-		project && selectedSamplesForTree.length > 0
-			? buildProjectGraph(project, selectedSamplesForTree, treeAssaysBySample)
-			: {
-					nodes: [],
-					links: [],
-				};
+	const treeData: ProjectGraph = !project
+		? { nodes: [], links: [] }
+		: dataType === "sample"
+			? selectedSamples.length > 0
+				? buildProjectGraph(project, selectedSamples, treeAssaysBySample)
+				: { nodes: [], links: [] }
+			: selectedAssays.length > 0
+				? buildAssaySelectionTree(project, assay!, selectedAssays)
+				: { nodes: [], links: [] };
 
 	const editableColumns = enhancedColumns.filter(
 		(col) => !NON_EDITABLE_COLUMNS.includes(String(col.id))
