@@ -82,6 +82,8 @@ export type MeResponse = {
 	country: string;
 	institution: string;
 	orcid: string;
+	firstName: string;
+	lastName: string;
 };
 
 export type Member = {
