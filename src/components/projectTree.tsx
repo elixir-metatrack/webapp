@@ -201,11 +201,26 @@ export function ProjectTree({
 
 		group.appendChild(nodesGroup);
 
+		console.log("onAssayClick:", typeof onAssayClick);
+
+		console.table(
+			positionedNodes.map((node) => ({
+				id: node.id,
+				name: node.name,
+				type: node.type,
+			}))
+		);
+
 		for (const node of positionedNodes) {
 			const nodeGroup = document.createElementNS(
 				"http://www.w3.org/2000/svg",
 				"g"
 			);
+
+			console.log("Node:", node.name, {
+				type: node.type,
+				hasOnAssayClick: typeof onAssayClick === "function",
+			});
 
 			if (node.type === "assay" && onAssayClick) {
 				nodeGroup.style.cursor = "pointer";
