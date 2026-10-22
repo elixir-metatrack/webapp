@@ -33,25 +33,35 @@ export function UploadSampleDialog({
 
 	const uploadMutation = useMutation({
 		mutationFn: (file: File) => uploadSampleFileNew(projectId, file),
-		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: ["samples", projectId, studyId, assayId],
-			});
 
+		onSuccess: () => {
 			const now = new Date();
 			const formattedDate = now.toLocaleString();
 
 			toastSuccess("Upload completed successfully", {
 				description: `${formattedDate}.`,
 			});
+
 			setFile(null);
 			setOpen(false);
 		},
+
 		onError: (error: Error) => {
 			console.error(error);
 			const message = error?.message || "Uploading error";
 
 			toastError(message);
+		},
+
+		onSettled: async () => {
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: ["samples", projectId],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: ["samples", projectId, studyId, assayId],
+				}),
+			]);
 		},
 	});
 

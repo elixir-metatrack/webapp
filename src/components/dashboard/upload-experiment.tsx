@@ -32,16 +32,7 @@ export function UploadExperimentDialog({
 	const uploadMutation = useMutation({
 		mutationFn: (file: File) => uploadExperiments(projectId, assayId, file),
 
-		onSuccess: async () => {
-			await Promise.all([
-				queryClient.invalidateQueries({
-					queryKey: ["assays", projectId],
-				}),
-				queryClient.invalidateQueries({
-					queryKey: ["experiments", projectId, assayId],
-				}),
-			]);
-
+		onSuccess: () => {
 			toastSuccess("Experiments uploaded successfully", {
 				description: new Date().toLocaleString(),
 			});
@@ -56,6 +47,17 @@ export function UploadExperimentDialog({
 		onError: (error: Error) => {
 			console.error(error);
 			toastError(error.message || "Error uploading experiments");
+		},
+
+		onSettled: async () => {
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: ["assays", projectId],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: ["experiments", projectId, assayId],
+				}),
+			]);
 		},
 	});
 
