@@ -17,7 +17,7 @@ import { AddSampleDialog } from "@/components/dashboard/add-sample";
 import type { Assay, Project, Sample } from "@/lib/types";
 import { UploadTableDialog } from "@/components/dashboard/upload-table";
 import type { ColumnDef } from "@tanstack/react-table";
-import { cn, formatDateToYMD, NON_VIEWED_COLUMNS } from "@/lib/utils";
+import { formatDateToYMD, NON_VIEWED_COLUMNS } from "@/lib/utils";
 import { DownloadTemplateButton } from "@/components/dashboard/download-template-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
@@ -38,7 +38,6 @@ import {
 } from "lucide-react";
 import { IconMicroscope, IconTestPipe, IconSitemap } from "@tabler/icons-react";
 import { useUser } from "#/hooks/use-user";
-import { useSidebar } from "#/components/ui/sidebar";
 import { VocabulariesDialog } from "#/components/vocabulariesDialog";
 
 export const Route = createFileRoute("/projects/$projectId")({
@@ -136,10 +135,8 @@ function RouteComponent() {
 					}))
 			: [];
 
-	const { state } = useSidebar();
-
 	return (
-		<div className={cn(state === "collapsed" ? "w-19/20" : "w-7/8")}>
+		<div className="w-full min-w-0">
 			<SiteHeader
 				items={[
 					{ label: "My Projects", href: "/projects" },
