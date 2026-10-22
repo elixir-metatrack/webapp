@@ -10,7 +10,53 @@ export function KeycloakProvider({ children }: { children: React.ReactNode }) {
 
 	useEffect(() => {
 		let active = true;
+		let redirectingToLogin = false;
 		let refreshInterval: ReturnType<typeof setInterval> | undefined;
+		let refreshPromise: Promise<void> | null = null;
+
+		const redirectToLogin = async () => {
+			if (!active || redirectingToLogin) return;
+
+			redirectingToLogin = true;
+			setIsAuthenticated(false);
+			setToken(null);
+
+			window.location.href = "/";
+		};
+
+		const refreshToken = async () => {
+			if (!active || redirectingToLogin || !keycloak.authenticated) {
+				return;
+			}
+
+			if (refreshPromise) {
+				return refreshPromise;
+			}
+
+			refreshPromise = (async () => {
+				try {
+					await keycloak.updateToken(30);
+
+					if (!active) return;
+
+					setToken(keycloak.token ?? null);
+					setIsAuthenticated(Boolean(keycloak.authenticated));
+				} catch (error) {
+					console.error("Keycloak session refresh failed:", error);
+					await redirectToLogin();
+				} finally {
+					refreshPromise = null;
+				}
+			})();
+
+			return refreshPromise;
+		};
+
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === "visible") {
+				void refreshToken();
+			}
+		};
 
 		async function initializeKeycloak() {
 			try {
@@ -37,17 +83,14 @@ export function KeycloakProvider({ children }: { children: React.ReactNode }) {
 				if (!active) return;
 
 				refreshInterval = setInterval(() => {
-					keycloak
-						.updateToken(30)
-						.then((refreshed) => {
-							if (active && refreshed) {
-								setToken(keycloak.token ?? null);
-							}
-						})
-						.catch((error) => {
-							console.error("Failed to refresh Keycloak token:", error);
-						});
+					void refreshToken();
 				}, 10000);
+
+				document.addEventListener("visibilitychange", handleVisibilityChange);
+
+				if (authenticated) {
+					void refreshToken();
+				}
 			} catch (error) {
 				console.error("Keycloak initialization failed:", error);
 			} finally {
@@ -63,6 +106,8 @@ export function KeycloakProvider({ children }: { children: React.ReactNode }) {
 			if (refreshInterval !== undefined) {
 				clearInterval(refreshInterval);
 			}
+
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
 		};
 	}, []);
 

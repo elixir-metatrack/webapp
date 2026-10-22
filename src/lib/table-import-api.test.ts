@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
 	api,
 	downloadExcelTemplate,
@@ -8,12 +8,23 @@ import {
 	uploadSamplesheet,
 } from "./api-keycloak";
 import { TableImportError } from "./table-import";
+import { keycloak } from "./keycloak";
 
-vi.mock("./keycloak", () => ({ keycloak: { token: "test-token" } }));
+vi.mock("./keycloak", () => ({
+	keycloak: {
+		token: "test-token",
+		authenticated: true,
+		updateToken: vi.fn(),
+	},
+}));
 vi.mock("./config", () => ({
 	API_URL: "http://localhost/api",
 	API_BASE_URL: "http://localhost",
 }));
+beforeEach(() => {
+	keycloak.token = "test-token";
+	vi.mocked(keycloak.updateToken).mockReset().mockResolvedValue(false);
+});
 afterEach(() => {
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
@@ -114,6 +125,43 @@ it("retains structured row errors for table imports only", async () => {
 	).rejects.toBeInstanceOf(TableImportError);
 	await expect(api("projects/42/assays")).rejects.toThrow("Sample not found");
 });
+
+it.each(["sample", "experiment"])(
+	"retains %s import errors after retrying with a refreshed token",
+	async (type) => {
+		const violations = [
+			{ row: "row 4", field: "Sample", message: "Sample not found" },
+		];
+		const fetch = vi
+			.fn()
+			.mockResolvedValueOnce(new Response(null, { status: 401 }))
+			.mockResolvedValueOnce(Response.json(violations, { status: 400 }));
+		vi.stubGlobal("fetch", fetch);
+		vi.mocked(keycloak.updateToken).mockImplementation(async (minValidity) => {
+			if (minValidity === -1) keycloak.token = "refreshed-token";
+			return minValidity === -1;
+		});
+		const file = new File(["workbook"], "table.xlsx");
+		const upload =
+			type === "sample"
+				? uploadSamplesheet("42", file)
+				: uploadExperiments("42", "assay-id", file);
+		await expect(upload).rejects.toMatchObject({
+			name: "TableImportError",
+			violations,
+		});
+		expect(keycloak.updateToken).toHaveBeenNthCalledWith(1, 30);
+		expect(keycloak.updateToken).toHaveBeenNthCalledWith(2, -1);
+		expect(fetch).toHaveBeenCalledTimes(2);
+		const [, firstRequest] = fetch.mock.calls[0];
+		const [, retryRequest] = fetch.mock.calls[1];
+		expect(firstRequest.headers.Authorization).toBe("Bearer test-token");
+		expect(retryRequest.headers.Authorization).toBe("Bearer refreshed-token");
+		expect(retryRequest.body).toBe(firstRequest.body);
+		expect(retryRequest.body.get("file")).toBe(file);
+		expect(retryRequest.headers["Content-Type"]).toBeUndefined();
+	}
+);
 
 it("downloads the versioned Excel template without changing CSV paths", async () => {
 	const fetch = vi

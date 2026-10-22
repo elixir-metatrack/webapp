@@ -40,6 +40,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import type { Vocabulary } from "#/lib/types";
 import { toastError, toastSuccess } from "#/lib/toast";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "../ui/tooltip";
 
 type VocabularyDataType = "sample" | "assay";
 
@@ -490,18 +496,27 @@ export function Vocabularies({
 										Edit
 									</Button>
 
-									<Button
-										variant="outline"
-										size="icon"
-										className="text-destructive"
-										onClick={() => {
-											setSelectedField(vocabulary.fieldKey);
+									<TooltipProvider>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant="outline"
+													size="icon"
+													className="text-destructive"
+													onClick={() => {
+														setSelectedField(vocabulary.fieldKey);
+														setIsDeleteOpen(true);
+													}}
+												>
+													<Trash2 className="h-4 w-4 text-red-500" />
+												</Button>
+											</TooltipTrigger>
 
-											setIsDeleteOpen(true);
-										}}
-									>
-										<Trash2 className="h-4 w-4" />
-									</Button>
+											<TooltipContent>
+												<p>Remove dictionaries associated with this field</p>
+											</TooltipContent>
+										</Tooltip>
+									</TooltipProvider>
 								</div>
 							</div>
 						))}
@@ -684,8 +699,8 @@ export function Vocabularies({
 						<DialogTitle>Delete {entityLabel} Vocabulary</DialogTitle>
 
 						<DialogDescription>
-							Are you sure you want to delete <strong>{selectedField}</strong>?
-							This action cannot be undone.
+							Are you sure you want to delete <strong>vocabularies</strong> for{" "}
+							<strong>{selectedField}</strong>? This action cannot be undone.
 						</DialogDescription>
 					</DialogHeader>
 

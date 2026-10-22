@@ -58,7 +58,16 @@ export interface SampleWithAssays extends Sample {
 }
 
 export interface SampleFile {
+	uuid: string;
 	name: string;
+	virtualPath: string;
+	objectKey: string;
+	status: string;
+	sampleId: string;
+	assayId: string;
+	readRole: string;
+	md5: string;
+	unencryptedMd5: string;
 }
 
 export type CreateSample = Omit<
@@ -73,6 +82,8 @@ export type MeResponse = {
 	country: string;
 	institution: string;
 	orcid: string;
+	firstName: string;
+	lastName: string;
 };
 
 export type Member = {
@@ -231,6 +242,7 @@ export interface SampleMetadataField {
 	key: string;
 	label: string;
 	type: SampleMetadataFieldType;
+	tooltip: string;
 	archived: boolean;
 }
 

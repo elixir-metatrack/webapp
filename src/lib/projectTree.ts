@@ -131,6 +131,47 @@ export function buildProjectGraph(
 	};
 }
 
+export function buildAssaySelectionTree(
+	project: Project,
+	assay: Assay,
+	samples: Assay[]
+): ProjectGraph {
+	const nodes: GraphNode[] = [
+		{
+			id: `project-${project.id}`,
+			name: project.name,
+			type: "project",
+		},
+		{
+			id: `assay-${assay.id}`,
+			name: assay.name,
+			type: "assay",
+		},
+	];
+
+	const links: GraphLink[] = [
+		{
+			source: `project-${project.id}`,
+			target: `assay-${assay.id}`,
+		},
+	];
+
+	for (const sample of samples) {
+		nodes.push({
+			id: `sample-${sample.name}`,
+			name: sample.name,
+			type: "sample",
+		});
+
+		links.push({
+			source: `assay-${assay.id}`,
+			target: `sample-${sample.name}`,
+		});
+	}
+
+	return { nodes, links };
+}
+
 /**
  * ============================================================
  * PROJECT -> SAMPLES

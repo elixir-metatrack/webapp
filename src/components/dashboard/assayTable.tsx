@@ -3,10 +3,7 @@ import type { Assay, Project, Sample } from "@/lib/types";
 import { DataTable } from "./dataTable";
 import { getFilesSampleAssay, getSamplesInAssay } from "@/lib/api-keycloak";
 import { AddSamplesToAssayDialog } from "./add-samples-assay";
-import { DownloadTemplateButton } from "./download-template-button";
 import { EditAssayDialog } from "./edit-assay-dialog";
-import { UploadTableDialog } from "./upload-table";
-import { TableActionGroup } from "./table-action-group";
 
 interface AssayTableProps {
 	assay: Assay;
@@ -18,10 +15,8 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 		queryKey: ["assaySamples", assay.id, String(project?.id), assay.modifiedOn],
 		enabled: !!project?.id,
 		queryFn: async () => {
-			const samples: Sample[] = await getSamplesInAssay(
-				project?.id ?? "",
-				assay.id
-			);
+			const samples: Sample[] =
+				(await getSamplesInAssay(project?.id ?? "", assay.id)) ?? [];
 
 			const samplesWithFiles = await Promise.all(
 				samples.map(async (sample) => {
@@ -76,27 +71,18 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 			onEdit={(sample) => console.log("Edit sample", sample)}
 			onDelete={(sample) => console.log("Delete sample", sample)}
 			assay={assay}
-			toolbarActions={
-				<>
-					<TableActionGroup label="Manage data">
-						<AddSamplesToAssayDialog
-							projectId={project?.id ?? ""}
-							assayId={assay.id}
-						/>
-						{project?.id && (
-							<UploadTableDialog projectId={project.id} assayId={assay.id} />
-						)}
-						<EditAssayDialog
-							assay={assay}
-							projectId={project?.id ?? ""}
-							isSubProject={!!project?.parentProjectId}
-						/>
-					</TableActionGroup>
-					<TableActionGroup label="Templates">
-						<DownloadTemplateButton type="experiment" />
-						<DownloadTemplateButton type="experiment" format="xlsx" />
-					</TableActionGroup>
-				</>
+			showAddButton={
+				<div className="flex flex-wrap gap-2">
+					<EditAssayDialog
+						assay={assay}
+						projectId={project?.id ?? ""}
+						isSubProject={!!project?.parentProjectId}
+					/>
+					<AddSamplesToAssayDialog
+						projectId={project?.id ?? ""}
+						assayId={assay.id}
+					/>
+				</div>
 			}
 		/>
 	);

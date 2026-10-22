@@ -13,6 +13,8 @@ bun --bun run dev
 
 **CSV Template** and **XLS Template** download empty import templates. **TSV** exports
 the visible data columns; **XLS** exports all importable fields as an XLSX workbook.
+Templates and upload sit above the table. XLS and TSV exports sit beside the column
+selector and sample/experiment actions, following the project page layout.
 
 Sample and Experiment uploads share the same dialog and accept CSV, TSV, TXT, XLS and XLSX.
 Row errors remain visible in the dialog, and affected tables refresh even after a partial import.

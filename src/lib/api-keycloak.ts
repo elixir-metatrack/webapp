@@ -34,49 +34,98 @@ export async function api<T = unknown>(
 	endpoint: string,
 	options: RequestInit = {}
 ): Promise<T> {
-	const token = keycloak.token;
+	const request = async (): Promise<Response> => {
+		const token = keycloak.token;
 
-	const headers: Record<string, string> = {
-		Authorization: `Bearer ${token}`,
-		...((options.headers as Record<string, string>) || {}),
-	};
+		const headers: Record<string, string> = {
+			...(options.headers as Record<string, string> | undefined),
+		};
 
-	if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
-		headers["Content-Type"] = "application/json";
-	}
-
-	const res = await fetch(`${API_URL}/${endpoint}`, {
-		...options,
-		headers,
-	});
-
-	if (!res.ok) {
-		const contentType = res.headers.get("content-type");
-
-		if (contentType?.includes("application/json")) {
-			const data = await res.json();
-			if (
-				(endpoint.endsWith("/samplesheet") ||
-					/assays\/[^/]+\/experiments$/.test(endpoint)) &&
-				isTableImportViolations(data)
-			) {
-				throw new TableImportError(data);
-			}
-			throw new Error(getApiErrorMessage(data));
+		if (token) {
+			headers.Authorization = `Bearer ${token}`;
 		}
 
-		const text = await res.text();
+		if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
+			headers["Content-Type"] = "application/json";
+		}
 
-		throw new Error(text || "API error");
+		return fetch(`${API_URL}/${endpoint}`, {
+			...options,
+			headers,
+		});
+	};
+
+	let authenticationFailed = false;
+
+	try {
+		if (!keycloak.authenticated) {
+			throw new Error("Not authenticated");
+		}
+
+		try {
+			await keycloak.updateToken(30);
+		} catch (error) {
+			authenticationFailed = true;
+			throw error;
+		}
+
+		let res = await request();
+
+		if (res.status === 401) {
+			try {
+				await keycloak.updateToken(-1);
+			} catch (error) {
+				authenticationFailed = true;
+				throw error;
+			}
+
+			res = await request();
+		}
+
+		if (res.status === 401) {
+			throw new Error("Authentication expired");
+		}
+
+		if (!res.ok) {
+			const contentType = res.headers.get("content-type");
+
+			if (contentType?.includes("application/json")) {
+				const data = await res.json();
+				if (
+					(endpoint.endsWith("/samplesheet") ||
+						/assays\/[^/]+\/experiments$/.test(endpoint)) &&
+					isTableImportViolations(data)
+				) {
+					throw new TableImportError(data);
+				}
+				throw new Error(getApiErrorMessage(data));
+			}
+
+			const text = await res.text();
+			throw new Error(text || "API error");
+		}
+
+		const contentType = res.headers.get("content-type");
+
+		if (!contentType || !contentType.includes("application/json")) {
+			return undefined as T;
+		}
+
+		return (await res.json()) as T;
+	} catch (error) {
+		const shouldRedirect =
+			authenticationFailed ||
+			!keycloak.authenticated ||
+			(error instanceof Error &&
+				(error.message === "Authentication expired" ||
+					error.message === "Not authenticated"));
+
+		if (shouldRedirect) {
+			window.location.href = "/";
+		}
+
+		throw error;
 	}
-
-	const contentType = res.headers.get("content-type");
-
-	if (!contentType || !contentType.includes("application/json")) {
-		return undefined as T;
-	}
-
-	return res.json();
 }
 
 export async function apiPublic<T = unknown>(
@@ -440,6 +489,7 @@ export async function createSampleMetadataField(
 	data: {
 		key: string;
 		label: string;
+		tooltip: string;
 		type: SampleMetadataFieldType;
 	}
 ): Promise<SampleMetadataField> {
@@ -457,6 +507,7 @@ export async function updateSampleMetadataField(
 	fieldId: string,
 	data: {
 		label?: string;
+		tooltip?: string;
 		archived?: boolean;
 	}
 ): Promise<SampleMetadataField> {
@@ -734,6 +785,15 @@ export async function requestPresignedDownload(
 			sampleName: data.sampleName,
 			fileName: data.fileName,
 		}),
+	});
+}
+
+export async function deleteProjectFile(
+	projectId: number,
+	fileUuid: string
+): Promise<void> {
+	await api<void>(`projects/${projectId}/files/${fileUuid}`, {
+		method: "DELETE",
 	});
 }
 

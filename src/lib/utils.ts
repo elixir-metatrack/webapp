@@ -222,3 +222,6 @@ export function getApiErrorMessage(data: unknown): string {
 
 	return "API error";
 }
+
+export const formatDateToYMD = (dateStr?: string | null) =>
+	dateStr ? new Date(dateStr).toISOString().split("T")[0] : "";
