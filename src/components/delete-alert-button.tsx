@@ -15,6 +15,7 @@ import {
 	deleteProject,
 	deleteSelectedSamples,
 	deleteProjectFile,
+	deleteSamplesFromAssay,
 } from "@/lib/api-keycloak";
 import { toastError, toastSuccess } from "#/lib/toast";
 import { DropdownMenuItem } from "./ui/dropdown-menu";
@@ -23,8 +24,8 @@ import { Button } from "./ui/button";
 interface DeleteAlertButtonProps {
 	projectId?: string;
 	assayId?: string;
-	item: { id: string } | { id: string }[];
-	entityName?: "sample" | "project" | "fastq";
+	item: { id: string; name?: string } | { id: string; name?: string }[];
+	entityName?: "sample" | "project" | "fastq" | "assay";
 	onDeleted?: (deletedIds: string[]) => void;
 	insideDropdown?: boolean;
 }
@@ -64,6 +65,39 @@ export const DeleteAlertButton = ({
 				if (success.length > 0) {
 					toastSuccess(`${success.length} sample(s) deleted successfully!`);
 				}
+				return;
+			}
+			if (entityName === "assay") {
+				if (!projectId || !assayId) {
+					throw new Error(
+						"Project ID and assay ID are required to delete samples from an assay."
+					);
+				}
+
+				const sampleNames = itemsToDelete.map((item) => {
+					if (!item.name) {
+						throw new Error("Sample name is missing.");
+					}
+
+					return item.name;
+				});
+
+				console.log(projectId, assayId, sampleNames);
+
+				await deleteSamplesFromAssay(projectId, assayId, sampleNames);
+
+				onDeleted?.(sampleNames);
+
+				await queryClient.invalidateQueries({
+					queryKey: ["assaySamples", assayId, String(projectId)],
+					exact: false,
+					refetchType: "active",
+				});
+
+				toastSuccess(
+					`${sampleNames.length} sample(s) removed from assay successfully!`
+				);
+
 				return;
 			}
 			if (entityName === "fastq") {

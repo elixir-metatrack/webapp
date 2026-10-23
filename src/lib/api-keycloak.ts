@@ -715,6 +715,17 @@ export async function uploadExperiments(
 	});
 }
 
+export async function deleteSamplesFromAssay(
+	projectId: string,
+	assayId: string,
+	sampleNames: string[]
+): Promise<void> {
+	return api(`projects/${projectId}/assays/${assayId}/samples`, {
+		method: "DELETE",
+		body: JSON.stringify({ sampleNames }),
+	});
+}
+
 // ============================================================
 // Global Assay Vocabularies
 // ============================================================
