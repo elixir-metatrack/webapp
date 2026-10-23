@@ -30,6 +30,16 @@ import { getApiErrorMessage } from "./utils";
 // API
 // ============================================================
 
+export class ApiError extends Error {
+	constructor(
+		message: string,
+		public readonly status: number
+	) {
+		super(message);
+		this.name = "ApiError";
+	}
+}
+
 export async function api<T = unknown>(
 	endpoint: string,
 	options: RequestInit = {}
@@ -88,6 +98,7 @@ export async function api<T = unknown>(
 
 		if (!res.ok) {
 			const contentType = res.headers.get("content-type");
+			let message = "API error";
 
 			if (contentType?.includes("application/json")) {
 				const data = await res.json();
@@ -101,8 +112,7 @@ export async function api<T = unknown>(
 				throw new Error(getApiErrorMessage(data));
 			}
 
-			const text = await res.text();
-			throw new Error(text || "API error");
+			throw new ApiError(message, res.status);
 		}
 
 		const contentType = res.headers.get("content-type");
@@ -382,10 +392,18 @@ export async function createSample(
 	data: CreateSample,
 	projectId: string
 ): Promise<void> {
-	await api(`projects/${projectId}/samples`, {
-		method: "POST",
-		body: JSON.stringify(data),
-	});
+	try {
+		await api(`projects/${projectId}/samples`, {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	} catch (error) {
+		if (error instanceof ApiError && error.status === 409) {
+			throw new Error("A sample with this name already exists.");
+		}
+
+		throw error;
+	}
 }
 
 export async function updateSample(
@@ -699,6 +717,17 @@ export async function uploadExperiments(
 	await api(`projects/${projectId}/assays/${assayId}/experiments`, {
 		method: "POST",
 		body: formData,
+	});
+}
+
+export async function deleteSamplesFromAssay(
+	projectId: string,
+	assayId: string,
+	sampleNames: string[]
+): Promise<void> {
+	return api(`projects/${projectId}/assays/${assayId}/samples`, {
+		method: "DELETE",
+		body: JSON.stringify({ sampleNames }),
 	});
 }
 

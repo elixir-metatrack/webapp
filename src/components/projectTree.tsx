@@ -278,7 +278,7 @@ export function ProjectTree({
 
 			nodeGroup.appendChild(text);
 
-			if (node.type === "assay") {
+			if (node.type === "assay" && onAssayClick) {
 				const icon = document.createElementNS(
 					"http://www.w3.org/2000/svg",
 					"svg"

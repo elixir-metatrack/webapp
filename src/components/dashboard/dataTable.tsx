@@ -570,8 +570,9 @@ export function DataTable<T extends object>({
 									{onDelete && !project?.parentProjectId && (
 										<DeleteAlertButton
 											projectId={project?.id ?? ""}
-											item={row.original as { id: string }[]}
-											entityName="sample"
+											item={row.original as { id: string; name: string }[]}
+											entityName={dataType}
+											assayId={assay?.id ?? ""}
 											onDeleted={() => table.resetRowSelection()}
 										/>
 									)}
@@ -1115,7 +1116,8 @@ export function DataTable<T extends object>({
 							<DeleteAlertButton
 								projectId={project?.id ?? ""}
 								item={selectedRows as { id: string }[]}
-								entityName="sample"
+								entityName={dataType}
+								assayId={assay?.id ?? ""}
 								insideDropdown={false}
 								onDeleted={() => table.resetRowSelection()}
 							/>

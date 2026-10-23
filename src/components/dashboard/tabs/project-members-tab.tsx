@@ -68,6 +68,14 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import { PROJECT_ROLES } from "#/lib/data/roles";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "#/components/ui/popover";
+import { RoleBadge } from "#/components/role-badge";
+
 function InfoTooltip({ content }: { content: React.ReactNode }) {
 	return (
 		<Tooltip>
@@ -121,7 +129,6 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 		enabled: !!project.id,
 	});
 
-	console.log("invitationsPage", invitationsPage);
 	const invitations = invitationsPage ?? [];
 
 	const pendingInvitations = invitations.filter(
@@ -314,16 +321,63 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 	};
 
 	return (
-		<div className="space-y-4">
+		<div className="flex h-full flex-col gap-4">
 			{/* MEMBER LIST */}
 			<div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
 				<div className="min-w-0 space-y-4">
 					<div>
-						<h3 className="font-semibold">Members</h3>
+						<div className="flex flex-wrap items-center gap-2">
+							<h3 className="font-semibold">Members</h3>
+
+							<Popover>
+								<PopoverTrigger asChild>
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="text-muted-foreground h-7 gap-1.5 px-2"
+									>
+										<Info className="h-4 w-4" />
+										Role permissions
+									</Button>
+								</PopoverTrigger>
+
+								<PopoverContent
+									align="start"
+									className="w-80 max-w-[calc(100vw-2rem)]"
+								>
+									<div className="space-y-1">
+										<h4 className="font-semibold">Project roles</h4>
+										<p className="text-muted-foreground text-sm">
+											Each role determines what a member can do in this project.
+										</p>
+									</div>
+
+									<div className="mt-4 space-y-4">
+										{Object.entries(PROJECT_ROLES).map(([key, role]) => (
+											<div key={key} className="flex items-start gap-3">
+												<Badge
+													variant="outline"
+													className={`${role.color} mt-0.5 shrink-0`}
+												>
+													{role.label}
+												</Badge>
+
+												<p className="text-muted-foreground text-sm">
+													{role.description}
+												</p>
+											</div>
+										))}
+									</div>
+								</PopoverContent>
+							</Popover>
+						</div>
+
 						<p className="text-muted-foreground text-sm">
 							Manage project members.
 						</p>
 					</div>
+
 					{members.length === 0 ? (
 						<p className="text-muted-foreground text-sm">No members yet</p>
 					) : (
@@ -337,11 +391,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 										{member.email ?? member.username ?? member.memberId}
 									</p>
 
-									<Badge
-										variant={member.role === "OWNER" ? "default" : "secondary"}
-									>
-										{member.role}
-									</Badge>
+									<RoleBadge role="OWNER" />
 								</div>
 
 								<DropdownMenu>
@@ -414,19 +464,21 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 												content={
 													<div className="space-y-2">
 														<p>
-															<strong>OWNER:</strong> Full project control,
-															including member and role management.
+															<strong>OWNER:</strong> Has full control over the
+															project, including project management and access
+															permissions.
 														</p>
 														<p>
-															<strong>ADMIN:</strong> Administrative access to
-															the project and its members.
+															<strong>ADMIN:</strong> Can manage the project,
+															its members, and project settings.
 														</p>
 														<p>
-															<strong>EDITOR:</strong> Can edit project data.
+															<strong>EDITOR:</strong> Can view and edit project
+															data, including samples and assays.
 														</p>
 														<p>
-															<strong>VIEWER:</strong> Can view project data
-															without editing it.
+															<strong>VIEWER:</strong> Can view project data but
+															cannot make changes.
 														</p>
 													</div>
 												}
@@ -769,7 +821,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 											<div className="flex flex-col items-start gap-2 text-sm">
 												<div className="flex items-center gap-2">
 													<span>Role:</span>
-													<Badge variant="secondary">{invitation.role}</Badge>
+													<RoleBadge role={invitation.role} />
 												</div>
 
 												<div className="flex items-center gap-2">
