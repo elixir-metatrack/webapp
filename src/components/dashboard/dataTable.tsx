@@ -1,17 +1,13 @@
 import * as React from "react";
 import { useState } from "react";
 import {
-	type Cell,
 	type ColumnDef,
 	flexRender,
 	getCoreRowModel,
 	getFilteredRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
-	type Header,
-	type Row,
 	type SortingState,
-	type Table as TanStackTable,
 	useReactTable,
 } from "@tanstack/react-table";
 
@@ -89,6 +85,7 @@ import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
 import { toastError, toastSuccess } from "#/lib/toast";
 import { VocabularyCombobox } from "../vocabulary-combobox";
 import { useVocabularies } from "#/hooks/use-vocabularies";
+import { ExportExcelButton } from "./export-excel-button";
 import {
 	InputGroup,
 	InputGroupAddon,
@@ -692,38 +689,22 @@ export function DataTable<T extends object>({
 	});
 
 	const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
-	const prepareTableDataForDownload = (table: TanStackTable<T>) => {
-		const headers = table
-			.getHeaderGroups()[0]
-			.headers.filter(
-				(h: Header<T, unknown>, idx: number) =>
-					!h.isPlaceholder &&
-					idx > 0 &&
-					idx < table.getHeaderGroups()[0].headers.length - 1
+	const hasSelection = selectedRows.length > 0;
+	// Export across all pages, keeping the current filter even when rows are selected.
+	const exportRows = hasSelection
+		? table.getFilteredSelectedRowModel().rows
+		: table.getSortedRowModel().rows;
+	const handleDownloadTSV = () => {
+		const tsvRows = exportRows.map((row) =>
+			Object.fromEntries(
+				row
+					.getVisibleCells()
+					.filter((cell) => cell.column.accessorFn)
+					.map((cell) => [cell.column.id, cell.getValue()])
 			)
-			.map((h: Header<T, unknown>) => {
-				const resolvedColumnDef = h.column.columnDef;
-				if ("accessorKey" in resolvedColumnDef)
-					return resolvedColumnDef.accessorKey as string;
-				if ("accessorFn" in resolvedColumnDef)
-					return resolvedColumnDef.id as string;
-				return "";
-			});
-
-		const rows = table.getRowModel().rows.map((row: Row<T>) =>
-			row
-				.getVisibleCells()
-				.slice(1, -1)
-				.map((cell: Cell<T, unknown>) => {
-					const value = cell.getValue();
-					return value !== undefined && value !== null ? String(value) : "";
-				})
 		);
-
-		return { headers, rows };
+		downloadTSV(tsvRows, hasSelection ? "selected-rows" : "filtered-rows");
 	};
-
-	const { headers, rows } = prepareTableDataForDownload(table);
 
 	const handleBatchUpdate = async (colName: string, value: string) => {
 		try {
@@ -1006,7 +987,7 @@ export function DataTable<T extends object>({
 				<ProjectTree data={treeData} width={1200} onAssayClick={onAssayClick} />
 			</div>
 
-			<div className="items-center justify-between space-x-2 lg:flex">
+			<div className="flex flex-wrap items-center justify-between gap-2">
 				<Input
 					placeholder={filterPlaceholder}
 					value={globalFilter ?? ""}
@@ -1015,8 +996,8 @@ export function DataTable<T extends object>({
 				/>
 
 				{selectedRows.length > 0 && (
-					<div className="inline-flex h-9 items-center rounded-md border">
-						<div className="text-selected flex flex-1 flex-wrap items-center p-4 text-sm md:flex-row">
+					<div className="inline-flex min-h-9 max-w-full flex-wrap items-center rounded-md border">
+						<div className="text-selected flex flex-1 flex-wrap items-center px-3 text-sm md:flex-row">
 							{table.getFilteredSelectedRowModel().rows.length} selected
 							<Button
 								variant="ghost"
@@ -1066,69 +1047,8 @@ export function DataTable<T extends object>({
 										</React.Fragment>
 									);
 								})}
-
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<Button
-											variant="ghost"
-											size="sm"
-											className="rounded-none"
-											onClick={() =>
-												downloadTSV(
-													table
-														.getSelectedRowModel()
-														.rows.map((r: Row<T>) =>
-															Object.fromEntries(
-																r
-																	.getVisibleCells()
-																	.map((cell: Cell<T, unknown>, i: number) => [
-																		headers[i],
-																		cell.getValue(),
-																	])
-															)
-														),
-													"selected-rows"
-												)
-											}
-										>
-											<Download className="h-4 w-4" />
-										</Button>
-									</TooltipTrigger>
-
-									<TooltipContent>
-										<p>Download selected</p>
-									</TooltipContent>
-								</Tooltip>
-
-								<Separator orientation="vertical" />
 							</>
-						) : (
-							<Button
-								variant="ghost"
-								size="sm"
-								className="rounded-none"
-								onClick={() =>
-									downloadTSV(
-										table
-											.getSelectedRowModel()
-											.rows.map((r: Row<T>) =>
-												Object.fromEntries(
-													r
-														.getVisibleCells()
-														.map((cell: Cell<T, unknown>, i: number) => [
-															headers[i],
-															cell.getValue(),
-														])
-												)
-											),
-										"selected-rows"
-									)
-								}
-							>
-								<Download className="h-4 w-4" />
-								Download Selected
-							</Button>
-						)}
+						) : null}
 
 						{dataType === "sample" ? (
 							<DropdownMenu modal={false}>
@@ -1205,34 +1125,32 @@ export function DataTable<T extends object>({
 					</div>
 				)}
 
-				<DataTableViewOptions
-					table={table}
-					projectId={project?.id ?? ""}
-					dataType={dataType!}
-				/>
-				{showAddButton}
-				<Button
-					disabled={rows.length === 0}
-					onClick={() =>
-						downloadTSV(
-							table
-								.getFilteredRowModel()
-								.rows.map((r: Row<T>) =>
-									Object.fromEntries(
-										r
-											.getVisibleCells()
-											.map((cell: Cell<T, unknown>, i: number) => [
-												headers[i],
-												cell.getValue(),
-											])
-									)
-								),
-							"filtered-rows"
-						)
-					}
-				>
-					<Download className="h-4 w-4" />
-				</Button>
+				<div className="ml-auto flex flex-wrap items-center gap-2">
+					<DataTableViewOptions
+						table={table}
+						projectId={project?.id ?? ""}
+						dataType={dataType!}
+					/>
+					{showAddButton}
+					<div className="flex items-center gap-2">
+						{project?.id && (dataType === "sample" || assay) && (
+							<ExportExcelButton
+								projectId={project.id}
+								assayId={assay?.id}
+								sampleNames={exportRows.map((row) => row.id)}
+								selected={hasSelection}
+							/>
+						)}
+						<Button
+							disabled={exportRows.length === 0}
+							onClick={handleDownloadTSV}
+							title="Export visible fields for the selected or filtered rows"
+						>
+							<Download className="h-4 w-4" />
+							{hasSelection ? `TSV (${exportRows.length})` : "TSV"}
+						</Button>
+					</div>
+				</div>
 			</div>
 			<div className="rounded-md border">
 				<Table>

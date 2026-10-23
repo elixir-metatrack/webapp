@@ -72,7 +72,7 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 			onDelete={(sample) => console.log("Delete sample", sample)}
 			assay={assay}
 			showAddButton={
-				<div className="flex gap-2">
+				<div className="flex flex-wrap gap-2">
 					<EditAssayDialog
 						assay={assay}
 						projectId={project?.id ?? ""}
