@@ -40,6 +40,8 @@ export const DeleteAlertButton = ({
 }: DeleteAlertButtonProps) => {
 	const queryClient = useQueryClient();
 
+	const messageName = entityName === "assay" ? "experiment sample" : entityName;
+
 	const handleDelete = async () => {
 		const itemsToDelete = Array.isArray(item) ? item : [item];
 
@@ -187,9 +189,11 @@ export const DeleteAlertButton = ({
 					<AlertDialogDescription>
 						This action cannot be undone. The selected{" "}
 						<strong>
-							{entityName === "fastq" ? "FASTQ file(s)" : `${entityName}(s)`}
+							{entityName === "fastq" ? "FASTQ file(s)" : `${messageName}(s)`}
 						</strong>{" "}
-						will be permanently deleted from our servers.
+						{entityName === "assay"
+							? "will be removed from experiment table"
+							: `will be permanently deleted from our servers.`}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 
