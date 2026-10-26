@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as ProjectsRouteRouteImport } from './routes/projects/route'
 import { Route as PublicDataRouteImport } from './routes/public-data'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResourcesRouteImport } from './routes/resources'
 import { Route as SilentCheckSsoRouteImport } from './routes/silent-check-sso'
 import { Route as TermsOfUseRouteImport } from './routes/terms-of-use'
@@ -53,6 +54,11 @@ const ProjectsRouteRoute = ProjectsRouteRouteImport.update({
 const PublicDataRoute = PublicDataRouteImport.update({
   id: '/public-data',
   path: '/public-data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResourcesRoute = ResourcesRouteImport.update({
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
+  '/register': typeof RegisterRoute
   '/resources': typeof ResourcesRoute
   '/silent-check-sso': typeof SilentCheckSsoRoute
   '/terms-of-use': typeof TermsOfUseRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
+  '/register': typeof RegisterRoute
   '/resources': typeof ResourcesRoute
   '/silent-check-sso': typeof SilentCheckSsoRoute
   '/terms-of-use': typeof TermsOfUseRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
+  '/register': typeof RegisterRoute
   '/resources': typeof ResourcesRoute
   '/silent-check-sso': typeof SilentCheckSsoRoute
   '/terms-of-use': typeof TermsOfUseRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy-policy'
     | '/public-data'
+    | '/register'
     | '/resources'
     | '/silent-check-sso'
     | '/terms-of-use'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy-policy'
     | '/public-data'
+    | '/register'
     | '/resources'
     | '/silent-check-sso'
     | '/terms-of-use'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy-policy'
     | '/public-data'
+    | '/register'
     | '/resources'
     | '/silent-check-sso'
     | '/terms-of-use'
@@ -212,6 +224,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   PublicDataRoute: typeof PublicDataRoute
+  RegisterRoute: typeof RegisterRoute
   ResourcesRoute: typeof ResourcesRoute
   SilentCheckSsoRoute: typeof SilentCheckSsoRoute
   TermsOfUseRoute: typeof TermsOfUseRoute
@@ -261,6 +274,13 @@ declare module '@tanstack/react-router' {
       path: '/public-data'
       fullPath: '/public-data'
       preLoaderRoute: typeof PublicDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/resources': {
@@ -354,6 +374,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   PublicDataRoute: PublicDataRoute,
+  RegisterRoute: RegisterRoute,
   ResourcesRoute: ResourcesRoute,
   SilentCheckSsoRoute: SilentCheckSsoRoute,
   TermsOfUseRoute: TermsOfUseRoute,
