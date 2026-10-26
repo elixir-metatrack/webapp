@@ -30,8 +30,12 @@ import { SubProjectsTable } from "@/components/dashboard/subproject-table";
 import { Badge } from "@/components/ui/badge";
 import {
 	CalendarDays,
+	ChevronDown,
+	ChevronUp,
 	Database,
 	FileText,
+	Building2,
+	MessageSquare,
 	SquarePen,
 	UserRound,
 	UserRoundCog,
@@ -52,6 +56,8 @@ function RouteComponent() {
 	const [editDialogInitialTab, setEditDialogInitialTab] = useState<
 		"general" | "members"
 	>("general");
+	const [showDetailedDescription, setShowDetailedDescription] = useState(false);
+	const [showComments, setShowComments] = useState(false);
 
 	const handleAssayClick = (assayId: string) => {
 		setActiveTab("experiments");
@@ -186,14 +192,47 @@ function RouteComponent() {
 					</CardHeader>
 
 					<CardContent className="space-y-5 lg:col-start-1 lg:row-start-2">
-						<div className="space-y-2">
-							<div className="flex items-center gap-2 text-sm font-medium">
-								<FileText className="text-muted-foreground size-4" />
-								Description
+						<div className="space-y-4">
+							{/* Main description - always visible */}
+							<div className="space-y-2">
+								<div className="flex items-center gap-2 text-sm font-medium">
+									<FileText className="text-muted-foreground size-4" />
+									Description
+								</div>
+
+								<p className="text-muted-foreground text-sm leading-6 break-words whitespace-pre-wrap">
+									{project.description || "No description provided."}
+								</p>
 							</div>
-							<p className="text-muted-foreground text-sm leading-6 break-words whitespace-pre-wrap">
-								{project.description || "No description provided."}
-							</p>
+
+							{/* Detailed description - optional and expandable */}
+							{project.detailedDescription && (
+								<div className="border-t pt-3">
+									<button
+										type="button"
+										onClick={() => setShowDetailedDescription((prev) => !prev)}
+										className="flex w-full items-center justify-between gap-2 text-sm font-medium"
+										aria-expanded={showDetailedDescription}
+									>
+										<span className="flex items-center gap-2">
+											<FileText className="text-muted-foreground size-4" />
+											Detailed description
+										</span>
+
+										{showDetailedDescription ? (
+											<ChevronUp className="text-muted-foreground size-4" />
+										) : (
+											<ChevronDown className="text-muted-foreground size-4" />
+										)}
+									</button>
+
+									{showDetailedDescription && (
+										<p className="text-muted-foreground mt-3 text-sm leading-6 break-words whitespace-pre-wrap">
+											{project.detailedDescription}
+										</p>
+									)}
+								</div>
+							)}
 						</div>
 
 						<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -222,17 +261,69 @@ function RouteComponent() {
 						</div>
 
 						<div className="flex items-center gap-3 border-t pt-4">
-							<div className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full">
-								<UserRound className="text-muted-foreground size-5" />
-							</div>
+							<div className="grid grid-cols-1 gap-4 border-t pt-4 sm:grid-cols-2">
+								{/* Project owner */}
+								<div className="flex min-w-0 items-center gap-3">
+									<div className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full">
+										<UserRound className="text-muted-foreground size-5" />
+									</div>
 
-							<div className="min-w-0 flex-1 space-y-1">
-								<p className="text-muted-foreground text-xs">Project owner</p>
-								<p className="truncate text-sm font-medium">
-									{project.ownerUsername}
-								</p>
+									<div className="min-w-0 flex-1 space-y-1">
+										<p className="text-muted-foreground text-xs">
+											Project owner
+										</p>
+										<p className="truncate text-sm font-medium">
+											{project.ownerUsername}
+										</p>
+									</div>
+								</div>
+
+								{/* Data owning organization - optional */}
+								{project.dataOwningOrganization && (
+									<div className="flex min-w-0 items-center gap-3">
+										<div className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full">
+											<Building2 className="text-muted-foreground size-5" />
+										</div>
+
+										<div className="min-w-0 flex-1 space-y-1">
+											<p className="text-muted-foreground text-xs">
+												Data owning organization
+											</p>
+											<p className="text-sm font-medium break-words">
+												{project.dataOwningOrganization}
+											</p>
+										</div>
+									</div>
+								)}
 							</div>
 						</div>
+						{project.comments && (
+							<div className="border-t pt-4">
+								<button
+									type="button"
+									onClick={() => setShowComments((prev) => !prev)}
+									className="flex w-full items-center justify-between gap-2 text-sm font-medium"
+									aria-expanded={showComments}
+								>
+									<span className="flex items-center gap-2">
+										<MessageSquare className="text-muted-foreground size-4" />
+										Comments
+									</span>
+
+									{showComments ? (
+										<ChevronUp className="text-muted-foreground size-4" />
+									) : (
+										<ChevronDown className="text-muted-foreground size-4" />
+									)}
+								</button>
+
+								{showComments && (
+									<p className="text-muted-foreground mt-3 text-sm leading-6 break-words whitespace-pre-wrap">
+										{project.comments}
+									</p>
+								)}
+							</div>
+						)}
 					</CardContent>
 
 					<div className="flex flex-col gap-3 px-6 pb-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:justify-center lg:border-l lg:py-6">

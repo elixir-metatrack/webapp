@@ -191,7 +191,13 @@ export function createInvestigation(data: Project) {
 
 export async function updateProject(
 	projectId: string,
-	data: { name?: string; description?: string }
+	data: {
+		name?: string;
+		description?: string;
+		detailedDescription?: string;
+		dataOwningOrganization?: string;
+		comments?: string;
+	}
 ) {
 	return api(`projects/${projectId}`, {
 		method: "PATCH",

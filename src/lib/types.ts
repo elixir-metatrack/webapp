@@ -103,6 +103,9 @@ export interface Project {
 	createdOn?: string; // Date
 	modifiedOn?: string;
 	parentProjectId?: number | null;
+	dataOwningOrganization?: string;
+	detailedDescription?: string;
+	comments?: string;
 }
 
 export type InvitationRole = "VIEWER" | "EDITOR" | "ADMIN";

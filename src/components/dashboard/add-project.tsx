@@ -9,6 +9,7 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
 	Tooltip,
@@ -25,20 +26,31 @@ import { toastError, toastSuccess } from "#/lib/toast";
 export function AddProjectDialog() {
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
+	const [detailedDescription, setDetailedDescription] = useState("");
+	const [dataOwningOrganization, setDataOwningOrganization] = useState("");
+	const [comments, setComments] = useState("");
 	const [open, setOpen] = useState(false);
 
 	const queryClient = useQueryClient();
 
+	const resetForm = () => {
+		setName("");
+		setDescription("");
+		setDetailedDescription("");
+		setDataOwningOrganization("");
+		setComments("");
+	};
+
 	const mutation = useMutation({
 		mutationFn: createInvestigation,
+
 		onSuccess: (newProject) => {
 			queryClient.setQueryData(["projects"], (old: Project[] = []) => [
 				newProject,
 				...old,
 			]);
 
-			setName("");
-			setDescription("");
+			resetForm();
 			setOpen(false);
 
 			const now = new Date();
@@ -51,16 +63,19 @@ export function AddProjectDialog() {
 
 		onError: (error: Error) => {
 			const message = error?.message || "Error creating project";
-
 			toastError(message, {});
 		},
 	});
 
 	const handleCreate = (e: React.FormEvent) => {
 		e.preventDefault();
+
 		mutation.mutate({
 			name,
 			description,
+			detailedDescription,
+			dataOwningOrganization,
+			comments,
 		});
 	};
 
@@ -72,61 +87,104 @@ export function AddProjectDialog() {
 					Create Project
 				</Button>
 			</DialogTrigger>
-			<DialogContent aria-describedby={undefined}>
+
+			<DialogContent
+				aria-describedby={undefined}
+				className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
+			>
 				<form onSubmit={handleCreate} className="space-y-4">
 					<DialogHeader>
 						<DialogTitle>Create New Project</DialogTitle>
 					</DialogHeader>
 
-					<div className="space-y-2">
+					<div className="space-y-4">
 						{/* Project Title */}
-						<div className="flex items-center gap-2">
-							<label htmlFor="projectName" className="font-medium">
-								Project Title <span className="text-red-500">*</span>
-							</label>
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<HelpCircle className="h-4 w-4 cursor-pointer text-gray-500" />
-									</TooltipTrigger>
-									<TooltipContent>
-										<p>
-											The main title of your project. This field is required.
-										</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
+						<div className="space-y-2">
+							<div className="flex items-center gap-2">
+								<label htmlFor="projectName" className="font-medium">
+									Project Title <span className="text-red-500">*</span>
+								</label>
+
+								<TooltipProvider>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<HelpCircle className="h-4 w-4 cursor-pointer text-gray-500" />
+										</TooltipTrigger>
+										<TooltipContent>
+											<p>
+												The main title of your project. This field is required.
+											</p>
+										</TooltipContent>
+									</Tooltip>
+								</TooltipProvider>
+							</div>
+
+							<Input
+								id="projectName"
+								placeholder="Project Title"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								required
+							/>
 						</div>
-						<Input
-							id="projectName"
-							placeholder="Project Title"
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							required
-						/>
 
 						{/* Description */}
-						<div className="flex items-center gap-2">
+						<div className="space-y-2">
 							<label htmlFor="description" className="font-medium">
 								Description
 							</label>
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<HelpCircle className="h-4 w-4 cursor-pointer text-gray-500" />
-									</TooltipTrigger>
-									<TooltipContent>
-										<p>Optional description to explain the project.</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
+
+							<Input
+								id="description"
+								placeholder="Short project description"
+								value={description}
+								onChange={(e) => setDescription(e.target.value)}
+							/>
 						</div>
-						<Input
-							id="description"
-							placeholder="Description"
-							value={description}
-							onChange={(e) => setDescription(e.target.value)}
-						/>
+
+						{/* Detailed Description */}
+						<div className="space-y-2">
+							<label htmlFor="detailedDescription" className="font-medium">
+								Detailed Description
+							</label>
+
+							<Textarea
+								id="detailedDescription"
+								placeholder="Provide additional details about the project"
+								value={detailedDescription}
+								onChange={(e) => setDetailedDescription(e.target.value)}
+								rows={4}
+							/>
+						</div>
+
+						{/* Data Owning Organization */}
+						<div className="space-y-2">
+							<label htmlFor="dataOwningOrganization" className="font-medium">
+								Data Owning Organization
+							</label>
+
+							<Input
+								id="dataOwningOrganization"
+								placeholder="Organization responsible for the data"
+								value={dataOwningOrganization}
+								onChange={(e) => setDataOwningOrganization(e.target.value)}
+							/>
+						</div>
+
+						{/* Comments */}
+						<div className="space-y-2">
+							<label htmlFor="comments" className="font-medium">
+								Comments
+							</label>
+
+							<Textarea
+								id="comments"
+								placeholder="Additional comments about the project"
+								value={comments}
+								onChange={(e) => setComments(e.target.value)}
+								rows={3}
+							/>
+						</div>
 					</div>
 
 					<DialogFooter className="flex justify-between">
@@ -135,7 +193,8 @@ export function AddProjectDialog() {
 								Cancel
 							</Button>
 						</DialogClose>
-						<Button type="submit" disabled={mutation.isPending}>
+
+						<Button type="submit" disabled={mutation.isPending || !name.trim()}>
 							{mutation.isPending ? "Creating Project..." : "Create Project"}
 						</Button>
 					</DialogFooter>
