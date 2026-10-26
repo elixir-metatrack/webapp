@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import StatCardGrid from "@/components/cards/stat-card-grid";
-import { ThemeImage } from "@/components/theme-image";
 import QuickStart from "@/components/quick-start";
 import { motion } from "framer-motion";
 import { ChartAreaHomePage } from "@/components/dashboard/chart-area-home-page";
