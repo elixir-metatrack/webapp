@@ -85,7 +85,6 @@ import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
 import { toastError, toastSuccess } from "#/lib/toast";
 import { VocabularyCombobox } from "../vocabulary-combobox";
 import { useVocabularies } from "#/hooks/use-vocabularies";
-import { ExportExcelButton } from "./export-excel-button";
 import {
 	InputGroup,
 	InputGroupAddon,
@@ -93,6 +92,7 @@ import {
 	InputGroupInput,
 } from "../ui/input-group";
 import { FastqFloatingActions } from "./fastq-floating-actions";
+import { ExportSamplesButton } from "./export-samples-button";
 
 interface DataTableProps<T extends object> {
 	data: T[];
@@ -1134,21 +1134,14 @@ export function DataTable<T extends object>({
 					{showAddButton}
 					<div className="flex items-center gap-2">
 						{project?.id && (dataType === "sample" || assay) && (
-							<ExportExcelButton
+							<ExportSamplesButton
 								projectId={project.id}
 								assayId={assay?.id}
 								sampleNames={exportRows.map((row) => row.id)}
 								selected={hasSelection}
+								onDownloadTSV={handleDownloadTSV}
 							/>
 						)}
-						<Button
-							disabled={exportRows.length === 0}
-							onClick={handleDownloadTSV}
-							title="Export visible fields for the selected or filtered rows"
-						>
-							<Download className="h-4 w-4" />
-							{hasSelection ? `TSV (${exportRows.length})` : "TSV"}
-						</Button>
 					</div>
 				</div>
 			</div>
