@@ -17,19 +17,14 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { downloadTemplate } from "@/lib/api-keycloak";
+import { downloadExcelTemplate, downloadTemplate } from "@/lib/api-keycloak";
+import type { TemplateType } from "@/lib/types";
 import { toastError, toastSuccess } from "#/lib/toast";
 
 interface DownloadTemplateButtonProps {
 	type: "sample" | "experiment";
+	format?: "csv" | "xlsx";
 }
-
-type TemplateType =
-	| "sample"
-	| "sample_extended"
-	| "sample_virus"
-	| "experiment_PE"
-	| "experiment_SE";
 
 const SAMPLE_TEMPLATES = [
 	{
@@ -62,33 +57,41 @@ const EXPERIMENT_TEMPLATES = [
 	},
 ];
 
-export function DownloadTemplateButton({ type }: DownloadTemplateButtonProps) {
+export function DownloadTemplateButton({
+	type,
+	format = "csv",
+}: DownloadTemplateButtonProps) {
 	const [loading, setLoading] = useState(false);
-
-	const templates = type === "sample" ? SAMPLE_TEMPLATES : EXPERIMENT_TEMPLATES;
 
 	const handleDownload = async (templateType: TemplateType) => {
 		try {
 			setLoading(true);
 
-			await downloadTemplate(templateType);
+			if (format === "xlsx") {
+				await downloadExcelTemplate(templateType);
+			} else {
+				await downloadTemplate(templateType);
+			}
 
 			toastSuccess("Template downloaded successfully");
 		} catch (err: unknown) {
-			toastError((err as Error)?.message ?? "Error downloading template");
+			toastError(
+				err instanceof Error ? err.message : "Error downloading template"
+			);
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	const label = type === "sample" ? "Sample Template" : "Experiment Template";
+	const templates =
+		type === "experiment" ? EXPERIMENT_TEMPLATES : SAMPLE_TEMPLATES;
 
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button variant="default" disabled={loading}>
 					<Download className="h-4 w-4" />
-					{label}
+					{format === "xlsx" ? "XLS Template" : "CSV Template"}
 					<ChevronDown className="ml-1 h-4 w-4" />
 				</Button>
 			</DropdownMenuTrigger>

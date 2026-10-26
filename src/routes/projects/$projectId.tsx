@@ -15,9 +15,9 @@ import {
 import { DataTable } from "@/components/dashboard/dataTable";
 import { AddSampleDialog } from "@/components/dashboard/add-sample";
 import type { Assay, Project, Sample } from "@/lib/types";
-import { UploadSampleDialog } from "@/components/dashboard/upload-sample";
+import { UploadTableDialog } from "@/components/dashboard/upload-table";
 import type { ColumnDef } from "@tanstack/react-table";
-import { cn, formatDateToYMD, NON_VIEWED_COLUMNS } from "@/lib/utils";
+import { formatDateToYMD, NON_VIEWED_COLUMNS } from "@/lib/utils";
 import { DownloadTemplateButton } from "@/components/dashboard/download-template-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
@@ -28,13 +28,17 @@ import { EditProjectDialog } from "@/components/dashboard/edit-project-dialog";
 import { AddSubProjectDialog } from "@/components/dashboard/add-subproject";
 import { SubProjectsTable } from "@/components/dashboard/subproject-table";
 import { Badge } from "@/components/ui/badge";
-import { SquarePen, UserRoundCog } from "lucide-react";
+import {
+	CalendarDays,
+	Database,
+	FileText,
+	SquarePen,
+	UserRound,
+	UserRoundCog,
+} from "lucide-react";
 import { IconMicroscope, IconTestPipe, IconSitemap } from "@tabler/icons-react";
 import { useUser } from "#/hooks/use-user";
-import { useSidebar } from "#/components/ui/sidebar";
 import { VocabulariesDialog } from "#/components/vocabulariesDialog";
-import { UploadExperimentDialog } from "#/components/dashboard/upload-experiment";
-import { CalendarDays, Database, FileText, UserRound } from "lucide-react";
 
 export const Route = createFileRoute("/projects/$projectId")({
 	component: RouteComponent,
@@ -131,10 +135,8 @@ function RouteComponent() {
 					}))
 			: [];
 
-	const { state } = useSidebar();
-
 	return (
-		<div className={cn(state === "collapsed" ? "w-19/20" : "w-7/8")}>
+		<div className="w-full min-w-0">
 			<SiteHeader
 				items={[
 					{ label: "My Projects", href: "/projects" },
@@ -309,9 +311,10 @@ function RouteComponent() {
 
 						<CardContent className="pt-6">
 							<TabsContent value="samples">
-								<div className="flex justify-end gap-2 py-8">
+								<div className="flex flex-wrap justify-end gap-2 py-8">
 									<DownloadTemplateButton type="sample" />
-									<UploadSampleDialog projectId={projectId} />
+									<DownloadTemplateButton type="sample" format="xlsx" />
+									<UploadTableDialog projectId={projectId} />
 								</div>
 								<DataTable
 									data={samples}
@@ -320,11 +323,7 @@ function RouteComponent() {
 									onDelete={(sample) => console.log("Delete sample", sample)}
 									dataType="sample"
 									project={project}
-									showAddButton={
-										<div className="flex gap-2">
-											<AddSampleDialog projectId={projectId} />
-										</div>
-									}
+									showAddButton={<AddSampleDialog projectId={projectId} />}
 									onAssayClick={handleAssayClick}
 								/>
 							</TabsContent>
@@ -353,14 +352,17 @@ function RouteComponent() {
 											<TabsContent key={assay.id} value={assay.id}>
 												<Card>
 													<CardContent className="pt-6">
-														<div className="mb-4 flex justify-end gap-2">
+														<div className="mb-4 flex flex-wrap justify-end gap-2">
 															<DownloadTemplateButton type="experiment" />
-															<UploadExperimentDialog
+															<DownloadTemplateButton
+																type="experiment"
+																format="xlsx"
+															/>
+															<UploadTableDialog
 																projectId={projectId}
-																assayId={String(assay.id)}
+																assayId={assay.id}
 															/>
 														</div>
-
 														<AssayTable assay={assay} project={project} />
 													</CardContent>
 												</Card>
@@ -368,7 +370,7 @@ function RouteComponent() {
 										))}
 									</Tabs>
 								) : (
-									<div className="flex justify-center py-8">
+									<div className="flex flex-wrap justify-center gap-2 py-8">
 										{project.parentProjectId ? (
 											<p className="text-muted-foreground">
 												No experiments are linked to this sub-project's samples.
@@ -376,6 +378,8 @@ function RouteComponent() {
 										) : (
 											<AddAssayDialog projectId={projectId} />
 										)}
+										<DownloadTemplateButton type="experiment" />
+										<DownloadTemplateButton type="experiment" format="xlsx" />
 									</div>
 								)}
 							</TabsContent>
