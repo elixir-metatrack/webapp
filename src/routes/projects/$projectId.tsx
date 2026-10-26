@@ -192,137 +192,164 @@ function RouteComponent() {
 					</CardHeader>
 
 					<CardContent className="space-y-5 lg:col-start-1 lg:row-start-2">
-						<div className="space-y-4">
-							{/* Main description - always visible */}
-							<div className="space-y-2">
-								<div className="flex items-center gap-2 text-sm font-medium">
-									<FileText className="text-muted-foreground size-4" />
-									Description
-								</div>
-
-								<p className="text-muted-foreground text-sm leading-6 break-words whitespace-pre-wrap">
-									{project.description || "No description provided."}
-								</p>
+						{/* Description */}
+						<div className="space-y-2">
+							<div className="flex items-center gap-2 text-sm font-medium">
+								<FileText className="text-muted-foreground size-4" />
+								Description
 							</div>
 
-							{/* Detailed description - optional and expandable */}
-							{project.detailedDescription && (
-								<div className="border-t pt-3">
+							<p className="text-primary text-sm leading-6 break-words whitespace-pre-wrap">
+								{project.description || "No description provided."}
+							</p>
+						</div>
+
+						{/* Detailed description */}
+						{project.detailedDescription && (
+							<Card
+								className={`shadow-none transition-colors ${
+									showDetailedDescription
+										? "border-primary/30 bg-muted"
+										: "border-border bg-muted/30 hover:bg-muted"
+								}`}
+							>
+								<CardContent
+									className={showDetailedDescription ? "p-4" : "p-1"}
+								>
 									<button
 										type="button"
 										onClick={() => setShowDetailedDescription((prev) => !prev)}
-										className="flex w-full items-center justify-between gap-2 text-sm font-medium"
+										className="flex w-full items-center gap-2 text-left text-sm"
 										aria-expanded={showDetailedDescription}
 									>
-										<span className="flex items-center gap-2">
-											<FileText className="text-muted-foreground size-4" />
-											Detailed description
-										</span>
-
 										{showDetailedDescription ? (
-											<ChevronUp className="text-muted-foreground size-4" />
+											<ChevronUp className="text-primary size-4 shrink-0" />
 										) : (
-											<ChevronDown className="text-muted-foreground size-4" />
+											<ChevronDown className="text-primary size-4 shrink-0" />
 										)}
+
+										<FileText className="text-primary size-4 shrink-0" />
+										<span>Detailed description</span>
 									</button>
 
 									{showDetailedDescription && (
-										<p className="text-muted-foreground mt-3 text-sm leading-6 break-words whitespace-pre-wrap">
+										<p className="border-border/70 text-primary mt-3 border-t pt-3 text-sm leading-6 break-words whitespace-pre-wrap">
 											{project.detailedDescription}
 										</p>
 									)}
-								</div>
-							)}
-						</div>
+								</CardContent>
+							</Card>
+						)}
 
+						{/* Project statistics */}
 						<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-							<div className="bg-muted/30 rounded-2xl border p-4">
-								<div className="text-muted-foreground mb-3 flex items-center gap-2 text-sm">
-									<Database className="size-4" />
-									<span>Samples</span>
-								</div>
-								<p className="text-2xl font-semibold tracking-tight">
-									{samples.length}
-								</p>
-								<p className="text-muted-foreground mt-1 text-xs">
-									Total samples
-								</p>
-							</div>
+							<Card className="border-border bg-muted/30 shadow-none">
+								<CardContent className="p-4">
+									<div className="text-muted-foreground mb-3 flex items-center gap-2 text-sm">
+										<Database className="size-4" />
+										<span>Samples</span>
+									</div>
 
-							<div className="bg-muted/30 rounded-2xl border p-4">
-								<div className="text-muted-foreground mb-3 flex items-center gap-2 text-sm">
-									<CalendarDays className="size-4" />
-									<span>Created on</span>
-								</div>
-								<p className="text-lg font-semibold tracking-tight">
-									{formatDateToYMD(project.createdOn)}
-								</p>
-							</div>
+									<p className="text-2xl font-semibold tracking-tight">
+										{samples.length}
+									</p>
+
+									<p className="text-muted-foreground mt-1 text-xs">
+										Total samples
+									</p>
+								</CardContent>
+							</Card>
+
+							<Card className="border-border bg-muted/30 shadow-none">
+								<CardContent className="p-4">
+									<div className="text-muted-foreground mb-3 flex items-center gap-2 text-sm">
+										<CalendarDays className="size-4" />
+										<span>Created on</span>
+									</div>
+
+									<p className="text-lg font-semibold tracking-tight">
+										{formatDateToYMD(project.createdOn)}
+									</p>
+								</CardContent>
+							</Card>
 						</div>
 
-						<div className="flex items-center gap-3 border-t pt-4">
-							<div className="grid grid-cols-1 gap-4 border-t pt-4 sm:grid-cols-2">
-								{/* Project owner */}
-								<div className="flex min-w-0 items-center gap-3">
-									<div className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full">
-										<UserRound className="text-muted-foreground size-5" />
+						{/* Project owner and organization */}
+						<div className="grid grid-cols-1 gap-3 border-t pt-4 sm:grid-cols-2">
+							<Card className="border-border bg-muted/30 shadow-none">
+								<CardContent className="flex items-center gap-3 p-4">
+									<div className="bg-background flex size-11 shrink-0 items-center justify-center rounded-full border">
+										<UserRound className="text-primary size-5" />
 									</div>
 
 									<div className="min-w-0 flex-1 space-y-1">
-										<p className="text-muted-foreground text-xs">
+										<p className="text-muted-foreground mb-3 text-sm">
 											Project owner
 										</p>
-										<p className="truncate text-sm font-medium">
+										<p className="text-base font-semibold break-words">
 											{project.ownerUsername}
 										</p>
 									</div>
-								</div>
+								</CardContent>
+							</Card>
 
-								{/* Data owning organization - optional */}
-								{project.dataOwningOrganization && (
-									<div className="flex min-w-0 items-center gap-3">
-										<div className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full">
-											<Building2 className="text-muted-foreground size-5" />
-										</div>
-
-										<div className="min-w-0 flex-1 space-y-1">
-											<p className="text-muted-foreground text-xs">
-												Data owning organization
-											</p>
-											<p className="text-sm font-medium break-words">
-												{project.dataOwningOrganization}
-											</p>
-										</div>
+							<Card className="border-border bg-muted/30 shadow-none">
+								<CardContent className="flex items-center gap-3 p-4">
+									<div className="bg-background flex size-11 shrink-0 items-center justify-center rounded-full border">
+										<Building2 className="text-primary size-5" />
 									</div>
-								)}
-							</div>
+
+									<div className="min-w-0 flex-1 space-y-1">
+										<p className="text-muted-foreground mb-3 text-sm">
+											Data owning organization
+										</p>
+										<p
+											className={`text-base break-words ${
+												project.dataOwningOrganization
+													? "font-semibold"
+													: "text-muted-foreground text-sm italic"
+											}`}
+										>
+											{project.dataOwningOrganization || "Not specified"}
+										</p>
+									</div>
+								</CardContent>
+							</Card>
 						</div>
+
+						{/* Comments */}
 						{project.comments && (
-							<div className="border-t pt-4">
-								<button
-									type="button"
-									onClick={() => setShowComments((prev) => !prev)}
-									className="flex w-full items-center justify-between gap-2 text-sm font-medium"
-									aria-expanded={showComments}
-								>
-									<span className="flex items-center gap-2">
-										<MessageSquare className="text-muted-foreground size-4" />
-										Comments
-									</span>
+							<Card
+								className={`shadow-none transition-colors ${
+									showComments
+										? "border-primary/30 bg-muted"
+										: "border-border bg-muted/30 hover:bg-muted"
+								}`}
+							>
+								<CardContent className={showComments ? "py-4" : "p-1"}>
+									<button
+										type="button"
+										onClick={() => setShowComments((prev) => !prev)}
+										className="flex w-full items-center gap-2 text-left text-sm"
+										aria-expanded={showComments}
+									>
+										{showComments ? (
+											<ChevronUp className="text-primary size-4 shrink-0" />
+										) : (
+											<ChevronDown className="text-primary size-4 shrink-0" />
+										)}
 
-									{showComments ? (
-										<ChevronUp className="text-muted-foreground size-4" />
-									) : (
-										<ChevronDown className="text-muted-foreground size-4" />
+										<MessageSquare className="text-primary size-4 shrink-0" />
+										<span>Comments</span>
+									</button>
+
+									{showComments && (
+										<p className="text-primary border-border/70 mt-3 border-t pt-3 text-sm leading-6 break-words whitespace-pre-wrap">
+											{project.comments}
+										</p>
 									)}
-								</button>
-
-								{showComments && (
-									<p className="text-muted-foreground mt-3 text-sm leading-6 break-words whitespace-pre-wrap">
-										{project.comments}
-									</p>
-								)}
-							</div>
+								</CardContent>
+							</Card>
 						)}
 					</CardContent>
 
