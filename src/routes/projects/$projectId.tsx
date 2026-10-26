@@ -313,7 +313,6 @@ function RouteComponent() {
 							<TabsContent value="samples">
 								<div className="flex flex-wrap justify-end gap-2 py-8">
 									<DownloadTemplateButton type="sample" />
-									<DownloadTemplateButton type="sample" format="xlsx" />
 									<UploadTableDialog projectId={projectId} />
 								</div>
 								<DataTable
@@ -354,10 +353,6 @@ function RouteComponent() {
 													<CardContent className="pt-6">
 														<div className="mb-4 flex flex-wrap justify-end gap-2">
 															<DownloadTemplateButton type="experiment" />
-															<DownloadTemplateButton
-																type="experiment"
-																format="xlsx"
-															/>
 															<UploadTableDialog
 																projectId={projectId}
 																assayId={assay.id}
@@ -379,7 +374,6 @@ function RouteComponent() {
 											<AddAssayDialog projectId={projectId} />
 										)}
 										<DownloadTemplateButton type="experiment" />
-										<DownloadTemplateButton type="experiment" format="xlsx" />
 									</div>
 								)}
 							</TabsContent>

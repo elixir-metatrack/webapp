@@ -6,6 +6,7 @@ import {
 	Download,
 	Files,
 	FileSpreadsheet,
+	FileText,
 	Virus,
 } from "lucide-react";
 
@@ -14,6 +15,9 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -23,47 +27,54 @@ import { toastError, toastSuccess } from "#/lib/toast";
 
 interface DownloadTemplateButtonProps {
 	type: "sample" | "experiment";
-	format?: "csv" | "xlsx";
 }
 
 const SAMPLE_TEMPLATES = [
 	{
-		type: "sample" as const,
+		type: "sample",
 		label: "Sample",
 		icon: FileSpreadsheet,
 	},
 	{
-		type: "sample_extended" as const,
+		type: "sample_extended",
 		label: "Sample Extended",
 		icon: Files,
 	},
 	{
-		type: "sample_virus" as const,
+		type: "sample_virus",
 		label: "Sample Virus",
 		icon: Virus,
 	},
-];
+] satisfies {
+	type: TemplateType;
+	label: string;
+	icon: typeof FileSpreadsheet;
+}[];
 
 const EXPERIMENT_TEMPLATES = [
 	{
-		type: "experiment_PE" as const,
+		type: "experiment_PE",
 		label: "Experiment Paired-End",
 		icon: Files,
 	},
 	{
-		type: "experiment_SE" as const,
+		type: "experiment_SE",
 		label: "Experiment Single-End",
 		icon: FileSpreadsheet,
 	},
-];
+] satisfies {
+	type: TemplateType;
+	label: string;
+	icon: typeof FileSpreadsheet;
+}[];
 
-export function DownloadTemplateButton({
-	type,
-	format = "csv",
-}: DownloadTemplateButtonProps) {
+export function DownloadTemplateButton({ type }: DownloadTemplateButtonProps) {
 	const [loading, setLoading] = useState(false);
 
-	const handleDownload = async (templateType: TemplateType) => {
+	const handleDownload = async (
+		templateType: TemplateType,
+		format: "csv" | "xlsx"
+	) => {
 		try {
 			setLoading(true);
 
@@ -91,7 +102,7 @@ export function DownloadTemplateButton({
 			<DropdownMenuTrigger asChild>
 				<Button variant="default" disabled={loading}>
 					<Download className="h-4 w-4" />
-					{format === "xlsx" ? "XLS Template" : "CSV Template"}
+					Download templates
 					<ChevronDown className="ml-1 h-4 w-4" />
 				</Button>
 			</DropdownMenuTrigger>
@@ -101,13 +112,36 @@ export function DownloadTemplateButton({
 					const Icon = template.icon;
 
 					return (
-						<DropdownMenuItem
-							key={template.type}
-							onClick={() => handleDownload(template.type)}
-						>
-							<Icon className="mr-2 h-4 w-4" />
-							{template.label}
-						</DropdownMenuItem>
+						<DropdownMenuSub key={template.type}>
+							<DropdownMenuSubTrigger>
+								<Icon className="mr-2 h-4 w-4" />
+								{template.label}
+							</DropdownMenuSubTrigger>
+
+							<DropdownMenuSubContent>
+								<DropdownMenuItem
+									disabled={loading}
+									onSelect={() => handleDownload(template.type, "csv")}
+								>
+									<FileText className="mr-2 h-4 w-4" />
+									CSV
+									<span className="text-muted-foreground ml-auto text-xs">
+										.csv
+									</span>
+								</DropdownMenuItem>
+
+								<DropdownMenuItem
+									disabled={loading}
+									onSelect={() => handleDownload(template.type, "xlsx")}
+								>
+									<FileSpreadsheet className="mr-2 h-4 w-4" />
+									Excel
+									<span className="text-muted-foreground ml-auto text-xs">
+										.xlsx
+									</span>
+								</DropdownMenuItem>
+							</DropdownMenuSubContent>
+						</DropdownMenuSub>
 					);
 				})}
 			</DropdownMenuContent>
