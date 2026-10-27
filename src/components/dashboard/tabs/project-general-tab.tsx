@@ -1,11 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Project } from "@/lib/types";
+import { Textarea } from "@/components/ui/textarea";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+
 import { updateProject } from "@/lib/api-keycloak";
-import { Textarea } from "@/components/ui/textarea";
+import type { Project } from "@/lib/types";
+
 import { toastError, toastSuccess } from "#/lib/toast";
+import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
 
 type ProjectGeneralTabProps = {
 	project: Project;
@@ -23,6 +33,30 @@ export function ProjectGeneralTab({ project }: ProjectGeneralTabProps) {
 		project.dataOwningOrganization ?? ""
 	);
 	const [comments, setComments] = useState(project.comments ?? "");
+
+	const renderTooltip = (key: keyof typeof COLUMN_TOOLTIPS) => {
+		const tooltip = COLUMN_TOOLTIPS[key];
+
+		if (!tooltip) return null;
+
+		return (
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<button
+						type="button"
+						aria-label={`Help: ${key}`}
+						className="text-muted-foreground hover:text-foreground inline-flex items-center"
+					>
+						<HelpCircle className="h-4 w-4 cursor-help" />
+					</button>
+				</TooltipTrigger>
+
+				<TooltipContent>
+					<p className="max-w-xs">{tooltip}</p>
+				</TooltipContent>
+			</Tooltip>
+		);
+	};
 
 	const mutation = useMutation({
 		mutationFn: () =>
@@ -43,90 +77,116 @@ export function ProjectGeneralTab({ project }: ProjectGeneralTabProps) {
 	});
 
 	return (
-		<div className="w-full space-y-4">
-			<div className="space-y-2">
-				<label htmlFor="project-name" className="text-sm font-medium">
-					Project name
-				</label>
-				<Input
-					id="project-name"
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					placeholder="Project name"
-				/>
-			</div>
+		<TooltipProvider>
+			<div className="w-full space-y-4">
+				{/* Project Title */}
+				<div className="space-y-2">
+					<div className="flex items-center gap-2">
+						<label htmlFor="project-name" className="text-sm font-medium">
+							Project Title <span className="text-destructive">*</span>
+						</label>
+						{renderTooltip("projectTitle")}
+					</div>
 
-			<div className="space-y-2">
-				<label htmlFor="project-description" className="text-sm font-medium">
-					Description
-				</label>
-				<Textarea
-					id="project-description"
-					placeholder="Description"
-					value={description}
-					onChange={(e) => setDescription(e.target.value)}
-				/>
-			</div>
+					<Input
+						id="project-name"
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						placeholder="Project Title"
+						required
+					/>
+				</div>
 
-			<div className="space-y-2">
-				<label
-					htmlFor="project-detailed-description"
-					className="text-sm font-medium"
+				{/* Data Owning Organization */}
+				<div className="space-y-2">
+					<div className="flex items-center gap-2">
+						<label
+							htmlFor="data-owning-organization"
+							className="text-sm font-medium"
+						>
+							Data Owning Organization{" "}
+							<span className="text-destructive">*</span>
+						</label>
+						{renderTooltip("dataOwningOrganization")}
+					</div>
+
+					<Input
+						id="data-owning-organization"
+						value={dataOwningOrganization}
+						onChange={(e) => setDataOwningOrganization(e.target.value)}
+						placeholder="Organization responsible for the data"
+						required
+					/>
+				</div>
+
+				{/* Description */}
+				<div className="space-y-2">
+					<div className="flex items-center gap-2">
+						<label
+							htmlFor="project-description"
+							className="text-sm font-medium"
+						>
+							Description
+						</label>
+						{renderTooltip("description")}
+					</div>
+
+					<Textarea
+						id="project-description"
+						placeholder="Short project description"
+						value={description}
+						onChange={(e) => setDescription(e.target.value)}
+					/>
+				</div>
+
+				{/* Detailed Description */}
+				<div className="space-y-2">
+					<div className="flex items-center gap-2">
+						<label
+							htmlFor="project-detailed-description"
+							className="text-sm font-medium"
+						>
+							Detailed Description
+						</label>
+						{renderTooltip("detailedDescription")}
+					</div>
+
+					<Textarea
+						id="project-detailed-description"
+						placeholder="Provide additional details about the project"
+						value={detailedDescription}
+						onChange={(e) => setDetailedDescription(e.target.value)}
+						rows={4}
+					/>
+				</div>
+
+				{/* Comments */}
+				<div className="space-y-2">
+					<div className="flex items-center gap-2">
+						<label htmlFor="project-comments" className="text-sm font-medium">
+							Comments
+						</label>
+						{renderTooltip("comments")}
+					</div>
+
+					<Textarea
+						id="project-comments"
+						placeholder="Additional comments about the project"
+						value={comments}
+						onChange={(e) => setComments(e.target.value)}
+						rows={3}
+					/>
+				</div>
+
+				<Button
+					onClick={() => mutation.mutate()}
+					disabled={
+						mutation.isPending || !name.trim() || !dataOwningOrganization.trim()
+					}
 				>
-					Detailed description
-					<span className="text-muted-foreground ml-1 font-normal">
-						(Optional)
-					</span>
-				</label>
-				<Textarea
-					id="project-detailed-description"
-					placeholder="Provide additional details about the project"
-					value={detailedDescription}
-					onChange={(e) => setDetailedDescription(e.target.value)}
-					rows={4}
-				/>
+					{mutation.isPending ? "Saving..." : "Save changes"}
+				</Button>
 			</div>
-
-			<div className="space-y-2">
-				<label
-					htmlFor="data-owning-organization"
-					className="text-sm font-medium"
-				>
-					Data owning organization
-					<span className="text-muted-foreground ml-1 font-normal">
-						(Optional)
-					</span>
-				</label>
-				<Input
-					id="data-owning-organization"
-					value={dataOwningOrganization}
-					onChange={(e) => setDataOwningOrganization(e.target.value)}
-					placeholder="Organization responsible for the data"
-				/>
-			</div>
-
-			<div className="space-y-2">
-				<label htmlFor="project-comments" className="text-sm font-medium">
-					Comments
-					<span className="text-muted-foreground ml-1 font-normal">
-						(Optional)
-					</span>
-				</label>
-				<Textarea
-					id="project-comments"
-					placeholder="Add comments about the project"
-					value={comments}
-					onChange={(e) => setComments(e.target.value)}
-					rows={3}
-				/>
-			</div>
-
-			<Button
-				onClick={() => mutation.mutate()}
-				disabled={mutation.isPending || !name.trim()}
-			>
-				{mutation.isPending ? "Saving..." : "Save changes"}
-			</Button>
-		</div>
+		</TooltipProvider>
 	);
 }

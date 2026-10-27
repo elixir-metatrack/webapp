@@ -22,6 +22,31 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createInvestigation } from "@/lib/api-keycloak";
 import type { Project } from "@/lib/types";
 import { toastError, toastSuccess } from "#/lib/toast";
+import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
+
+const renderTooltip = (key: keyof typeof COLUMN_TOOLTIPS) => {
+	const tooltip = COLUMN_TOOLTIPS[key];
+
+	if (!tooltip) return null;
+
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<button
+					type="button"
+					aria-label={`Help: ${key}`}
+					className="text-muted-foreground hover:text-foreground inline-flex items-center"
+				>
+					<HelpCircle className="h-4 w-4 cursor-help" />
+				</button>
+			</TooltipTrigger>
+
+			<TooltipContent>
+				<p className="max-w-xs">{tooltip}</p>
+			</TooltipContent>
+		</Tooltip>
+	);
+};
 
 export function AddProjectDialog() {
 	const [name, setName] = useState("");
@@ -80,126 +105,140 @@ export function AddProjectDialog() {
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger asChild>
-				<Button>
-					<SquarePlus className="h-4 w-4" />
-					Create Project
-				</Button>
-			</DialogTrigger>
+		<TooltipProvider>
+			<Dialog open={open} onOpenChange={setOpen}>
+				<DialogTrigger asChild>
+					<Button>
+						<SquarePlus className="h-4 w-4" />
+						Create Project
+					</Button>
+				</DialogTrigger>
 
-			<DialogContent
-				aria-describedby={undefined}
-				className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
-			>
-				<form onSubmit={handleCreate} className="space-y-4">
-					<DialogHeader>
-						<DialogTitle>Create New Project</DialogTitle>
-					</DialogHeader>
+				<DialogContent
+					aria-describedby={undefined}
+					className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
+				>
+					<form onSubmit={handleCreate} className="space-y-4">
+						<DialogHeader>
+							<DialogTitle>Create New Project</DialogTitle>
+						</DialogHeader>
 
-					<div className="space-y-4">
-						{/* Project Title */}
-						<div className="space-y-2">
-							<div className="flex items-center gap-2">
-								<label htmlFor="projectName" className="font-medium">
-									Project Title <span className="text-red-500">*</span>
-								</label>
+						<div className="space-y-4">
+							{/* Project Title */}
+							<div className="space-y-2">
+								<div className="flex items-center gap-2">
+									<label htmlFor="projectName" className="font-medium">
+										Project Title <span className="text-destructive">*</span>
+									</label>
+									{renderTooltip("projectTitle")}
+								</div>
 
-								<TooltipProvider>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<HelpCircle className="h-4 w-4 cursor-pointer text-gray-500" />
-										</TooltipTrigger>
-										<TooltipContent>
-											<p>
-												The main title of your project. This field is required.
-											</p>
-										</TooltipContent>
-									</Tooltip>
-								</TooltipProvider>
+								<Input
+									id="projectName"
+									placeholder="Project Title"
+									value={name}
+									onChange={(e) => setName(e.target.value)}
+									required
+								/>
 							</div>
 
-							<Input
-								id="projectName"
-								placeholder="Project Title"
-								value={name}
-								onChange={(e) => setName(e.target.value)}
-								required
-							/>
+							{/* Data Owning Organization */}
+							<div className="space-y-2">
+								<div className="flex items-center gap-2">
+									<label
+										htmlFor="dataOwningOrganization"
+										className="font-medium"
+									>
+										Data Owning Organization{" "}
+										<span className="text-destructive">*</span>
+									</label>
+									{renderTooltip("dataOwningOrganization")}
+								</div>
+
+								<Input
+									id="dataOwningOrganization"
+									placeholder="Organization responsible for the data"
+									value={dataOwningOrganization}
+									onChange={(e) => setDataOwningOrganization(e.target.value)}
+									required
+								/>
+							</div>
+
+							{/* Description */}
+							<div className="space-y-2">
+								<div className="flex items-center gap-2">
+									<label htmlFor="description" className="font-medium">
+										Description
+									</label>
+									{renderTooltip("description")}
+								</div>
+
+								<Input
+									id="description"
+									placeholder="Short project description"
+									value={description}
+									onChange={(e) => setDescription(e.target.value)}
+								/>
+							</div>
+
+							{/* Detailed Description */}
+							<div className="space-y-2">
+								<div className="flex items-center gap-2">
+									<label htmlFor="detailedDescription" className="font-medium">
+										Detailed Description
+									</label>
+									{renderTooltip("detailedDescription")}
+								</div>
+
+								<Textarea
+									id="detailedDescription"
+									placeholder="Provide additional details about the project"
+									value={detailedDescription}
+									onChange={(e) => setDetailedDescription(e.target.value)}
+									rows={4}
+								/>
+							</div>
+
+							{/* Comments */}
+							<div className="space-y-2">
+								<div className="flex items-center gap-2">
+									<label htmlFor="comments" className="font-medium">
+										Comments
+									</label>
+									{renderTooltip("comments")}
+								</div>
+
+								<Textarea
+									id="comments"
+									placeholder="Additional comments about the project"
+									value={comments}
+									onChange={(e) => setComments(e.target.value)}
+									rows={3}
+								/>
+							</div>
 						</div>
 
-						{/* Description */}
-						<div className="space-y-2">
-							<label htmlFor="description" className="font-medium">
-								Description
-							</label>
+						<DialogFooter className="flex justify-between">
+							<DialogClose asChild>
+								<Button variant="outline" type="button">
+									Cancel
+								</Button>
+							</DialogClose>
 
-							<Input
-								id="description"
-								placeholder="Short project description"
-								value={description}
-								onChange={(e) => setDescription(e.target.value)}
-							/>
-						</div>
-
-						{/* Detailed Description */}
-						<div className="space-y-2">
-							<label htmlFor="detailedDescription" className="font-medium">
-								Detailed Description
-							</label>
-
-							<Textarea
-								id="detailedDescription"
-								placeholder="Provide additional details about the project"
-								value={detailedDescription}
-								onChange={(e) => setDetailedDescription(e.target.value)}
-								rows={4}
-							/>
-						</div>
-
-						{/* Data Owning Organization */}
-						<div className="space-y-2">
-							<label htmlFor="dataOwningOrganization" className="font-medium">
-								Data Owning Organization
-							</label>
-
-							<Input
-								id="dataOwningOrganization"
-								placeholder="Organization responsible for the data"
-								value={dataOwningOrganization}
-								onChange={(e) => setDataOwningOrganization(e.target.value)}
-							/>
-						</div>
-
-						{/* Comments */}
-						<div className="space-y-2">
-							<label htmlFor="comments" className="font-medium">
-								Comments
-							</label>
-
-							<Textarea
-								id="comments"
-								placeholder="Additional comments about the project"
-								value={comments}
-								onChange={(e) => setComments(e.target.value)}
-								rows={3}
-							/>
-						</div>
-					</div>
-
-					<DialogFooter className="flex justify-between">
-						<DialogClose asChild>
-							<Button variant="outline" type="button">
-								Cancel
+							<Button
+								type="submit"
+								disabled={
+									mutation.isPending ||
+									!name.trim() ||
+									!dataOwningOrganization.trim()
+								}
+							>
+								{mutation.isPending ? "Creating Project..." : "Create Project"}
 							</Button>
-						</DialogClose>
-
-						<Button type="submit" disabled={mutation.isPending || !name.trim()}>
-							{mutation.isPending ? "Creating Project..." : "Create Project"}
-						</Button>
-					</DialogFooter>
-				</form>
-			</DialogContent>
-		</Dialog>
+						</DialogFooter>
+					</form>
+				</DialogContent>
+			</Dialog>
+		</TooltipProvider>
 	);
 }

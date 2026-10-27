@@ -1,4 +1,24 @@
 export const COLUMN_TOOLTIPS: Record<string, string> = {
+	// PROJECT TOOLTIPS
+
+	projectTitle: "Title of the sample.",
+
+	description:
+		"Description of the sample. Example: Staphylococcus aureus isolated from blood culture.",
+
+	sampleCount: "Number of samples associated with the project.",
+
+	dataOwningOrganization:
+		"Organization responsible for the ownership and management of the project's data.",
+
+	detailedDescription:
+		"Detailed information about the project with other relevant details.",
+
+	comments:
+		"Additional notes or observations about the project that do not fit into the other fields.",
+
+	// SAMPLES TOOLTIPS
+
 	name: "Unique name of the sample.",
 
 	alias:
@@ -9,11 +29,6 @@ export const COLUMN_TOOLTIPS: Record<string, string> = {
 
 	taxonName:
 		"Scientific name of the organism as in the NCBI Taxonomy database. Scientific names typically follow the binomial nomenclature. For example, the scientific name for humans is Homo sapiens. NB! you don't need to provide this as it will be automatically fetched from the Tax ID in MetaTrack.",
-
-	projectTitle: "Title of the sample.",
-
-	description:
-		"Description of the sample. Example: Staphylococcus aureus isolated from blood culture.",
 
 	isolationSource:
 		"Describes the physical, environmental and/or local geographical source of the biological sample from which the sample was derived (example: feces, soil, hospital, nasal swab). If no suitable value is available, use one of the following: Not generated – Data were not generated. Not provided – Data are not provided. Restricted access – Data exist but are access restricted. Not applicable – Not relevant for this sample.",
@@ -121,6 +136,7 @@ export const COLUMN_TOOLTIPS: Record<string, string> = {
 		"Name of the institution to which the person collecting the specimen belongs. Format: Institute Name, Institute Address.",
 
 	// EXPERIMENT COLUMNS TOOLTIP
+
 	sampleName:
 		'Unique name of the sample. Identical to "Sample Name" as this is the sequence data from the original sample.',
 
