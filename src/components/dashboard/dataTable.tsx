@@ -997,7 +997,7 @@ export function DataTable<T extends object>({
 
 				{selectedRows.length > 0 && (
 					<div className="inline-flex min-h-9 max-w-full flex-wrap items-center rounded-md border">
-						<div className="text-selected flex flex-1 flex-wrap items-center px-3 text-sm md:flex-row">
+						<div className="text-selected flex flex-1 flex-wrap items-center pl-3 text-sm md:flex-row">
 							{table.getFilteredSelectedRowModel().rows.length} selected
 							<Button
 								variant="ghost"
@@ -1009,7 +1009,19 @@ export function DataTable<T extends object>({
 							</Button>
 						</div>
 
-						<Separator orientation="vertical" />
+						{!project?.parentProjectId && (
+							<>
+								<DeleteAlertButton
+									projectId={project?.id ?? ""}
+									item={selectedRows as { id: string }[]}
+									entityName="sample"
+									insideDropdown={false}
+									onDeleted={() => table.resetRowSelection()}
+								/>
+							</>
+						)}
+
+						<Separator orientation="vertical" className="!h-8" />
 
 						{dataType === "sample" ? (
 							<>
@@ -1043,7 +1055,7 @@ export function DataTable<T extends object>({
 												</DropdownMenuContent>
 											</DropdownMenu>
 
-											<Separator orientation="vertical" />
+											<Separator orientation="vertical" className="!h-8" />
 										</React.Fragment>
 									);
 								})}
@@ -1097,19 +1109,6 @@ export function DataTable<T extends object>({
 											</DropdownMenuItem>
 										);
 									})}
-
-									{!project?.parentProjectId && (
-										<>
-											<DropdownMenuSeparator />
-
-											<DeleteAlertButton
-												projectId={project?.id ?? ""}
-												item={selectedRows as { id: string }[]}
-												entityName="sample"
-												onDeleted={() => table.resetRowSelection()}
-											/>
-										</>
-									)}
 								</DropdownMenuContent>
 							</DropdownMenu>
 						) : (
