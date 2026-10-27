@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GetStartedRouteImport } from './routes/get-started'
+import { Route as HowToCiteUsRouteImport } from './routes/how-to-cite-us'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as ProjectsRouteRouteImport } from './routes/projects/route'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
 const GetStartedRoute = GetStartedRouteImport.update({
   id: '/get-started',
   path: '/get-started',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowToCiteUsRoute = HowToCiteUsRouteImport.update({
+  id: '/how-to-cite-us',
+  path: '/how-to-cite-us',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteRouteWithChildren
   '/get-started': typeof GetStartedRoute
+  '/how-to-cite-us': typeof HowToCiteUsRoute
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/get-started': typeof GetStartedRoute
+  '/how-to-cite-us': typeof HowToCiteUsRoute
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteRouteWithChildren
   '/get-started': typeof GetStartedRoute
+  '/how-to-cite-us': typeof HowToCiteUsRoute
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/public-data': typeof PublicDataRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/'
     | '/projects'
     | '/get-started'
+    | '/how-to-cite-us'
     | '/login'
     | '/privacy-policy'
     | '/public-data'
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/get-started'
+    | '/how-to-cite-us'
     | '/login'
     | '/privacy-policy'
     | '/public-data'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/'
     | '/projects'
     | '/get-started'
+    | '/how-to-cite-us'
     | '/login'
     | '/privacy-policy'
     | '/public-data'
@@ -221,6 +233,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProjectsRouteRoute: typeof ProjectsRouteRouteWithChildren
   GetStartedRoute: typeof GetStartedRoute
+  HowToCiteUsRoute: typeof HowToCiteUsRoute
   LoginRoute: typeof LoginRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   PublicDataRoute: typeof PublicDataRoute
@@ -246,6 +259,13 @@ declare module '@tanstack/react-router' {
       path: '/get-started'
       fullPath: '/get-started'
       preLoaderRoute: typeof GetStartedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to-cite-us': {
+      id: '/how-to-cite-us'
+      path: '/how-to-cite-us'
+      fullPath: '/how-to-cite-us'
+      preLoaderRoute: typeof HowToCiteUsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -371,6 +391,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProjectsRouteRoute: ProjectsRouteRouteWithChildren,
   GetStartedRoute: GetStartedRoute,
+  HowToCiteUsRoute: HowToCiteUsRoute,
   LoginRoute: LoginRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   PublicDataRoute: PublicDataRoute,

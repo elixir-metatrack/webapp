@@ -39,7 +39,7 @@ export default function Footer() {
 							</Link>
 						</li>
 						<li>
-							<Link to="/" className="hover:underline">
+							<Link to="/how-to-cite-us" className="hover:underline">
 								How to cite us
 							</Link>
 						</li>
