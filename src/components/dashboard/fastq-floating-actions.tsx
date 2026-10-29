@@ -1,4 +1,4 @@
-import { Download, X } from "lucide-react";
+import { Download, Trash2, X } from "lucide-react";
 import { Button } from "../ui/button";
 
 export function FastqFloatingActions({
@@ -6,11 +6,13 @@ export function FastqFloatingActions({
 	onDownload,
 	onDelete,
 	onClear,
+	deleteAction,
 }: {
 	count: number;
 	onDownload: () => void;
 	onDelete: () => void;
 	onClear: () => void;
+	deleteAction?: React.ReactNode;
 }) {
 	if (count === 0) return null;
 
@@ -36,10 +38,12 @@ export function FastqFloatingActions({
 						Download
 					</Button>
 
-					<Button variant="destructive" size="sm" onClick={onDelete}>
-						<X className="mr-2 size-4" />
-						Delete
-					</Button>
+					{deleteAction ?? (
+						<Button variant="ghost" size="sm" onClick={onDelete}>
+							<Trash2 className="size-4" />
+							Delete
+						</Button>
+					)}
 
 					<Button
 						variant="ghost"

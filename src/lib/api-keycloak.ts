@@ -1,3 +1,4 @@
+import { isTableImportViolations, TableImportError } from "./table-import";
 import { keycloak } from "./keycloak";
 import type {
 	Assay,
@@ -29,47 +30,112 @@ import { getApiErrorMessage } from "./utils";
 // API
 // ============================================================
 
+export class ApiError extends Error {
+	constructor(
+		message: string,
+		public readonly status: number
+	) {
+		super(message);
+		this.name = "ApiError";
+	}
+}
+
 export async function api<T = unknown>(
 	endpoint: string,
 	options: RequestInit = {}
 ): Promise<T> {
-	const token = keycloak.token;
+	const request = async (): Promise<Response> => {
+		const token = keycloak.token;
 
-	const headers: Record<string, string> = {
-		Authorization: `Bearer ${token}`,
-		...((options.headers as Record<string, string>) || {}),
-	};
+		const headers: Record<string, string> = {
+			...(options.headers as Record<string, string> | undefined),
+		};
 
-	if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
-		headers["Content-Type"] = "application/json";
-	}
-
-	const res = await fetch(`${API_URL}/${endpoint}`, {
-		...options,
-		headers,
-	});
-
-	if (!res.ok) {
-		const contentType = res.headers.get("content-type");
-
-		if (contentType?.includes("application/json")) {
-			const data = await res.json();
-
-			throw new Error(getApiErrorMessage(data));
+		if (token) {
+			headers.Authorization = `Bearer ${token}`;
 		}
 
-		const text = await res.text();
+		if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
+			headers["Content-Type"] = "application/json";
+		}
 
-		throw new Error(text || "API error");
+		return fetch(`${API_URL}/${endpoint}`, {
+			...options,
+			headers,
+		});
+	};
+
+	let authenticationFailed = false;
+
+	try {
+		if (!keycloak.authenticated) {
+			throw new Error("Not authenticated");
+		}
+
+		try {
+			await keycloak.updateToken(30);
+		} catch (error) {
+			authenticationFailed = true;
+			throw error;
+		}
+
+		let res = await request();
+
+		if (res.status === 401) {
+			try {
+				await keycloak.updateToken(-1);
+			} catch (error) {
+				authenticationFailed = true;
+				throw error;
+			}
+
+			res = await request();
+		}
+
+		if (res.status === 401) {
+			throw new Error("Authentication expired");
+		}
+
+		if (!res.ok) {
+			const contentType = res.headers.get("content-type");
+			let message = "API error";
+
+			if (contentType?.includes("application/json")) {
+				const data = await res.json();
+				if (
+					(endpoint.endsWith("/samplesheet") ||
+						/assays\/[^/]+\/experiments$/.test(endpoint)) &&
+					isTableImportViolations(data)
+				) {
+					throw new TableImportError(data);
+				}
+				throw new Error(getApiErrorMessage(data));
+			}
+
+			throw new ApiError(message, res.status);
+		}
+
+		const contentType = res.headers.get("content-type");
+
+		if (!contentType || !contentType.includes("application/json")) {
+			return undefined as T;
+		}
+
+		return (await res.json()) as T;
+	} catch (error) {
+		const shouldRedirect =
+			authenticationFailed ||
+			!keycloak.authenticated ||
+			(error instanceof Error &&
+				(error.message === "Authentication expired" ||
+					error.message === "Not authenticated"));
+
+		if (shouldRedirect) {
+			window.location.href = "/";
+		}
+
+		throw error;
 	}
-
-	const contentType = res.headers.get("content-type");
-
-	if (!contentType || !contentType.includes("application/json")) {
-		return undefined as T;
-	}
-
-	return res.json();
 }
 
 export async function apiPublic<T = unknown>(
@@ -147,7 +213,13 @@ export function createInvestigation(data: Project) {
 
 export async function updateProject(
 	projectId: string,
-	data: { name?: string; description?: string }
+	data: {
+		name?: string;
+		description?: string;
+		detailedDescription?: string;
+		dataOwningOrganization?: string;
+		comments?: string;
+	}
 ) {
 	return api(`projects/${projectId}`, {
 		method: "PATCH",
@@ -348,10 +420,18 @@ export async function createSample(
 	data: CreateSample,
 	projectId: string
 ): Promise<void> {
-	await api(`projects/${projectId}/samples`, {
-		method: "POST",
-		body: JSON.stringify(data),
-	});
+	try {
+		await api(`projects/${projectId}/samples`, {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	} catch (error) {
+		if (error instanceof ApiError && error.status === 409) {
+			throw new Error("A sample with this name already exists.");
+		}
+
+		throw error;
+	}
 }
 
 export async function updateSample(
@@ -455,6 +535,7 @@ export async function createSampleMetadataField(
 	data: {
 		key: string;
 		label: string;
+		tooltip: string;
 		type: SampleMetadataFieldType;
 	}
 ): Promise<SampleMetadataField> {
@@ -472,6 +553,7 @@ export async function updateSampleMetadataField(
 	fieldId: string,
 	data: {
 		label?: string;
+		tooltip?: string;
 		archived?: boolean;
 	}
 ): Promise<SampleMetadataField> {
@@ -666,6 +748,17 @@ export async function uploadExperiments(
 	});
 }
 
+export async function deleteSamplesFromAssay(
+	projectId: string,
+	assayId: string,
+	sampleNames: string[]
+): Promise<void> {
+	return api(`projects/${projectId}/assays/${assayId}/samples`, {
+		method: "DELETE",
+		body: JSON.stringify({ sampleNames }),
+	});
+}
+
 // ============================================================
 // Global Assay Vocabularies
 // ============================================================
@@ -749,6 +842,15 @@ export async function requestPresignedDownload(
 			sampleName: data.sampleName,
 			fileName: data.fileName,
 		}),
+	});
+}
+
+export async function deleteProjectFile(
+	projectId: number,
+	fileUuid: string
+): Promise<void> {
+	await api<void>(`projects/${projectId}/files/${fileUuid}`, {
+		method: "DELETE",
 	});
 }
 
@@ -837,16 +939,8 @@ export async function downloadTemplate(type: TemplateType): Promise<void> {
 		experiment_SE: "/templates/experiments/experiment_SE.csv",
 	};
 
-	const TEMPLATE_FILENAMES: Record<TemplateType, string> = {
-		sample: "sample.csv",
-		sample_extended: "sample_extended.csv",
-		sample_virus: "sample_virus.csv",
-		experiment_PE: "experiment_PE.csv",
-		experiment_SE: "experiment_SE.csv",
-	};
-
 	const path = TEMPLATE_PATHS[type];
-	const filename = TEMPLATE_FILENAMES[type];
+	const filename = `${type}.csv`;
 
 	const res = await fetch(`${API_BASE_URL}${path}`);
 
@@ -854,18 +948,58 @@ export async function downloadTemplate(type: TemplateType): Promise<void> {
 		throw new Error(`Failed to download ${filename}`);
 	}
 
-	const blob = await res.blob();
-	const url = window.URL.createObjectURL(blob);
+	downloadBlob(await res.blob(), filename);
+}
 
-	const a = document.createElement("a");
-	a.href = url;
-	a.download = filename;
+export async function downloadExcelTemplate(type: TemplateType): Promise<void> {
+	const res = await fetch(`${API_URL}/templates/excel/${type}`);
+	if (!res.ok) throw new Error("Failed to download Excel template");
+	downloadBlob(await res.blob(), `${type}-v1.xlsx`);
+}
 
-	document.body.appendChild(a);
-	a.click();
+export async function exportExcelData(
+	projectId: string,
+	sampleNames: string[],
+	assayId?: string
+): Promise<void> {
+	if (sampleNames.length === 0) throw new Error("Choose samples to export");
+	const path = assayId
+		? `projects/${projectId}/assays/${assayId}/experiments/export`
+		: `projects/${projectId}/samples/export`;
+	const response = await fetch(`${API_URL}/${path}`, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${keycloak.token}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({ sampleNames }),
+	});
+	if (!response.ok) {
+		const message = response.headers
+			.get("content-type")
+			?.includes("application/json")
+			? getApiErrorMessage(await response.json())
+			: await response.text();
+		throw new Error(message || "Failed to export Excel file");
+	}
+	const filename = assayId
+		? `experiments-${assayId}.xlsx`
+		: `samples-${projectId}.xlsx`;
+	downloadBlob(await response.blob(), filename);
+}
 
-	a.remove();
-	window.URL.revokeObjectURL(url);
+function downloadBlob(blob: Blob, filename: string): void {
+	const url = URL.createObjectURL(blob);
+	const anchor = document.createElement("a");
+	try {
+		anchor.href = url;
+		anchor.download = filename;
+		document.body.appendChild(anchor);
+		anchor.click();
+	} finally {
+		anchor.remove();
+		URL.revokeObjectURL(url);
+	}
 }
 
 // ============================================================

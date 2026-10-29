@@ -1,17 +1,13 @@
 import * as React from "react";
 import { useState } from "react";
 import {
-	type Cell,
 	type ColumnDef,
 	flexRender,
 	getCoreRowModel,
 	getFilteredRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
-	type Header,
-	type Row,
 	type SortingState,
-	type Table as TanStackTable,
 	useReactTable,
 } from "@tanstack/react-table";
 
@@ -65,6 +61,7 @@ import type {
 import {
 	ASSAY_NUMBER_FIELDS,
 	DATE_FIELDS,
+	formatDateToYMD,
 	getColumnOrder,
 	NON_EDITABLE_COLUMNS,
 	NON_VIEWED_COLUMNS,
@@ -72,10 +69,11 @@ import {
 	SAMPLE_NUMBER_FIELDS,
 } from "@/lib/utils";
 import { ProjectTree, type ProjectGraph } from "../projectTree";
-import { buildProjectGraph } from "@/lib/projectTree";
+import { buildAssaySelectionTree, buildProjectGraph } from "@/lib/projectTree";
 import { UploadDataDialog } from "./upload-data";
 import {
 	batchEditSamples,
+	deleteProjectFile,
 	getAssaysInSample,
 	getSampleMetadataFields,
 	requestPresignedDownload,
@@ -94,6 +92,7 @@ import {
 	InputGroupInput,
 } from "../ui/input-group";
 import { FastqFloatingActions } from "./fastq-floating-actions";
+import { ExportSamplesButton } from "./export-samples-button";
 
 interface DataTableProps<T extends object> {
 	data: T[];
@@ -106,6 +105,7 @@ interface DataTableProps<T extends object> {
 	project?: Project;
 	dataType: "sample" | "assay";
 	assay?: Assay;
+	onAssayClick?: (assayId: string) => void;
 }
 
 const COLUMN_NAMES: Record<string, string> = {
@@ -173,9 +173,6 @@ function getColumnTooltip(key: string) {
 function getColumnNewName(key: string) {
 	return COLUMN_NAMES[key] ?? "";
 }
-
-const formatDateToYMD = (dateStr?: string | null) =>
-	dateStr ? new Date(dateStr).toISOString().split("T")[0] : "";
 
 function QuickEditField({
 	fieldKey,
@@ -256,6 +253,7 @@ export function DataTable<T extends object>({
 	filterPlaceholder = "Filter...",
 	dataType,
 	assay,
+	onAssayClick,
 }: DataTableProps<T>) {
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{
@@ -286,10 +284,19 @@ export function DataTable<T extends object>({
 		dataType !== "assay"
 	);
 
+	const getHeaderTooltip = (columnId: string): string | undefined => {
+		const customField = customMetadataFields.find(
+			(field) => field.key === columnId
+		);
+
+		return customField?.tooltip || getColumnTooltip(columnId);
+	};
+
 	// ===================================================================
 	// SELECT FASTQ FILES
 
 	type SelectableFastqFile = {
+		uuid: string;
 		sampleName: string;
 		fileName: string;
 		key: string;
@@ -309,6 +316,7 @@ export function DataTable<T extends object>({
 			}>
 		).flatMap((sample) =>
 			(sample.files ?? []).map((file) => ({
+				uuid: file.uuid,
 				sampleName: sample.name,
 				fileName: file.name,
 				key: JSON.stringify([sample.name, file.name]),
@@ -562,8 +570,9 @@ export function DataTable<T extends object>({
 									{onDelete && !project?.parentProjectId && (
 										<DeleteAlertButton
 											projectId={project?.id ?? ""}
-											item={row.original as { id: string }[]}
-											entityName="sample"
+											item={row.original as { id: string; name: string }[]}
+											entityName={dataType}
+											assayId={assay?.id ?? ""}
 											onDeleted={() => table.resetRowSelection()}
 										/>
 									)}
@@ -680,38 +689,22 @@ export function DataTable<T extends object>({
 	});
 
 	const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
-	const prepareTableDataForDownload = (table: TanStackTable<T>) => {
-		const headers = table
-			.getHeaderGroups()[0]
-			.headers.filter(
-				(h: Header<T, unknown>, idx: number) =>
-					!h.isPlaceholder &&
-					idx > 0 &&
-					idx < table.getHeaderGroups()[0].headers.length - 1
+	const hasSelection = selectedRows.length > 0;
+	// Export across all pages, keeping the current filter even when rows are selected.
+	const exportRows = hasSelection
+		? table.getFilteredSelectedRowModel().rows
+		: table.getSortedRowModel().rows;
+	const handleDownloadTSV = () => {
+		const tsvRows = exportRows.map((row) =>
+			Object.fromEntries(
+				row
+					.getVisibleCells()
+					.filter((cell) => cell.column.accessorFn)
+					.map((cell) => [cell.column.id, cell.getValue()])
 			)
-			.map((h: Header<T, unknown>) => {
-				const resolvedColumnDef = h.column.columnDef;
-				if ("accessorKey" in resolvedColumnDef)
-					return resolvedColumnDef.accessorKey as string;
-				if ("accessorFn" in resolvedColumnDef)
-					return resolvedColumnDef.id as string;
-				return "";
-			});
-
-		const rows = table.getRowModel().rows.map((row: Row<T>) =>
-			row
-				.getVisibleCells()
-				.slice(1, -1)
-				.map((cell: Cell<T, unknown>) => {
-					const value = cell.getValue();
-					return value !== undefined && value !== null ? String(value) : "";
-				})
 		);
-
-		return { headers, rows };
+		downloadTSV(tsvRows, hasSelection ? "selected-rows" : "filtered-rows");
 	};
-
-	const { headers, rows } = prepareTableDataForDownload(table);
 
 	const handleBatchUpdate = async (colName: string, value: string) => {
 		try {
@@ -887,11 +880,8 @@ export function DataTable<T extends object>({
 	const selectedSamples: Sample[] =
 		dataType === "sample" ? (selectedRows as Sample[]) : [];
 
-	const selectedAssays: Sample[] =
-		dataType === "assay" ? (selectedRows as Sample[]) : [];
-
-	const selectedSamplesForTree =
-		dataType === "sample" ? selectedSamples : selectedAssays;
+	const selectedAssays: Assay[] =
+		dataType === "assay" ? (selectedRows as Assay[]) : [];
 
 	/*
 	 * ============================================================
@@ -911,21 +901,24 @@ export function DataTable<T extends object>({
 		queryKey: [
 			"tree-assays-by-sample",
 			project?.id,
-			selectedSamplesForTree.map((sample) => sample.id),
+			selectedSamples.map((sample) => sample.id),
 		],
 
-		enabled: Boolean(project?.id) && selectedSamplesForTree.length > 0,
+		enabled:
+			dataType === "sample" &&
+			Boolean(project?.id) &&
+			selectedSamples.length > 0,
 
 		queryFn: async () => {
 			if (!project?.id) return {};
 
 			const entries = await Promise.all(
-				selectedSamplesForTree
+				selectedSamples
 					.filter((sample) => Boolean(sample.id))
 					.map(async (sample) => {
 						const assays = await getAssaysInSample(project.id!, sample.id!);
 
-						return [sample.id!, assays] as const;
+						return [sample.id, assays] as const;
 					})
 			);
 
@@ -939,13 +932,15 @@ export function DataTable<T extends object>({
 	 * ============================================================
 	 */
 
-	const treeData: ProjectGraph =
-		project && selectedSamplesForTree.length > 0
-			? buildProjectGraph(project, selectedSamplesForTree, treeAssaysBySample)
-			: {
-					nodes: [],
-					links: [],
-				};
+	const treeData: ProjectGraph = !project
+		? { nodes: [], links: [] }
+		: dataType === "sample"
+			? selectedSamples.length > 0
+				? buildProjectGraph(project, selectedSamples, treeAssaysBySample)
+				: { nodes: [], links: [] }
+			: selectedAssays.length > 0
+				? buildAssaySelectionTree(project, assay!, selectedAssays)
+				: { nodes: [], links: [] };
 
 	const editableColumns = enhancedColumns.filter(
 		(col) => !NON_EDITABLE_COLUMNS.includes(String(col.id))
@@ -954,19 +949,45 @@ export function DataTable<T extends object>({
 	const quickEditColumns = editableColumns.slice(1, QUICK_EDIT_LIMIT);
 	const moreEditColumns = editableColumns.slice(QUICK_EDIT_LIMIT);
 
-	const handleDeleteSelectedFastqFiles = () => {
-		toastError(
-			"FASTQ deletion is not connected yet. Connect this action to your file deletion API."
+	const handleDeleteSelectedFastqFiles = async (
+		filesToDelete: SelectableFastqFile[]
+	) => {
+		if (!project?.id || !assay?.id || filesToDelete.length === 0) {
+			return;
+		}
+
+		const results = await Promise.allSettled(
+			filesToDelete.map((file) => {
+				return deleteProjectFile(Number(project.id), file.uuid);
+			})
 		);
+
+		const succeeded = results.filter(
+			(result) => result.status === "fulfilled"
+		).length;
+
+		const failed = results.length - succeeded;
+
+		await queryClient.invalidateQueries({
+			queryKey: ["assaySamples", assay.id, String(project.id)],
+		});
+
+		if (failed > 0) {
+			toastError(`Failed to delete ${failed} of ${results.length} file(s).`);
+		}
+
+		if (succeeded > 0) {
+			toastSuccess(`${succeeded} file(s) deleted successfully.`);
+		}
 	};
 
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-center space-x-2 lg:flex">
-				<ProjectTree data={treeData} width={1200} />
+				<ProjectTree data={treeData} width={1200} onAssayClick={onAssayClick} />
 			</div>
 
-			<div className="items-center justify-between space-x-2 lg:flex">
+			<div className="flex flex-wrap items-center justify-between gap-2">
 				<Input
 					placeholder={filterPlaceholder}
 					value={globalFilter ?? ""}
@@ -975,8 +996,8 @@ export function DataTable<T extends object>({
 				/>
 
 				{selectedRows.length > 0 && (
-					<div className="inline-flex h-9 items-center rounded-md border">
-						<div className="text-selected flex flex-1 flex-wrap items-center p-4 text-sm md:flex-row">
+					<div className="inline-flex min-h-9 max-w-full flex-wrap items-center rounded-md border">
+						<div className="text-selected flex flex-1 flex-wrap items-center pl-3 text-sm md:flex-row">
 							{table.getFilteredSelectedRowModel().rows.length} selected
 							<Button
 								variant="ghost"
@@ -988,7 +1009,20 @@ export function DataTable<T extends object>({
 							</Button>
 						</div>
 
-						<Separator orientation="vertical" />
+						{!project?.parentProjectId && (
+							<>
+								<DeleteAlertButton
+									projectId={project?.id ?? ""}
+									item={selectedRows as { id: string }[]}
+									entityName={dataType}
+									assayId={assay?.id ?? ""}
+									insideDropdown={false}
+									onDeleted={() => table.resetRowSelection()}
+								/>
+							</>
+						)}
+
+						<Separator orientation="vertical" className="!h-8" />
 
 						{dataType === "sample" ? (
 							<>
@@ -1022,73 +1056,12 @@ export function DataTable<T extends object>({
 												</DropdownMenuContent>
 											</DropdownMenu>
 
-											<Separator orientation="vertical" />
+											<Separator orientation="vertical" className="!h-8" />
 										</React.Fragment>
 									);
 								})}
-
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<Button
-											variant="ghost"
-											size="sm"
-											className="rounded-none"
-											onClick={() =>
-												downloadTSV(
-													table
-														.getSelectedRowModel()
-														.rows.map((r: Row<T>) =>
-															Object.fromEntries(
-																r
-																	.getVisibleCells()
-																	.map((cell: Cell<T, unknown>, i: number) => [
-																		headers[i],
-																		cell.getValue(),
-																	])
-															)
-														),
-													"selected-rows"
-												)
-											}
-										>
-											<Download className="h-4 w-4" />
-										</Button>
-									</TooltipTrigger>
-
-									<TooltipContent>
-										<p>Download selected</p>
-									</TooltipContent>
-								</Tooltip>
-
-								<Separator orientation="vertical" />
 							</>
-						) : (
-							<Button
-								variant="ghost"
-								size="sm"
-								className="rounded-none"
-								onClick={() =>
-									downloadTSV(
-										table
-											.getSelectedRowModel()
-											.rows.map((r: Row<T>) =>
-												Object.fromEntries(
-													r
-														.getVisibleCells()
-														.map((cell: Cell<T, unknown>, i: number) => [
-															headers[i],
-															cell.getValue(),
-														])
-												)
-											),
-										"selected-rows"
-									)
-								}
-							>
-								<Download className="h-4 w-4" />
-								Download Selected
-							</Button>
-						)}
+						) : null}
 
 						{dataType === "sample" ? (
 							<DropdownMenu modal={false}>
@@ -1137,61 +1110,31 @@ export function DataTable<T extends object>({
 											</DropdownMenuItem>
 										);
 									})}
-
-									{!project?.parentProjectId && (
-										<>
-											<DropdownMenuSeparator />
-
-											<DeleteAlertButton
-												projectId={project?.id ?? ""}
-												item={selectedRows as { id: string }[]}
-												entityName="sample"
-												onDeleted={() => table.resetRowSelection()}
-											/>
-										</>
-									)}
 								</DropdownMenuContent>
 							</DropdownMenu>
-						) : (
-							<DeleteAlertButton
-								projectId={project?.id ?? ""}
-								item={selectedRows as { id: string }[]}
-								entityName="sample"
-								insideDropdown={false}
-								onDeleted={() => table.resetRowSelection()}
-							/>
-						)}
+						) : null}
 					</div>
 				)}
 
-				<DataTableViewOptions
-					table={table}
-					projectId={project?.id ?? ""}
-					dataType={dataType!}
-				/>
-				{showAddButton}
-				<Button
-					disabled={rows.length === 0}
-					onClick={() =>
-						downloadTSV(
-							table
-								.getFilteredRowModel()
-								.rows.map((r: Row<T>) =>
-									Object.fromEntries(
-										r
-											.getVisibleCells()
-											.map((cell: Cell<T, unknown>, i: number) => [
-												headers[i],
-												cell.getValue(),
-											])
-									)
-								),
-							"filtered-rows"
-						)
-					}
-				>
-					<Download className="h-4 w-4" />
-				</Button>
+				<div className="ml-auto flex flex-wrap items-center gap-2">
+					<DataTableViewOptions
+						table={table}
+						projectId={project?.id ?? ""}
+						dataType={dataType!}
+					/>
+					{showAddButton}
+					<div className="flex items-center gap-2">
+						{project?.id && (dataType === "sample" || assay) && (
+							<ExportSamplesButton
+								projectId={project.id}
+								assayId={assay?.id}
+								sampleNames={exportRows.map((row) => row.id)}
+								selected={hasSelection}
+								onDownloadTSV={handleDownloadTSV}
+							/>
+						)}
+					</div>
+				</div>
 			</div>
 			<div className="rounded-md border">
 				<Table>
@@ -1218,35 +1161,39 @@ export function DataTable<T extends object>({
 
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
-								{headerGroup.headers.map((header) => (
-									<TableHead key={header.id}>
-										{header.isPlaceholder ? null : (
-											<div className="flex items-center gap-1">
-												{getColumnTooltip(header.id) ? (
-													<Tooltip>
-														<TooltipTrigger asChild>
-															<div>
-																{flexRender(
-																	header.column.columnDef.header,
-																	header.getContext()
-																)}
-															</div>
-														</TooltipTrigger>
+								{headerGroup.headers.map((header) => {
+									const tooltip = getHeaderTooltip(header.column.id);
 
-														<TooltipContent className="max-w-xs">
-															<p>{getColumnTooltip(header.id)}</p>
-														</TooltipContent>
-													</Tooltip>
-												) : (
-													flexRender(
-														header.column.columnDef.header,
-														header.getContext()
-													)
-												)}
-											</div>
-										)}
-									</TableHead>
-								))}
+									return (
+										<TableHead key={header.id}>
+											{header.isPlaceholder ? null : (
+												<div className="flex items-center gap-1">
+													{tooltip ? (
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<div>
+																	{flexRender(
+																		header.column.columnDef.header,
+																		header.getContext()
+																	)}
+																</div>
+															</TooltipTrigger>
+
+															<TooltipContent className="max-w-xs">
+																<p>{tooltip}</p>
+															</TooltipContent>
+														</Tooltip>
+													) : (
+														flexRender(
+															header.column.columnDef.header,
+															header.getContext()
+														)
+													)}
+												</div>
+											)}
+										</TableHead>
+									);
+								})}
 							</TableRow>
 						))}
 					</TableHeader>
@@ -1289,8 +1236,22 @@ export function DataTable<T extends object>({
 					onDownload={() =>
 						handleDownloadFastqFiles(selectedFastqFilesToDownload)
 					}
-					onDelete={handleDeleteSelectedFastqFiles}
+					onDelete={() =>
+						handleDeleteSelectedFastqFiles(selectedFastqFilesToDownload)
+					}
 					onClear={() => setSelectedFastqFiles(new Set())}
+					deleteAction={
+						<DeleteAlertButton
+							projectId={String(project?.id)}
+							assayId={String(assay?.id)}
+							entityName="fastq"
+							insideDropdown={false}
+							item={selectedFastqFilesToDownload.map((file) => ({
+								id: file.uuid,
+							}))}
+							onDeleted={() => setSelectedFastqFiles(new Set())}
+						/>
+					}
 				/>
 			)}
 		</div>

@@ -13,9 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toastError } from "#/lib/toast";
+import { updateMe } from "#/lib/auth-client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface EditableProfile {
-	username: string;
+	firstName: string;
+	lastName: string;
 	country: string;
 	institution: string;
 	orcid: string;
@@ -30,6 +33,8 @@ export function EditProfileDialog({ profile }: EditProfileDialogProps) {
 	const [saving, setSaving] = useState(false);
 	const [values, setValues] = useState<EditableProfile>(profile);
 
+	const queryClient = useQueryClient();
+
 	useEffect(() => {
 		if (open) {
 			setValues(profile);
@@ -43,7 +48,7 @@ export function EditProfileDialog({ profile }: EditProfileDialogProps) {
 		}));
 	};
 
-	const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
+	const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 
 		const orcid = values.orcid.trim().replace(/^https?:\/\/orcid\.org\//i, "");
@@ -53,16 +58,49 @@ export function EditProfileDialog({ profile }: EditProfileDialogProps) {
 			return;
 		}
 
-		// TODO: Call the profile update endpoint when available.
-		// No API request is made for now.
+		const country = values.country.trim().toUpperCase();
+
+		if (country && !/^[A-Z]{2}$/.test(country)) {
+			toastError("Country must be a two-letter ISO country code.");
+			return;
+		}
+
+		if (
+			values.firstName.trim().length > 255 ||
+			values.lastName.trim().length > 255
+		) {
+			toastError("Names cannot exceed 255 characters.");
+			return;
+		}
+
+		if (values.institution.trim().length > 512) {
+			toastError("Institution cannot exceed 512 characters.");
+			return;
+		}
 
 		setSaving(true);
 
-		setTimeout(() => {
-			setSaving(false);
+		try {
+			await updateMe({
+				firstName: values.firstName.trim(),
+				lastName: values.lastName.trim(),
+				country,
+				institution: values.institution.trim(),
+				orcid,
+			});
+
+			await queryClient.invalidateQueries({
+				queryKey: ["me"],
+			});
+
 			setOpen(false);
-			toastError("Profile editing is not yet connected to the server.");
-		}, 300);
+		} catch (error) {
+			toastError(
+				error instanceof Error ? error.message : "Failed to update profile."
+			);
+		} finally {
+			setSaving(false);
+		}
 	};
 
 	return (
@@ -78,19 +116,33 @@ export function EditProfileDialog({ profile }: EditProfileDialogProps) {
 				<DialogHeader>
 					<DialogTitle>Edit Profile</DialogTitle>
 					<DialogDescription>
-						Update your profile information. Changes cannot currently be saved
-						to your account.
+						Update your profile information.
 					</DialogDescription>
 				</DialogHeader>
 
 				<form onSubmit={handleSave} className="space-y-5">
 					<div className="space-y-2">
-						<Label htmlFor="profile-username">Username</Label>
+						<Label htmlFor="profile-first-name">First name</Label>
 						<Input
-							id="profile-username"
-							value={values.username}
-							onChange={(event) => handleChange("username", event.target.value)}
-							placeholder="Enter your username"
+							id="profile-first-name"
+							value={values.firstName}
+							onChange={(event) =>
+								handleChange("firstName", event.target.value)
+							}
+							placeholder="Enter your name"
+							maxLength={255}
+							disabled={saving}
+						/>
+					</div>
+
+					<div className="space-y-2">
+						<Label htmlFor="profile-last-name">Last name</Label>
+						<Input
+							id="profile-last-name"
+							value={values.lastName}
+							onChange={(event) => handleChange("lastName", event.target.value)}
+							placeholder="Enter your last name"
+							maxLength={255}
 							disabled={saving}
 						/>
 					</div>
@@ -115,6 +167,7 @@ export function EditProfileDialog({ profile }: EditProfileDialogProps) {
 								handleChange("institution", event.target.value)
 							}
 							placeholder="Enter your institution"
+							maxLength={512}
 							disabled={saving}
 						/>
 					</div>

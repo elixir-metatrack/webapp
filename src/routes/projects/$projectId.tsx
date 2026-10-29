@@ -15,9 +15,9 @@ import {
 import { DataTable } from "@/components/dashboard/dataTable";
 import { AddSampleDialog } from "@/components/dashboard/add-sample";
 import type { Assay, Project, Sample } from "@/lib/types";
-import { UploadSampleDialog } from "@/components/dashboard/upload-sample";
+import { UploadTableDialog } from "@/components/dashboard/upload-table";
 import type { ColumnDef } from "@tanstack/react-table";
-import { cn, NON_VIEWED_COLUMNS } from "@/lib/utils";
+import { formatDateToYMD, NON_VIEWED_COLUMNS } from "@/lib/utils";
 import { DownloadTemplateButton } from "@/components/dashboard/download-template-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
@@ -28,13 +28,22 @@ import { EditProjectDialog } from "@/components/dashboard/edit-project-dialog";
 import { AddSubProjectDialog } from "@/components/dashboard/add-subproject";
 import { SubProjectsTable } from "@/components/dashboard/subproject-table";
 import { Badge } from "@/components/ui/badge";
-import { SquarePen, UserRoundCog } from "lucide-react";
+import {
+	CalendarDays,
+	ChevronDown,
+	ChevronUp,
+	Database,
+	FileText,
+	Building2,
+	MessageSquare,
+	SquarePen,
+	UserRound,
+	UserRoundCog,
+} from "lucide-react";
 import { IconMicroscope, IconTestPipe, IconSitemap } from "@tabler/icons-react";
 import { useUser } from "#/hooks/use-user";
-import { useSidebar } from "#/components/ui/sidebar";
 import { VocabulariesDialog } from "#/components/vocabulariesDialog";
 import { ExportIsaJsonButton } from "@/components/dashboard/export-isa-json-button";
-import { UploadExperimentDialog } from "#/components/dashboard/upload-experiment";
 
 export const Route = createFileRoute("/projects/$projectId")({
 	component: RouteComponent,
@@ -48,6 +57,13 @@ function RouteComponent() {
 	const [editDialogInitialTab, setEditDialogInitialTab] = useState<
 		"general" | "members"
 	>("general");
+	const [showDetailedDescription, setShowDetailedDescription] = useState(false);
+	const [showComments, setShowComments] = useState(false);
+
+	const handleAssayClick = (assayId: string) => {
+		setActiveTab("experiments");
+		setActiveAssayTab(assayId);
+	};
 
 	useEffect(() => {
 		setActiveTab("samples");
@@ -126,10 +142,8 @@ function RouteComponent() {
 					}))
 			: [];
 
-	const { state } = useSidebar();
-
 	return (
-		<div className={cn(state === "collapsed" ? "w-19/20" : "w-7/8")}>
+		<div className="w-full min-w-0">
 			<SiteHeader
 				items={[
 					{ label: "My Projects", href: "/projects" },
@@ -148,41 +162,215 @@ function RouteComponent() {
 				]}
 			/>
 			<div className="space-y-6 p-4">
-				<Card className="grid grid-flow-col grid-rows-3 gap-4">
-					<CardHeader className="row-span-1">
-						<CardTitle className="flex items-center gap-2 text-2xl font-bold">
-							{project.name}
+				<Card className="grid grid-cols-1 gap-2 rounded-2xl border shadow-sm lg:grid-cols-[minmax(0,1fr)_220px]">
+					<CardHeader className="pb-2">
+						<div className="flex flex-wrap items-center gap-3">
+							<CardTitle className="text-2xl font-bold tracking-tight break-words">
+								{project.name}
+							</CardTitle>
+
 							{project.parentProjectId && (
-								<Badge variant="secondary">
+								<Badge
+									variant="secondary"
+									className="rounded-full px-3 py-1 text-xs font-medium"
+								>
 									Sub-project
-									{parentProject ? (
+									{parentProject && (
 										<>
 											{" of "}
 											<Link
 												to="/projects/$projectId"
 												params={{ projectId: String(parentProject.id) }}
-												className="underline"
+												className="underline underline-offset-4"
 											>
 												{parentProject.name}
 											</Link>
 										</>
-									) : null}
+									)}
 								</Badge>
 							)}
-						</CardTitle>
+						</div>
 					</CardHeader>
 
-					<CardContent className="row-span-2 space-y-4">
-						<p>Number of samples: {samples.length}</p>
-						<p>Description: {project.description}</p>
+					<CardContent className="space-y-5 lg:col-start-1 lg:row-start-2">
+						{/* Description */}
+						<div className="space-y-2">
+							<div className="flex items-center gap-2 text-sm font-medium">
+								<FileText className="text-muted-foreground size-4" />
+								Description
+							</div>
+
+							<p className="text-primary text-sm leading-6 break-words whitespace-pre-wrap">
+								{project.description || "No description provided."}
+							</p>
+						</div>
+
+						{/* Detailed description */}
+						{project.detailedDescription && (
+							<Card
+								className={`shadow-none transition-colors ${
+									showDetailedDescription
+										? "border-primary/30 bg-muted"
+										: "border-border bg-muted/30 hover:bg-muted"
+								}`}
+							>
+								<CardContent
+									className={showDetailedDescription ? "p-4" : "p-1"}
+								>
+									<button
+										type="button"
+										onClick={() => setShowDetailedDescription((prev) => !prev)}
+										className="flex w-full items-center gap-2 text-left text-sm"
+										aria-expanded={showDetailedDescription}
+									>
+										{showDetailedDescription ? (
+											<ChevronUp className="text-primary size-4 shrink-0" />
+										) : (
+											<ChevronDown className="text-primary size-4 shrink-0" />
+										)}
+
+										<FileText className="text-primary size-4 shrink-0" />
+										<span>Detailed description</span>
+									</button>
+
+									{showDetailedDescription && (
+										<p className="border-border/70 text-primary mt-3 border-t pt-3 text-sm leading-6 break-words whitespace-pre-wrap">
+											{project.detailedDescription}
+										</p>
+									)}
+								</CardContent>
+							</Card>
+						)}
+
+						{/* Project statistics */}
+						<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+							<Card className="border-border bg-muted/30 shadow-none">
+								<CardContent className="p-4">
+									<div className="text-muted-foreground mb-3 flex items-center gap-2 text-sm">
+										<Database className="size-4" />
+										<span>Samples</span>
+									</div>
+
+									<p className="text-2xl font-semibold tracking-tight">
+										{samples.length}
+									</p>
+
+									<p className="text-muted-foreground mt-1 text-xs">
+										Total samples
+									</p>
+								</CardContent>
+							</Card>
+
+							<Card className="border-border bg-muted/30 shadow-none">
+								<CardContent className="p-4">
+									<div className="text-muted-foreground mb-3 flex items-center gap-2 text-sm">
+										<CalendarDays className="size-4" />
+										<span>Created on</span>
+									</div>
+
+									<p className="text-lg font-semibold tracking-tight">
+										{formatDateToYMD(project.createdOn)}
+									</p>
+								</CardContent>
+							</Card>
+						</div>
+
+						{/* Project owner and organization */}
+						<div className="grid grid-cols-1 gap-3 border-t pt-4 sm:grid-cols-2">
+							<Card className="border-border bg-muted/30 shadow-none">
+								<CardContent className="flex items-center gap-3 p-4">
+									<div className="bg-background flex size-11 shrink-0 items-center justify-center rounded-full border">
+										<UserRound className="text-primary size-5" />
+									</div>
+
+									<div className="min-w-0 flex-1 space-y-1">
+										<p className="text-muted-foreground mb-3 text-sm">
+											Project owner
+										</p>
+										<p className="text-base font-semibold break-words">
+											{project.ownerUsername}
+										</p>
+									</div>
+								</CardContent>
+							</Card>
+
+							<Card className="border-border bg-muted/30 shadow-none">
+								<CardContent className="flex items-center gap-3 p-4">
+									<div className="bg-background flex size-11 shrink-0 items-center justify-center rounded-full border">
+										<Building2 className="text-primary size-5" />
+									</div>
+
+									<div className="min-w-0 flex-1 space-y-1">
+										<p className="text-muted-foreground mb-3 text-sm">
+											Data owning organization
+										</p>
+										<p
+											className={`text-base break-words ${
+												project.dataOwningOrganization
+													? "font-semibold"
+													: "text-muted-foreground text-sm italic"
+											}`}
+										>
+											{project.dataOwningOrganization || "Not specified"}
+										</p>
+									</div>
+								</CardContent>
+							</Card>
+						</div>
+
+						{/* Comments */}
+						{project.comments && (
+							<Card
+								className={`shadow-none transition-colors ${
+									showComments
+										? "border-primary/30 bg-muted"
+										: "border-border bg-muted/30 hover:bg-muted"
+								}`}
+							>
+								<CardContent className={showComments ? "py-4" : "p-1"}>
+									<button
+										type="button"
+										onClick={() => setShowComments((prev) => !prev)}
+										className="flex w-full items-center gap-2 text-left text-sm"
+										aria-expanded={showComments}
+									>
+										{showComments ? (
+											<ChevronUp className="text-primary size-4 shrink-0" />
+										) : (
+											<ChevronDown className="text-primary size-4 shrink-0" />
+										)}
+
+										<MessageSquare className="text-primary size-4 shrink-0" />
+										<span>Comments</span>
+									</button>
+
+									{showComments && (
+										<p className="text-primary border-border/70 mt-3 border-t pt-3 text-sm leading-6 break-words whitespace-pre-wrap">
+											{project.comments}
+										</p>
+									)}
+								</CardContent>
+							</Card>
+						)}
 					</CardContent>
-					<div className="col-span-1 row-span-2 row-start-2 space-x-6 justify-self-center">
-						<Button size="lg" onClick={() => openEditProjectDialog("general")}>
-							<SquarePen />
+
+					<div className="flex flex-col gap-3 px-6 pb-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:justify-center lg:border-l lg:py-6">
+						<Button
+							size="lg"
+							className="w-full justify-start rounded-xl"
+							onClick={() => openEditProjectDialog("general")}
+						>
+							<SquarePen className="mr-1 size-4" />
 							Edit Project
 						</Button>
-						<Button size="lg" onClick={() => openEditProjectDialog("members")}>
-							<UserRoundCog />
+
+						<Button
+							size="lg"
+							variant="outline"
+							className="w-full justify-start rounded-xl"
+							onClick={() => openEditProjectDialog("members")}
+						>
+							<UserRoundCog className="mr-1 size-4" />
 							Manage Members
 						</Button>
 					</div>
@@ -230,13 +418,6 @@ function RouteComponent() {
 								</TabsList>
 
 								<div className="flex items-center gap-2">
-									{/* Normal user vocabulary */}
-									<VocabulariesDialog
-										projectId={projectId}
-										dataType={activeTab === "samples" ? "sample" : "assay"}
-										isSystemAdmin={false}
-									/>
-
 									{/* Admin global vocabulary */}
 									{isSystemAdmin && (
 										<VocabulariesDialog
@@ -251,9 +432,9 @@ function RouteComponent() {
 
 						<CardContent className="pt-6">
 							<TabsContent value="samples">
-								<div className="flex justify-end gap-2 py-8">
+								<div className="flex flex-wrap justify-end gap-2 py-8">
 									<DownloadTemplateButton type="sample" />
-									<UploadSampleDialog projectId={projectId} />
+									<UploadTableDialog projectId={projectId} />
 								</div>
 								<DataTable
 									data={samples}
@@ -262,11 +443,8 @@ function RouteComponent() {
 									onDelete={(sample) => console.log("Delete sample", sample)}
 									dataType="sample"
 									project={project}
-									showAddButton={
-										<div className="flex gap-2">
-											<AddSampleDialog projectId={projectId} />
-										</div>
-									}
+									showAddButton={<AddSampleDialog projectId={projectId} />}
+									onAssayClick={handleAssayClick}
 								/>
 							</TabsContent>
 
@@ -294,14 +472,13 @@ function RouteComponent() {
 											<TabsContent key={assay.id} value={assay.id}>
 												<Card>
 													<CardContent className="pt-6">
-														<div className="mb-4 flex justify-end gap-2">
+														<div className="mb-4 flex flex-wrap justify-end gap-2">
 															<DownloadTemplateButton type="experiment" />
-															<UploadExperimentDialog
+															<UploadTableDialog
 																projectId={projectId}
-																assayId={String(assay.id)}
+																assayId={assay.id}
 															/>
 														</div>
-
 														<AssayTable assay={assay} project={project} />
 													</CardContent>
 												</Card>
@@ -309,7 +486,7 @@ function RouteComponent() {
 										))}
 									</Tabs>
 								) : (
-									<div className="flex justify-center py-8">
+									<div className="flex flex-wrap justify-center gap-2 py-8">
 										{project.parentProjectId ? (
 											<p className="text-muted-foreground">
 												No experiments are linked to this sub-project's samples.
@@ -317,6 +494,7 @@ function RouteComponent() {
 										) : (
 											<AddAssayDialog projectId={projectId} />
 										)}
+										<DownloadTemplateButton type="experiment" />
 									</div>
 								)}
 							</TabsContent>

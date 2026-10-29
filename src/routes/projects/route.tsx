@@ -42,7 +42,7 @@ function DashboardLayout() {
 			}
 		>
 			<AppSidebar variant="inset" user={user} />
-			<SidebarInset>
+			<SidebarInset className="min-w-0">
 				<Outlet />
 			</SidebarInset>
 		</SidebarProvider>

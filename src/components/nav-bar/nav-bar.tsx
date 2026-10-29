@@ -14,16 +14,8 @@ const NavItems: NavItem[] = [
 		pageName: "About",
 	},
 	{
-		pageUrl: "/public-data",
-		pageName: "Public Data",
-	},
-	{
 		pageUrl: "/get-started",
 		pageName: "Get Started",
-	},
-	{
-		pageUrl: "/resources",
-		pageName: "Resources",
 	},
 ];
 

@@ -9,6 +9,24 @@ bun install
 bun --bun run dev
 ```
 
+## Table downloads
+
+**CSV Template** and **XLS Template** download empty import templates. **TSV** exports
+the visible data columns; **XLS** exports all importable fields as an XLSX workbook.
+Templates and upload sit above the table. XLS and TSV exports sit beside the column
+selector and sample/experiment actions, following the project page layout.
+
+Sample and Experiment uploads share the same dialog and accept CSV, TSV, TXT, XLS and XLSX.
+Row errors remain visible in the dialog, and affected tables refresh even after a partial import.
+Both data exports use the selected rows matching the current filter, or all filtered
+rows across every page when nothing is selected.
+
+In development, `/api/**` and `/templates/**` are forwarded to `LOCAL_API_URL`
+(see `.env.example`). The CSV template proxy runs only in Vite's development server;
+production downloads continue to use the API origin directly. CSV templates are static
+backend resources under `/templates/`; Excel templates are generated under
+`/api/templates/excel/`.
+
 # Building For Production
 
 To build this application for production:

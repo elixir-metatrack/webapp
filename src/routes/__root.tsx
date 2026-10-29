@@ -44,19 +44,16 @@ export const Route = createRootRoute({
 		],
 	}),
 
-	component: RootComponent,
+	shellComponent: RootShell,
+	component: Outlet,
 
 	errorComponent: ({ error }) => (
-		<RootDocument>
-			<div className="p-4 text-red-500">{error.message}</div>
-		</RootDocument>
+		<div role="alert" className="p-4 text-red-500">
+			{error instanceof Error ? error.message : "An unexpected error occurred."}
+		</div>
 	),
 
-	notFoundComponent: () => (
-		<RootDocument>
-			<div>Not found</div>
-		</RootDocument>
-	),
+	notFoundComponent: () => <div>Not found</div>,
 });
 
 function LayoutComponent() {
@@ -82,14 +79,12 @@ function LayoutComponent() {
 	);
 }
 
-function RootComponent() {
+function RootShell({ children }: { children: React.ReactNode }) {
 	return (
 		<KeycloakProvider>
 			<QueryClientProvider client={queryClient}>
 				<ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-					<RootDocument>
-						<Outlet />
-					</RootDocument>
+					<RootDocument>{children}</RootDocument>
 				</ThemeProvider>
 			</QueryClientProvider>
 		</KeycloakProvider>

@@ -57,19 +57,9 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 				icon: IconMessageQuestion,
 			},
 			{
-				title: "Public Data",
-				url: "/public-data",
-				icon: IconDatabase,
-			},
-			{
 				title: "Get Started",
 				url: "/get-started",
 				icon: IconRocket,
-			},
-			{
-				title: "Resources",
-				url: "/resources",
-				icon: IconBook,
 			},
 		],
 
@@ -119,9 +109,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 			<SidebarContent>
 				<SidebarMenu className="px-2">
 					<SidebarMenuItem>
-						<SidebarMenuItem>
-							<NotificationPopover isCollapsed={isCollapsed} />
-						</SidebarMenuItem>
+						<NotificationPopover isCollapsed={isCollapsed} />
 					</SidebarMenuItem>
 				</SidebarMenu>
 				<NavProjects projects={projects} isLoading={isLoading} />

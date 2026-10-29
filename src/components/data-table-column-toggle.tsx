@@ -46,6 +46,18 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { toastError, toastSuccess } from "#/lib/toast";
+import { VocabulariesDialog } from "./vocabulariesDialog";
+
+function toSnakeCase(value: string): string {
+	return value
+		.trim()
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+		.replace(/[^a-zA-Z0-9]+/g, "_")
+		.replace(/^_+|_+$/g, "")
+		.toLowerCase();
+}
 
 export function DataTableViewOptions<TData>({
 	table,
@@ -72,8 +84,8 @@ export function DataTableViewOptions<TData>({
 	// ============================================================
 
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
-	const [newColumnKey, setNewColumnKey] = useState("");
 	const [newColumnLabel, setNewColumnLabel] = useState("");
+	const [newColumnTooltip, setNewColumnTooltip] = useState("");
 
 	const [newColumnType, setNewColumnType] =
 		useState<SampleMetadataFieldType>("TEXT");
@@ -219,8 +231,9 @@ export function DataTableViewOptions<TData>({
 	// ============================================================
 
 	const handleCreateCustomColumn = async () => {
-		const key = newColumnKey.trim();
 		const label = newColumnLabel.trim();
+		const key = toSnakeCase(label);
+		const tooltip = newColumnTooltip.trim();
 
 		if (!key) {
 			toastError("Column key is required");
@@ -243,6 +256,7 @@ export function DataTableViewOptions<TData>({
 			const field = await createSampleMetadataField(projectId, {
 				key,
 				label,
+				tooltip,
 				type: newColumnType,
 			});
 
@@ -250,8 +264,8 @@ export function DataTableViewOptions<TData>({
 				queryKey: ["sample-metadata-fields", projectId],
 			});
 
-			setNewColumnKey("");
 			setNewColumnLabel("");
+			setNewColumnTooltip("");
 			setNewColumnType("TEXT");
 			setCreateDialogOpen(false);
 
@@ -324,8 +338,8 @@ export function DataTableViewOptions<TData>({
 		setCreateDialogOpen(open);
 
 		if (!open && !creatingColumn) {
-			setNewColumnKey("");
 			setNewColumnLabel("");
+			setNewColumnTooltip("");
 			setNewColumnType("TEXT");
 		}
 	};
@@ -340,7 +354,7 @@ export function DataTableViewOptions<TData>({
 				<DialogTrigger asChild>
 					<Button variant="outline" className="ml-auto">
 						<Columns3 />
-						Columns
+						Columns settings
 					</Button>
 				</DialogTrigger>
 
@@ -495,12 +509,21 @@ export function DataTableViewOptions<TData>({
 											open={createDialogOpen}
 											onOpenChange={handleCreateDialogChange}
 										>
-											<DialogTrigger asChild>
-												<Button type="button" variant="outline" size="sm">
-													<Plus />
-													Add
-												</Button>
-											</DialogTrigger>
+											<div className="flex items-center gap-2">
+												<DialogTrigger asChild>
+													<Button type="button" variant="outline" size="sm">
+														<Plus />
+														Add custom field
+													</Button>
+												</DialogTrigger>
+
+												<VocabulariesDialog
+													projectId={projectId!}
+													dataType="sample"
+													isSystemAdmin={false}
+													disable={customColumns.length === 0}
+												/>
+											</div>
 
 											<DialogContent className="sm:max-w-[500px]">
 												<DialogHeader>
@@ -513,25 +536,6 @@ export function DataTableViewOptions<TData>({
 												</DialogHeader>
 
 												<div className="space-y-5">
-													<div className="space-y-2">
-														<Label htmlFor="custom-column-key">Key</Label>
-
-														<Input
-															id="custom-column-key"
-															placeholder="e.g. sequencing_platform"
-															value={newColumnKey}
-															onChange={(event) =>
-																setNewColumnKey(event.target.value)
-															}
-															disabled={creatingColumn}
-														/>
-
-														<p className="text-muted-foreground text-xs">
-															Unique identifier used internally by the
-															application.
-														</p>
-													</div>
-
 													<div className="space-y-2">
 														<Label htmlFor="custom-column-label">Label</Label>
 
@@ -548,6 +552,24 @@ export function DataTableViewOptions<TData>({
 														<p className="text-muted-foreground text-xs">
 															This is the name that will be displayed in the
 															table.
+														</p>
+													</div>
+
+													<div className="space-y-2">
+														<Label htmlFor="custom-column-label">Tooltip</Label>
+
+														<Input
+															id="custom-column-tooltip"
+															placeholder="e.g. Description of Field"
+															value={newColumnTooltip}
+															onChange={(event) =>
+																setNewColumnTooltip(event.target.value)
+															}
+															disabled={creatingColumn}
+														/>
+
+														<p className="text-muted-foreground text-xs">
+															This is the help text for the new metadata column.
 														</p>
 													</div>
 
@@ -590,11 +612,7 @@ export function DataTableViewOptions<TData>({
 													<Button
 														type="button"
 														onClick={handleCreateCustomColumn}
-														disabled={
-															creatingColumn ||
-															!newColumnKey.trim() ||
-															!newColumnLabel.trim()
-														}
+														disabled={creatingColumn || !newColumnLabel.trim()}
 													>
 														{creatingColumn ? (
 															<>
@@ -674,8 +692,9 @@ export function DataTableViewOptions<TData>({
 																	className="max-w-sm"
 																>
 																	<div className="flex flex-col">
-																		<span>{field.label}</span>
-																		<span>FIELD TYPE: {field.type}</span>
+																		<span>Helper text: {field.tooltip}</span>
+																		<br />
+																		<span>Field Type: {field.type}</span>
 																	</div>
 																</TooltipContent>
 															</Tooltip>
@@ -684,14 +703,22 @@ export function DataTableViewOptions<TData>({
 																<Check className="h-4 w-4 shrink-0" />
 															)}
 
-															<Button
-																variant="ghost"
-																size="icon"
-																className="h-8 w-8 shrink-0"
-																onClick={() => openDeleteDialog(field)}
-															>
-																<Trash2 className="h-4 w-4" />
-															</Button>
+															<Tooltip>
+																<TooltipTrigger asChild>
+																	<Button
+																		variant="ghost"
+																		size="icon"
+																		className="h-8 w-8 shrink-0"
+																		onClick={() => openDeleteDialog(field)}
+																	>
+																		<Trash2 className="h-4 w-4 text-red-500" />
+																	</Button>
+																</TooltipTrigger>
+
+																<TooltipContent>
+																	<p>Remove this custom field</p>
+																</TooltipContent>
+															</Tooltip>
 														</div>
 													);
 												})}

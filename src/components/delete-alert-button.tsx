@@ -11,27 +11,36 @@ import {
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
-import { deleteProject, deleteSelectedSamples } from "@/lib/api-keycloak";
+import {
+	deleteProject,
+	deleteSelectedSamples,
+	deleteProjectFile,
+	deleteSamplesFromAssay,
+} from "@/lib/api-keycloak";
 import { toastError, toastSuccess } from "#/lib/toast";
 import { DropdownMenuItem } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
 
 interface DeleteAlertButtonProps {
 	projectId?: string;
-	item: { id: string } | { id: string }[];
-	entityName?: "sample" | "project";
+	assayId?: string;
+	item: { id: string; name?: string } | { id: string; name?: string }[];
+	entityName?: "sample" | "project" | "fastq" | "assay";
 	onDeleted?: (deletedIds: string[]) => void;
 	insideDropdown?: boolean;
 }
 
 export const DeleteAlertButton = ({
 	projectId,
+	assayId,
 	item,
 	entityName,
 	onDeleted,
 	insideDropdown = true,
 }: DeleteAlertButtonProps) => {
 	const queryClient = useQueryClient();
+
+	const messageName = entityName === "assay" ? "experiment sample" : entityName;
 
 	const handleDelete = async () => {
 		const itemsToDelete = Array.isArray(item) ? item : [item];
@@ -58,6 +67,74 @@ export const DeleteAlertButton = ({
 				if (success.length > 0) {
 					toastSuccess(`${success.length} sample(s) deleted successfully!`);
 				}
+				return;
+			}
+			if (entityName === "assay") {
+				if (!projectId || !assayId) {
+					throw new Error(
+						"Project ID and assay ID are required to delete samples from an assay."
+					);
+				}
+
+				const sampleNames = itemsToDelete.map((item) => {
+					if (!item.name) {
+						throw new Error("Sample name is missing.");
+					}
+
+					return item.name;
+				});
+
+				console.log(projectId, assayId, sampleNames);
+
+				await deleteSamplesFromAssay(projectId, assayId, sampleNames);
+
+				onDeleted?.(sampleNames);
+
+				await queryClient.invalidateQueries({
+					queryKey: ["assaySamples", assayId, String(projectId)],
+					exact: false,
+					refetchType: "active",
+				});
+
+				toastSuccess(
+					`${sampleNames.length} sample(s) removed from assay successfully!`
+				);
+
+				return;
+			}
+			if (entityName === "fastq") {
+				if (!projectId) {
+					throw new Error("Project ID is required to delete FASTQ files.");
+				}
+
+				const results = await Promise.allSettled(
+					itemsToDelete.map((file) =>
+						deleteProjectFile(Number(projectId), file.id)
+					)
+				);
+
+				const success = itemsToDelete
+					.filter((_, index) => results[index].status === "fulfilled")
+					.map((file) => file.id);
+
+				const failed = results.length - success.length;
+
+				if (success.length > 0) {
+					onDeleted?.(success);
+
+					await queryClient.invalidateQueries({
+						queryKey: assayId
+							? ["assaySamples", assayId, projectId]
+							: ["assaySamples"],
+					});
+
+					toastSuccess(`${success.length} FASTQ file(s) deleted successfully!`);
+				}
+
+				if (failed > 0) {
+					toastError(`${failed} FASTQ file(s) could not be deleted.`);
+				}
+
 				return;
 			} else if (entityName === "project") {
 				await deleteProject(projectId!);
@@ -90,9 +167,11 @@ export const DeleteAlertButton = ({
 		</DropdownMenuItem>
 	) : (
 		<Button
-			variant="ghost"
+			variant={entityName === "fastq" ? "destructive" : "ghost"}
 			size="sm"
-			className="text-red-500 hover:text-red-500"
+			className={
+				entityName === "fastq" ? "" : "text-red-500 hover:text-red-500"
+			}
 		>
 			<Trash2 className="mr-2 size-4" />
 			Delete
@@ -108,8 +187,13 @@ export const DeleteAlertButton = ({
 					<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
 
 					<AlertDialogDescription>
-						This action cannot be undone. This will permanently delete your{" "}
-						<strong>{entityName}(s)</strong> from our servers.
+						This action cannot be undone. The selected{" "}
+						<strong>
+							{entityName === "fastq" ? "FASTQ file(s)" : `${messageName}(s)`}
+						</strong>{" "}
+						{entityName === "assay"
+							? "will be removed from experiment table"
+							: `will be permanently deleted from our servers.`}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 

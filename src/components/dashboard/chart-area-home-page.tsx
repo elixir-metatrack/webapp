@@ -35,7 +35,7 @@ const chartConfig = {
 	},
 	sample: {
 		label: "Sample",
-		color: "var(--selected)",
+		color: "var(--chart-sample)",
 	},
 } satisfies ChartConfig;
 
@@ -59,9 +59,6 @@ export function ChartAreaHomePage() {
 			<CardHeader>
 				<CardTitle>Samples Uploaded</CardTitle>
 				<CardDescription>
-					<span className="hidden @[540px]/card:block">
-						Total for the last 3 months
-					</span>
 					<span className="@[540px]/card:hidden">Last 3 months</span>
 				</CardDescription>
 				<CardAction>
