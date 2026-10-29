@@ -47,6 +47,8 @@ import { DeleteAlertButton } from "../delete-alert-button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
+import { useQueries } from "@tanstack/react-query";
+import { getProjectStorageStatistics } from "#/lib/api-keycloak";
 
 interface DataTableProps {
 	projects: Project[];
@@ -60,6 +62,8 @@ const COLUMN_TOOLTIPS: Record<string, string> = {
 	description:
 		"Description of the sample (example: Staphylococcus aureus isolated from blood culture.)",
 	sampleCount: "Number of samples associated with the project.",
+	experimentFiles:
+		"Number of files(PE or SE fastq) associated with the project.",
 	createdOn: "Date of creation",
 	modifiedOn: "Last modification date",
 };
@@ -80,6 +84,26 @@ export function ProjectsDataTable({
 	const [searchExpanded, setSearchExpanded] =
 		React.useState<ExpandedState>(true);
 	const isSearching = globalFilter.trim().length > 0;
+	const projectIds = projects
+		.filter((project) => project.id != null)
+		.map((project) => String(project.id));
+
+	const storageQueries = useQueries({
+		queries: projectIds.map((projectId) => ({
+			queryKey: ["project-storage-statistics", projectId],
+			queryFn: () => getProjectStorageStatistics(projectId),
+			staleTime: 60_000,
+		})),
+	});
+
+	const storageStatsByProjectId = React.useMemo(
+		() =>
+			new Map(
+				projectIds.map((projectId, index) => [projectId, storageQueries[index]])
+			),
+		[projectIds.join(","), storageQueries]
+	);
+
 	const { rootProjects, childrenByParent } = React.useMemo(() => {
 		const visibleIds = new Set(
 			projects
@@ -161,6 +185,33 @@ export function ProjectsDataTable({
 				<DataTableColumnHeader column={column} title="Samples in Project" />
 			),
 			cell: ({ row }) => row.original.sampleCount ?? 0,
+		},
+
+		{
+			id: "experimentFiles",
+			accessorFn: (project) => {
+				if (project.id == null) return 0;
+
+				return (
+					storageStatsByProjectId.get(String(project.id))?.data?.fileCount ?? 0
+				);
+			},
+			header: ({ column }) => (
+				<DataTableColumnHeader
+					column={column}
+					title="Experiment files in Project"
+				/>
+			),
+			cell: ({ row }) => {
+				if (row.original.id == null) return "-";
+
+				const query = storageStatsByProjectId.get(String(row.original.id));
+
+				if (query?.isPending) return "Loading...";
+				if (query?.isError) return "-";
+
+				return query?.data?.fileCount ?? 0;
+			},
 		},
 
 		{
