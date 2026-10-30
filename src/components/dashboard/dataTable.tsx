@@ -151,6 +151,9 @@ const COLUMN_NAMES: Record<string, string> = {
 	county: "County",
 	commune: "Commune",
 	hospitalHealthInstitution: "Hospital Health Institution",
+	projectAccession: "Project Accession",
+	sampleAccession: "Sample Accession",
+	secondaryAccession: "Secondary Accession",
 
 	createdOn: "Created On",
 	modifiedOn: "Modified On",
@@ -661,6 +664,10 @@ export function DataTable<T extends object>({
 			county: false,
 			commune: false,
 			hospitalHealthInstitution: false,
+			projectAccession: false,
+			studyAccession: false,
+			sampleAccession: false,
+			secondaryAccession: false,
 			projectTitle: false,
 			description: false,
 		});
