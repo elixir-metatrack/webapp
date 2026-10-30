@@ -43,6 +43,7 @@ import {
 import { IconMicroscope, IconTestPipe, IconSitemap } from "@tabler/icons-react";
 import { useUser } from "#/hooks/use-user";
 import { VocabulariesDialog } from "#/components/vocabulariesDialog";
+import { DeleteAlertButton } from "#/components/delete-alert-button";
 
 export const Route = createFileRoute("/projects/$projectId")({
 	component: RouteComponent,
@@ -113,6 +114,8 @@ function RouteComponent() {
 	const [activeAssayTab, setActiveAssayTab] = useState<string | undefined>(
 		undefined
 	);
+
+	const selectedAssayId = activeAssayTab ?? assays[0]?.id;
 
 	if (projectLoading) {
 		return (
@@ -461,7 +464,26 @@ function RouteComponent() {
 											</TabsList>
 
 											{!project.parentProjectId && (
-												<AddAssayDialog projectId={projectId} />
+												<>
+													<AddAssayDialog projectId={projectId} />
+
+													{selectedAssayId && (
+														<DeleteAlertButton
+															projectId={projectId}
+															assayId={selectedAssayId}
+															item={{ id: selectedAssayId }}
+															entityName="assay"
+															insideDropdown={false}
+															onDeleted={(deletedIds) => {
+																const remainingAssays = assays.filter(
+																	(assay) => !deletedIds.includes(assay.id)
+																);
+
+																setActiveAssayTab(remainingAssays[0]?.id);
+															}}
+														/>
+													)}
+												</>
 											)}
 										</div>
 
