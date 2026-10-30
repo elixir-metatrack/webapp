@@ -16,6 +16,7 @@ import {
 	deleteSelectedSamples,
 	deleteProjectFile,
 	deleteSamplesFromAssay,
+	deleteAssay,
 } from "@/lib/api-keycloak";
 import { toastError, toastSuccess } from "#/lib/toast";
 import { DropdownMenuItem } from "./ui/dropdown-menu";
@@ -25,7 +26,7 @@ interface DeleteAlertButtonProps {
 	projectId?: string;
 	assayId?: string;
 	item: { id: string; name?: string } | { id: string; name?: string }[];
-	entityName?: "sample" | "project" | "fastq" | "assay";
+	entityName?: "sample" | "project" | "fastq" | "assaySample" | "assay";
 	onDeleted?: (deletedIds: string[]) => void;
 	insideDropdown?: boolean;
 }
@@ -40,7 +41,8 @@ export const DeleteAlertButton = ({
 }: DeleteAlertButtonProps) => {
 	const queryClient = useQueryClient();
 
-	const messageName = entityName === "assay" ? "experiment sample" : entityName;
+	const messageName =
+		entityName === "assaySample" ? "experiment sample" : entityName;
 
 	const handleDelete = async () => {
 		const itemsToDelete = Array.isArray(item) ? item : [item];
@@ -69,7 +71,7 @@ export const DeleteAlertButton = ({
 				}
 				return;
 			}
-			if (entityName === "assay") {
+			if (entityName === "assaySample") {
 				if (!projectId || !assayId) {
 					throw new Error(
 						"Project ID and assay ID are required to delete samples from an assay."
@@ -136,6 +138,41 @@ export const DeleteAlertButton = ({
 				}
 
 				return;
+			}
+			if (entityName === "assay") {
+				if (!projectId || !itemsToDelete.length) {
+					throw new Error("Project ID and assay ID are required.");
+				}
+
+				const results = await Promise.allSettled(
+					itemsToDelete.map((item) => deleteAssay(projectId, item.id))
+				);
+
+				const success = itemsToDelete
+					.filter((_, index) => results[index].status === "fulfilled")
+					.map((item) => item.id);
+
+				const failed = results.length - success.length;
+
+				if (success.length > 0) {
+					onDeleted?.(success);
+
+					await queryClient.invalidateQueries({
+						queryKey: ["assays", String(projectId)],
+					});
+
+					await queryClient.invalidateQueries({
+						queryKey: ["assaySamples"],
+					});
+
+					toastSuccess(`${success.length} assay(s) deleted successfully!`);
+				}
+
+				if (failed > 0) {
+					toastError(`${failed} assay(s) could not be deleted.`);
+				}
+
+				return;
 			} else if (entityName === "project") {
 				await deleteProject(projectId!);
 				onDeleted?.([projectId!]);
@@ -167,10 +204,14 @@ export const DeleteAlertButton = ({
 		</DropdownMenuItem>
 	) : (
 		<Button
-			variant={entityName === "fastq" ? "destructive" : "ghost"}
+			variant={
+				["fastq", "assay"].includes(entityName ?? "") ? "destructive" : "ghost"
+			}
 			size="sm"
 			className={
-				entityName === "fastq" ? "" : "text-red-500 hover:text-red-500"
+				["fastq", "assay"].includes(entityName ?? "")
+					? ""
+					: "text-red-500 hover:text-red-500"
 			}
 		>
 			<Trash2 className="mr-2 size-4" />
@@ -191,7 +232,7 @@ export const DeleteAlertButton = ({
 						<strong>
 							{entityName === "fastq" ? "FASTQ file(s)" : `${messageName}(s)`}
 						</strong>{" "}
-						{entityName === "assay"
+						{entityName === "assaySample"
 							? "will be removed from experiment table"
 							: `will be permanently deleted from our servers.`}
 					</AlertDialogDescription>
