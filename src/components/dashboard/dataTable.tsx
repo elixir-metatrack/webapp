@@ -167,6 +167,8 @@ const COLUMN_NAMES: Record<string, string> = {
 	librarySelection: "Library Selection",
 	libraryLayout: "Library Layout",
 	insertSize: "Insert Size",
+	experimentAccession: "Experiment Accession",
+	runAccession: "Run Accession",
 };
 
 function getColumnTooltip(key: string) {
@@ -631,8 +633,6 @@ export function DataTable<T extends object>({
 			sequencingLab: false,
 			institution: false,
 			hostHealthState: false,
-			createdOn: false,
-			modifiedOn: false,
 			lastUpdatedOn: false,
 			id: false,
 			mlst: false,
@@ -670,6 +670,12 @@ export function DataTable<T extends object>({
 			secondaryAccession: false,
 			projectTitle: false,
 			description: false,
+
+			experimentAccession: false,
+			runAccession: false,
+
+			createdOn: false,
+			modifiedOn: false,
 		});
 
 	// eslint-disable-next-line react-hooks/incompatible-library
@@ -987,6 +993,9 @@ export function DataTable<T extends object>({
 			toastSuccess(`${succeeded} file(s) deleted successfully.`);
 		}
 	};
+
+	console.log("ASSAY ID:", assay?.id);
+	console.log("SAMPLE ID:", selectedRows as { id: string }[]);
 
 	return (
 		<div className="space-y-4">

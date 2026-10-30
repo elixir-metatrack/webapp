@@ -97,7 +97,22 @@ export const SAMPLE_COLUMN_ORDER = [
 ] as const;
 
 // Empty means use the order in which assay fields are received.
-export const ASSAY_COLUMN_ORDER: string[] = [];
+export const ASSAY_COLUMN_ORDER = [
+	"name",
+	"studyAccession",
+	"instrumentModel",
+	"libraryName",
+	"libraryLayout",
+	"librarySelection",
+	"librarySource",
+	"libraryStrategy",
+	"insertSize",
+	"experimentAccession",
+	"runAccession",
+	"files",
+	"createdOn",
+	"modifiedOn",
+] as const;
 
 export function getColumnOrder(
 	dataType: "sample" | "assay"

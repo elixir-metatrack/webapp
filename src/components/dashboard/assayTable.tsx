@@ -56,6 +56,8 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 					createdOn: assay.createdOn,
 					modifiedOn: assay.modifiedOn,
 					files: sample.files,
+					experimentAccession: assay.experimentAccession,
+					runAccession: assay.runAccession,
 				})),
 			};
 		},

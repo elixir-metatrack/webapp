@@ -135,12 +135,20 @@ export const COLUMN_TOOLTIPS: Record<string, string> = {
 	collectingInstitution:
 		"Name of the institution to which the person collecting the specimen belongs. Format: Institute Name, Institute Address.",
 
+	projectAccession:
+		"BioSamples project accession number. Created when sample has been submitted to BioSamples (for example PRJEB12345)",
+	sampleAccession:
+		"BioSamples sample accession number. Created when sample has been submitted to BioSamples (for example: SAMEA123456)",
+	secondaryAccession:
+		"Alternative sample accession number. Created when sample has been submitted to an archive such as ENA (for example: ERS123456)",
+
 	// EXPERIMENT COLUMNS TOOLTIP
 
 	sampleName:
 		'Unique name of the sample. Identical to "Sample Name" as this is the sequence data from the original sample.',
 
-	studyAccession: "Study accession or unique name.",
+	studyAccession:
+		"Alternative project accession number. Created when sample has been submitted to an archive such as ENA (for example: ERP123456)",
 
 	files: "FASTQ files linked to the sample",
 
@@ -191,6 +199,11 @@ export const COLUMN_TOOLTIPS: Record<string, string> = {
 
 	sequencingLaboratory:
 		"The sequencing laboratory or company used in the experiment.",
+
+	experimentAccession:
+		"The experiment accession number. Holds metadata that describe the methods used to sequence the sample. Created when data  has been submitted to an archive such as ENA (for example ERX123456)",
+	runAccession:
+		"Alternative experiment accession number. Created when data  has been submitted to an archive such as ENA (for example ERR123456). Direct link to downloadable files in the archive",
 
 	// CREATE AND MODIFY ON
 	createdOn: "Date of creation",
