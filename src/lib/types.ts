@@ -92,10 +92,23 @@ export type MeResponse = {
 
 export type Member = {
 	memberId: string;
-	role: string;
+	role: "VIEWER" | "EDITOR" | "ADMIN" | "OWNER";
 	username?: string | null;
 	email?: string | null;
 };
+
+export interface RealmUser {
+	userId: string;
+	firstName: string;
+	lastName: string;
+	displayName: string;
+	email: string;
+}
+
+export interface SearchRealmUsersResponse {
+	users: RealmUser[];
+	hasMore: boolean;
+}
 
 export interface Project {
 	id?: string;

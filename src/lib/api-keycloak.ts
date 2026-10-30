@@ -17,6 +17,7 @@ import type {
 	SampleMetadataField,
 	SampleMetadataFieldType,
 	SampleStatsByDateResponse,
+	SearchRealmUsersResponse,
 	StatisticsResponse,
 	StorageStats,
 	Taxon,
@@ -380,6 +381,14 @@ export async function declineProjectInvitation(
 	return api<ProjectInvitation>(`invitations/${invitationId}/decline`, {
 		method: "POST",
 	});
+}
+
+export async function searchRealmUsers(
+	query: string
+): Promise<SearchRealmUsersResponse> {
+	return api<SearchRealmUsersResponse>(
+		`users/search?q=${encodeURIComponent(query.trim())}`
+	);
 }
 
 // ============================================================
