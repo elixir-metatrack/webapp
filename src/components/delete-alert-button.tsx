@@ -26,7 +26,7 @@ interface DeleteAlertButtonProps {
 	projectId?: string;
 	assayId?: string;
 	item: { id: string; name?: string } | { id: string; name?: string }[];
-	entityName?: "sample" | "project" | "fastq" | "assaySample" | "assay";
+	entityName?: "sample" | "project" | "fastq" | "assayTable" | "assay";
 	onDeleted?: (deletedIds: string[]) => void;
 	insideDropdown?: boolean;
 }
@@ -41,8 +41,7 @@ export const DeleteAlertButton = ({
 }: DeleteAlertButtonProps) => {
 	const queryClient = useQueryClient();
 
-	const messageName =
-		entityName === "assaySample" ? "experiment sample" : entityName;
+	const messageName = entityName === "assay" ? "experiment sample" : entityName;
 
 	const handleDelete = async () => {
 		const itemsToDelete = Array.isArray(item) ? item : [item];
@@ -71,7 +70,7 @@ export const DeleteAlertButton = ({
 				}
 				return;
 			}
-			if (entityName === "assaySample") {
+			if (entityName === "assay") {
 				if (!projectId || !assayId) {
 					throw new Error(
 						"Project ID and assay ID are required to delete samples from an assay."
@@ -85,8 +84,6 @@ export const DeleteAlertButton = ({
 
 					return item.name;
 				});
-
-				console.log(projectId, assayId, sampleNames);
 
 				await deleteSamplesFromAssay(projectId, assayId, sampleNames);
 
@@ -139,7 +136,7 @@ export const DeleteAlertButton = ({
 
 				return;
 			}
-			if (entityName === "assay") {
+			if (entityName === "assayTable") {
 				if (!projectId || !itemsToDelete.length) {
 					throw new Error("Project ID and assay ID are required.");
 				}
@@ -205,11 +202,13 @@ export const DeleteAlertButton = ({
 	) : (
 		<Button
 			variant={
-				["fastq", "assay"].includes(entityName ?? "") ? "destructive" : "ghost"
+				["fastq", "assayTable"].includes(entityName ?? "")
+					? "destructive"
+					: "ghost"
 			}
 			size="sm"
 			className={
-				["fastq", "assay"].includes(entityName ?? "")
+				["fastq", "assayTable"].includes(entityName ?? "")
 					? ""
 					: "text-red-500 hover:text-red-500"
 			}
@@ -232,7 +231,7 @@ export const DeleteAlertButton = ({
 						<strong>
 							{entityName === "fastq" ? "FASTQ file(s)" : `${messageName}(s)`}
 						</strong>{" "}
-						{entityName === "assaySample"
+						{entityName === "assay"
 							? "will be removed from experiment table"
 							: `will be permanently deleted from our servers.`}
 					</AlertDialogDescription>

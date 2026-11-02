@@ -472,7 +472,7 @@ function RouteComponent() {
 															projectId={projectId}
 															assayId={selectedAssayId}
 															item={{ id: selectedAssayId }}
-															entityName="assay"
+															entityName="assayTable"
 															insideDropdown={false}
 															onDeleted={(deletedIds) => {
 																const remainingAssays = assays.filter(
