@@ -572,7 +572,9 @@ export function DataTable<T extends object>({
 											sampleName={(row.original as Sample).name}
 										/>
 									) : null}
-									{onDelete && !project?.parentProjectId && (
+									{onDelete &&
+									!project?.parentProjectId &&
+									dataType === "sample" ? (
 										<DeleteAlertButton
 											projectId={project?.id ?? ""}
 											item={row.original as { id: string; name: string }[]}
@@ -580,7 +582,7 @@ export function DataTable<T extends object>({
 											assayId={assay?.id ?? ""}
 											onDeleted={() => table.resetRowSelection()}
 										/>
-									)}
+									) : null}
 								</DropdownMenuContent>
 							</DropdownMenu>
 						),
