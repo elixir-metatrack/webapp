@@ -7,18 +7,20 @@ export function FastqFloatingActions({
 	onDelete,
 	onClear,
 	deleteAction,
+	disableDownload = false,
 }: {
 	count: number;
 	onDownload: () => void;
 	onDelete: () => void;
 	onClear: () => void;
 	deleteAction?: React.ReactNode;
+	disableDownload?: boolean;
 }) {
 	if (count === 0) return null;
 
 	return (
-		<div className="pointer-events-none absolute inset-x-0 top-35/100 left-35/100 z-50 flex justify-center px-4">
-			<div className="bg-background pointer-events-auto flex w-full max-w-xl flex-wrap items-center gap-3 rounded-xl border p-3 shadow-xl">
+		<div className="pointer-events-none absolute top-4 right-4 z-50">
+			<div className="bg-background pointer-events-auto flex flex-wrap items-center gap-3 rounded-xl border p-3 shadow-lg">
 				<div className="flex items-center gap-2 pr-2">
 					<div className="bg-primary/10 flex size-9 items-center justify-center rounded-full">
 						<Download className="text-primary size-4" />
@@ -32,8 +34,13 @@ export function FastqFloatingActions({
 					</div>
 				</div>
 
-				<div className="ml-auto flex items-center gap-2">
-					<Button variant="outline" size="sm" onClick={onDownload}>
+				<div className="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onDownload}
+						disabled={disableDownload}
+					>
 						<Download className="mr-2 size-4" />
 						Download
 					</Button>
