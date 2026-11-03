@@ -1,7 +1,7 @@
 export const COLUMN_TOOLTIPS: Record<string, string> = {
 	// PROJECT TOOLTIPS
 
-	projectTitle: "Title of the sample.",
+	projectTitle: "Short title for the project.",
 
 	description:
 		"Description of the sample. Example: Staphylococcus aureus isolated from blood culture.",

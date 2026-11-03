@@ -60,7 +60,7 @@ interface DataTableProps {
 }
 
 const COLUMN_TOOLTIPS: Record<string, string> = {
-	name: "Title of the sample.",
+	name: "Short title for the project.",
 	description:
 		"Description of the sample (example: Staphylococcus aureus isolated from blood culture.)",
 	sampleCount: "Number of samples associated with the project.",
