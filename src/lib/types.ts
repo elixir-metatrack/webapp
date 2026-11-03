@@ -123,6 +123,7 @@ export interface Project {
 	dataOwningOrganization?: string;
 	detailedDescription?: string;
 	comments?: string;
+	role?: "VIEWER" | "EDITOR" | "ADMIN" | "OWNER";
 }
 
 export type InvitationRole = "VIEWER" | "EDITOR" | "ADMIN";

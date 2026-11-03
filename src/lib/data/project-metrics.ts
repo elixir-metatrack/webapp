@@ -27,17 +27,30 @@ export function getUniqueSampleTypes(samples: Sample[]) {
 const MB = 1024 * 1024;
 const GB = 1024 * MB;
 
-export function formatStorage(usedBytes: number, totalGB: number = 500) {
+export function formatStorage(
+	usedBytes: number,
+	totalGB: number = 500,
+	isTotal = false
+) {
 	const totalBytes = totalGB * GB;
 
 	const usedGB = usedBytes / GB;
 
 	const percent = (usedBytes / totalBytes) * 100;
 
-	return {
-		used: `${usedGB.toFixed(2)} GB`,
-		total: `${totalGB} GB`,
-		percent: `${percent.toFixed(1)}%`,
-		label: `${usedGB.toFixed(2)} GB / ${totalGB} GB`,
-	};
+	if (isTotal) {
+		return {
+			used: `${usedGB.toFixed(2)} GB`,
+			total: `${totalGB} GB`,
+			percent: `${percent.toFixed(1)}%`,
+			label: `${usedGB.toFixed(2)} GB / ${totalGB} GB`,
+		};
+	} else {
+		return {
+			used: `${usedGB.toFixed(2)} GB`,
+			total: `${totalGB} GB`,
+			percent: `${percent.toFixed(1)}%`,
+			label: `${usedGB.toFixed(2)} GB`,
+		};
+	}
 }
