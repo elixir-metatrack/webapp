@@ -303,6 +303,7 @@ export function DataTable<T extends object>({
 	type SelectableFastqFile = {
 		uuid: string;
 		sampleName: string;
+		status: string;
 		fileName: string;
 		key: string;
 	};
@@ -324,13 +325,18 @@ export function DataTable<T extends object>({
 				uuid: file.uuid,
 				sampleName: sample.name,
 				fileName: file.name,
+				status: file.status,
 				key: JSON.stringify([sample.name, file.name]),
 			}))
 		);
 	}, [dataType, enrichedData]);
 
-	const selectedFastqFilesToDownload = fastqFiles.filter((file) =>
+	const selectedFastqFilesSelected = fastqFiles.filter((file) =>
 		selectedFastqFiles.has(file.key)
+	);
+
+	const selectedFastqFilesToDownload = fastqFiles.filter(
+		(file) => selectedFastqFiles.has(file.key) && file.status === "UPLOADED"
 	);
 
 	const toggleFastqFile = (key: string, checked: boolean) => {
@@ -503,33 +509,39 @@ export function DataTable<T extends object>({
 										aria-label={`Select ${file.name}`}
 									/>
 
-									<button
-										type="button"
-										onClick={async () => {
-											if (!project?.id || !assay?.id) return;
+									{file.status === "UPLOADED" ? (
+										<button
+											type="button"
+											onClick={async () => {
+												if (!project?.id || !assay?.id) return;
 
-											try {
-												const { url } = await requestPresignedDownload({
-													projectId: Number(project.id),
-													assayId: assay.id,
-													sampleName: sample.name,
-													fileName: file.name,
-												});
+												try {
+													const { url } = await requestPresignedDownload({
+														projectId: Number(project.id),
+														assayId: assay.id,
+														sampleName: sample.name,
+														fileName: file.name,
+													});
 
-												window.open(url, "_blank", "noopener,noreferrer");
-											} catch (err: unknown) {
-												const message =
-													err instanceof Error
-														? err.message
-														: "Download failed";
+													window.open(url, "_blank", "noopener,noreferrer");
+												} catch (err: unknown) {
+													const message =
+														err instanceof Error
+															? err.message
+															: "Download failed";
 
-												toastError(message);
-											}
-										}}
-										className="text-left text-blue-600 hover:underline"
-									>
-										{file.name}
-									</button>
+													toastError(message);
+												}
+											}}
+											className="text-left text-blue-600 hover:underline"
+										>
+											{file.name}
+										</button>
+									) : (
+										<span className="text-muted-foreground text-sm">
+											{file.name}
+										</span>
+									)}
 								</div>
 							);
 						})}
@@ -1005,115 +1017,90 @@ export function DataTable<T extends object>({
 				<ProjectTree data={treeData} width={1200} onAssayClick={onAssayClick} />
 			</div>
 
-			<div className="flex flex-wrap items-center justify-between gap-2">
-				<Input
-					placeholder={filterPlaceholder}
-					value={globalFilter ?? ""}
-					onChange={(e) => setGlobalFilter(e.target.value)}
-					className="max-w-xs"
-				/>
+			<div className="relative space-y-4">
+				{dataType === "assay" && (
+					<FastqFloatingActions
+						count={selectedFastqFilesSelected.length}
+						onDownload={() =>
+							handleDownloadFastqFiles(selectedFastqFilesToDownload)
+						}
+						onDelete={() =>
+							handleDeleteSelectedFastqFiles(selectedFastqFilesToDownload)
+						}
+						onClear={() => setSelectedFastqFiles(new Set())}
+						disableDownload={selectedFastqFilesToDownload.length === 0}
+						deleteAction={
+							<DeleteAlertButton
+								projectId={String(project?.id)}
+								assayId={String(assay?.id)}
+								entityName="fastq"
+								insideDropdown={false}
+								item={selectedFastqFilesToDownload.map((file) => ({
+									id: file.uuid,
+								}))}
+								onDeleted={() => setSelectedFastqFiles(new Set())}
+							/>
+						}
+					/>
+				)}
 
-				{selectedRows.length > 0 && (
-					<div className="inline-flex min-h-9 max-w-full flex-wrap items-center rounded-md border">
-						<div className="text-selected flex flex-1 flex-wrap items-center pl-3 text-sm md:flex-row">
-							{table.getFilteredSelectedRowModel().rows.length} selected
-							<Button
-								variant="ghost"
-								size="sm"
-								className="text-primary font-semibold"
-								onClick={() => table.resetRowSelection()}
-							>
-								<X />
-							</Button>
-						</div>
+				<div className="flex flex-wrap items-center justify-between gap-2">
+					<Input
+						placeholder={filterPlaceholder}
+						value={globalFilter ?? ""}
+						onChange={(e) => setGlobalFilter(e.target.value)}
+						className="max-w-xs"
+					/>
 
-						{!project?.parentProjectId && (
-							<>
-								<DeleteAlertButton
-									projectId={project?.id ?? ""}
-									item={selectedRows as { id: string }[]}
-									entityName={dataType}
-									assayId={assay?.id ?? ""}
-									insideDropdown={false}
-									onDeleted={() => table.resetRowSelection()}
-								/>
-							</>
-						)}
+					{selectedRows.length > 0 && (
+						<div className="inline-flex min-h-9 max-w-full flex-wrap items-center rounded-md border">
+							<div className="text-selected flex flex-1 flex-wrap items-center pl-3 text-sm md:flex-row">
+								{table.getFilteredSelectedRowModel().rows.length} selected
+								<Button
+									variant="ghost"
+									size="sm"
+									className="text-primary font-semibold"
+									onClick={() => table.resetRowSelection()}
+								>
+									<X />
+								</Button>
+							</div>
 
-						<Separator orientation="vertical" className="!h-8" />
+							{!project?.parentProjectId && (
+								<>
+									<DeleteAlertButton
+										projectId={project?.id ?? ""}
+										item={selectedRows as { id: string }[]}
+										entityName={dataType}
+										assayId={assay?.id ?? ""}
+										insideDropdown={false}
+										onDeleted={() => table.resetRowSelection()}
+									/>
+								</>
+							)}
 
-						{dataType === "sample" ? (
-							<>
-								{quickEditColumns.map((col) => {
-									const fieldKey = String(col.id);
-									const terms = getTerms(fieldKey);
+							<Separator orientation="vertical" className="!h-8" />
 
-									return (
-										<React.Fragment key={fieldKey}>
-											<DropdownMenu modal={false}>
-												<DropdownMenuTrigger asChild>
-													<Button
-														variant="ghost"
-														size="sm"
-														className="rounded-none"
-													>
-														{col.meta?.label}
-													</Button>
-												</DropdownMenuTrigger>
-
-												<DropdownMenuContent>
-													<QuickEditField
-														fieldKey={fieldKey}
-														label={String(col.meta?.label)}
-														terms={terms}
-														dataType={dataType}
-														onSubmit={(value) =>
-															handleBatchUpdate(fieldKey, value)
-														}
-													/>
-												</DropdownMenuContent>
-											</DropdownMenu>
-
-											<Separator orientation="vertical" className="!h-8" />
-										</React.Fragment>
-									);
-								})}
-							</>
-						) : null}
-
-						{dataType === "sample" ? (
-							<DropdownMenu modal={false}>
-								<DropdownMenuTrigger asChild>
-									<Button variant="ghost" size="sm" className="rounded-none">
-										<MoreHorizontal />
-									</Button>
-								</DropdownMenuTrigger>
-
-								<DropdownMenuContent align="end">
-									<DropdownMenuLabel className="flex w-full flex-row items-center gap-2 px-6">
-										<SquarePen size={18} />
-										Edit selected
-									</DropdownMenuLabel>
-
-									<DropdownMenuSeparator />
-
-									{moreEditColumns.map((col) => {
+							{dataType === "sample" ? (
+								<>
+									{quickEditColumns.map((col) => {
 										const fieldKey = String(col.id);
 										const terms = getTerms(fieldKey);
 
 										return (
-											<DropdownMenuItem key={fieldKey} asChild>
-												<Popover modal={false}>
-													<PopoverTrigger asChild>
+											<React.Fragment key={fieldKey}>
+												<DropdownMenu modal={false}>
+													<DropdownMenuTrigger asChild>
 														<Button
 															variant="ghost"
-															className="flex justify-start"
+															size="sm"
+															className="rounded-none"
 														>
-															{String(col.meta?.label)}
+															{col.meta?.label}
 														</Button>
-													</PopoverTrigger>
+													</DropdownMenuTrigger>
 
-													<PopoverContent className="p-1">
+													<DropdownMenuContent>
 														<QuickEditField
 															fieldKey={fieldKey}
 															label={String(col.meta?.label)}
@@ -1123,155 +1110,183 @@ export function DataTable<T extends object>({
 																handleBatchUpdate(fieldKey, value)
 															}
 														/>
-													</PopoverContent>
-												</Popover>
-											</DropdownMenuItem>
+													</DropdownMenuContent>
+												</DropdownMenu>
+
+												<Separator orientation="vertical" className="!h-8" />
+											</React.Fragment>
 										);
 									})}
-								</DropdownMenuContent>
-							</DropdownMenu>
-						) : null}
-					</div>
-				)}
+								</>
+							) : null}
 
-				<div className="ml-auto flex flex-wrap items-center gap-2">
-					<DataTableViewOptions
-						table={table}
-						projectId={project?.id ?? ""}
-						dataType={dataType!}
-					/>
-					{showAddButton}
-					<div className="flex items-center gap-2">
-						{project?.id && (dataType === "sample" || assay) && (
-							<ExportSamplesButton
-								projectId={project.id}
-								assayId={assay?.id}
-								sampleNames={exportRows.map((row) => row.id)}
-								selected={hasSelection}
-								onDownloadTSV={handleDownloadTSV}
-							/>
-						)}
+							{dataType === "sample" ? (
+								<DropdownMenu modal={false}>
+									<DropdownMenuTrigger asChild>
+										<Button variant="ghost" size="sm" className="rounded-none">
+											<MoreHorizontal />
+										</Button>
+									</DropdownMenuTrigger>
+
+									<DropdownMenuContent align="end">
+										<DropdownMenuLabel className="flex w-full flex-row items-center gap-2 px-6">
+											<SquarePen size={18} />
+											Edit selected
+										</DropdownMenuLabel>
+
+										<DropdownMenuSeparator />
+
+										{moreEditColumns.map((col) => {
+											const fieldKey = String(col.id);
+											const terms = getTerms(fieldKey);
+
+											return (
+												<DropdownMenuItem key={fieldKey} asChild>
+													<Popover modal={false}>
+														<PopoverTrigger asChild>
+															<Button
+																variant="ghost"
+																className="flex justify-start"
+															>
+																{String(col.meta?.label)}
+															</Button>
+														</PopoverTrigger>
+
+														<PopoverContent className="p-1">
+															<QuickEditField
+																fieldKey={fieldKey}
+																label={String(col.meta?.label)}
+																terms={terms}
+																dataType={dataType}
+																onSubmit={(value) =>
+																	handleBatchUpdate(fieldKey, value)
+																}
+															/>
+														</PopoverContent>
+													</Popover>
+												</DropdownMenuItem>
+											);
+										})}
+									</DropdownMenuContent>
+								</DropdownMenu>
+							) : null}
+						</div>
+					)}
+
+					<div className="ml-auto flex flex-wrap items-center gap-2">
+						<DataTableViewOptions
+							table={table}
+							projectId={project?.id ?? ""}
+							dataType={dataType!}
+						/>
+						{showAddButton}
+						<div className="flex items-center gap-2">
+							{project?.id && (dataType === "sample" || assay) && (
+								<ExportSamplesButton
+									projectId={project.id}
+									assayId={assay?.id}
+									sampleNames={exportRows.map((row) => row.id)}
+									selected={hasSelection}
+									onDownloadTSV={handleDownloadTSV}
+								/>
+							)}
+						</div>
 					</div>
 				</div>
-			</div>
-			<div className="rounded-md border">
-				<Table>
-					<TableHeader className="bg-muted sticky top-0">
-						{dataType === "assay" && (
-							<TableRow>
-								{table.getVisibleLeafColumns().map((column) => (
-									<TableHead key={column.id}>
-										{column.id === "files" ? (
-											<Button
-												variant="outline"
-												size="sm"
-												disabled={fastqFiles.length === 0}
-												onClick={() => handleDownloadFastqFiles(fastqFiles)}
-											>
-												<Download className="mr-2 h-4 w-4" />
-												Download All Files
-											</Button>
-										) : null}
-									</TableHead>
-								))}
-							</TableRow>
-						)}
-
-						{table.getHeaderGroups().map((headerGroup) => (
-							<TableRow key={headerGroup.id}>
-								{headerGroup.headers.map((header) => {
-									const tooltip = getHeaderTooltip(header.column.id);
-
-									return (
-										<TableHead key={header.id}>
-											{header.isPlaceholder ? null : (
-												<div className="flex items-center gap-1">
-													{tooltip ? (
-														<Tooltip>
-															<TooltipTrigger asChild>
-																<div>
-																	{flexRender(
-																		header.column.columnDef.header,
-																		header.getContext()
-																	)}
-																</div>
-															</TooltipTrigger>
-
-															<TooltipContent className="max-w-xs">
-																<p>{tooltip}</p>
-															</TooltipContent>
-														</Tooltip>
-													) : (
-														flexRender(
-															header.column.columnDef.header,
-															header.getContext()
-														)
-													)}
-												</div>
-											)}
+				<div className="rounded-md border">
+					<Table>
+						<TableHeader className="bg-muted sticky top-0">
+							{dataType === "assay" && (
+								<TableRow>
+									{table.getVisibleLeafColumns().map((column) => (
+										<TableHead key={column.id}>
+											{column.id === "files" ? (
+												<Button
+													variant="outline"
+													size="sm"
+													disabled={fastqFiles.length === 0}
+													onClick={() => handleDownloadFastqFiles(fastqFiles)}
+												>
+													<Download className="mr-2 h-4 w-4" />
+													Download All Files
+												</Button>
+											) : null}
 										</TableHead>
-									);
-								})}
-							</TableRow>
-						))}
-					</TableHeader>
-					<TableBody>
-						{table.getRowModel().rows.length ? (
-							table.getRowModel().rows.map((row) => (
-								<TableRow
-									key={row.id}
-									data-state={row.getIsSelected() && "selected"}
-									className="hover:bg-neutral-300"
-								>
-									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>
-											{flexRender(
-												cell.column.columnDef.cell,
-												cell.getContext()
-											)}
-										</TableCell>
 									))}
 								</TableRow>
-							))
-						) : (
-							<TableRow className="hover:bg-neutral-300">
-								<TableCell
-									colSpan={enhancedColumns.length}
-									className="h-24 text-center"
-								>
-									No results.
-								</TableCell>
-							</TableRow>
-						)}
-					</TableBody>
-				</Table>
-			</div>
-			<DataTablePagination table={table} />
+							)}
 
-			{dataType === "assay" && (
-				<FastqFloatingActions
-					count={selectedFastqFilesToDownload.length}
-					onDownload={() =>
-						handleDownloadFastqFiles(selectedFastqFilesToDownload)
-					}
-					onDelete={() =>
-						handleDeleteSelectedFastqFiles(selectedFastqFilesToDownload)
-					}
-					onClear={() => setSelectedFastqFiles(new Set())}
-					deleteAction={
-						<DeleteAlertButton
-							projectId={String(project?.id)}
-							assayId={String(assay?.id)}
-							entityName="fastq"
-							insideDropdown={false}
-							item={selectedFastqFilesToDownload.map((file) => ({
-								id: file.uuid,
-							}))}
-							onDeleted={() => setSelectedFastqFiles(new Set())}
-						/>
-					}
-				/>
-			)}
+							{table.getHeaderGroups().map((headerGroup) => (
+								<TableRow key={headerGroup.id}>
+									{headerGroup.headers.map((header) => {
+										const tooltip = getHeaderTooltip(header.column.id);
+
+										return (
+											<TableHead key={header.id}>
+												{header.isPlaceholder ? null : (
+													<div className="flex items-center gap-1">
+														{tooltip ? (
+															<Tooltip>
+																<TooltipTrigger asChild>
+																	<div>
+																		{flexRender(
+																			header.column.columnDef.header,
+																			header.getContext()
+																		)}
+																	</div>
+																</TooltipTrigger>
+
+																<TooltipContent className="max-w-xs">
+																	<p>{tooltip}</p>
+																</TooltipContent>
+															</Tooltip>
+														) : (
+															flexRender(
+																header.column.columnDef.header,
+																header.getContext()
+															)
+														)}
+													</div>
+												)}
+											</TableHead>
+										);
+									})}
+								</TableRow>
+							))}
+						</TableHeader>
+						<TableBody>
+							{table.getRowModel().rows.length ? (
+								table.getRowModel().rows.map((row) => (
+									<TableRow
+										key={row.id}
+										data-state={row.getIsSelected() && "selected"}
+										className="hover:bg-neutral-300"
+									>
+										{row.getVisibleCells().map((cell) => (
+											<TableCell key={cell.id}>
+												{flexRender(
+													cell.column.columnDef.cell,
+													cell.getContext()
+												)}
+											</TableCell>
+										))}
+									</TableRow>
+								))
+							) : (
+								<TableRow className="hover:bg-neutral-300">
+									<TableCell
+										colSpan={enhancedColumns.length}
+										className="h-24 text-center"
+									>
+										No results.
+									</TableCell>
+								</TableRow>
+							)}
+						</TableBody>
+					</Table>
+				</div>
+				<DataTablePagination table={table} />
+			</div>
 		</div>
 	);
 }
