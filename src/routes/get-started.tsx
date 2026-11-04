@@ -88,13 +88,13 @@ function RouteComponent() {
 				</div>
 
 				<h1 className="mb-3 text-3xl font-bold tracking-tight sm:text-4xl">
-					Get Started with NMDP
+					Get Started with Metatrack
 				</h1>
 
 				<p className="text-muted-foreground max-w-3xl text-lg">
-					Learn how to use the Norwegian Microbial Data Platform to organize
-					your research projects, register samples, manage sequencing data and
-					collaborate with researchers.
+					Learn how to use the Metatrack to organize your research projects,
+					register samples, manage sequencing data and collaborate with
+					researchers.
 				</p>
 			</div>
 
