@@ -19,7 +19,7 @@ export const Route = createFileRoute("/get-started")({
 
 const sections = [
 	{ id: "before-you-start", title: "Before you start" },
-	{ id: "login", title: "Log in to NMDP" },
+	{ id: "login", title: "Log in to Metatrack" },
 	{ id: "create-project", title: "Create a project" },
 	{ id: "register-samples", title: "Register samples" },
 	{ id: "manage-metadata", title: "Manage sample metadata" },
@@ -193,7 +193,7 @@ function RouteComponent() {
 								disabled
 								className="inline-flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium opacity-50"
 							>
-								Log in to NMDP
+								Log in to Metatrack
 								<ChevronRight className="size-4" />
 							</button>
 						</div>
