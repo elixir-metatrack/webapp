@@ -22,6 +22,8 @@ With **Metatrack**, you can:
 - **Manage sequencing data:** Associate sequencing experiments and files with registered samples.
 - **Collaborate:** Invite other researchers and manage their access permissions.
 
+![example_workflow](/get-started/before-you-start/example-workflow.png)
+
 ## Requirements
 
 Before accessing **Metatrack**, make sure you have the following:

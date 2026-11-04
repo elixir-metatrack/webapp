@@ -71,6 +71,14 @@ const components: Components = {
 	strong: ({ children }) => (
 		<strong className="text-foreground font-semibold">{children}</strong>
 	),
+	img: ({ src, alt }) => (
+		<img
+			src={src}
+			alt={alt || ""}
+			className="mx-auto my-6 w-full max-w-xl rounded-xl border"
+			loading="lazy"
+		/>
+	),
 };
 
 function RouteComponent() {
