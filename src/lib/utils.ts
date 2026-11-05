@@ -244,3 +244,24 @@ export function getApiErrorMessage(data: unknown): string {
 
 export const formatDateToYMD = (dateStr?: string | null) =>
 	dateStr ? new Date(dateStr).toISOString().split("T")[0] : "";
+
+export const downloadFile = async (url: string, fileName: string) => {
+	const response = await fetch(url);
+
+	if (!response.ok) {
+		throw new Error(`Failed to download ${fileName}`);
+	}
+
+	const blob = await response.blob();
+	const blobUrl = window.URL.createObjectURL(blob);
+
+	const link = document.createElement("a");
+	link.href = blobUrl;
+	link.download = fileName;
+
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+
+	window.URL.revokeObjectURL(blobUrl);
+};

@@ -61,6 +61,7 @@ import type {
 import {
 	ASSAY_NUMBER_FIELDS,
 	DATE_FIELDS,
+	downloadFile,
 	formatDateToYMD,
 	getColumnOrder,
 	NON_EDITABLE_COLUMNS,
@@ -373,7 +374,7 @@ export function DataTable<T extends object>({
 					fileName: file.fileName,
 				});
 
-				window.open(url, "_blank", "noopener,noreferrer");
+				await downloadFile(url, file.fileName);
 			} catch {
 				failed++;
 			}
