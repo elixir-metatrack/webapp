@@ -1,15 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import {
-	BookOpen,
-	ChevronRight,
-	ClipboardList,
-	FolderKanban,
-	LockKeyhole,
-	Menu,
-	X,
-} from "lucide-react";
+import { BookOpen, ChevronRight, ClipboardList, Menu, X } from "lucide-react";
 
 import beforeYouStart from "@/content/get-started/01-before-you-start.md?raw";
 
@@ -40,9 +32,22 @@ const components: Components = {
 	h3: ({ children }) => (
 		<h3 className="mt-7 mb-3 text-lg font-semibold">{children}</h3>
 	),
-	p: ({ children }) => (
-		<p className="text-muted-foreground mb-4 leading-7">{children}</p>
-	),
+	p: ({ children, node }) => {
+		const imageCount =
+			node?.children?.filter(
+				(child) => child.type === "element" && child.tagName === "img"
+			).length ?? 0;
+
+		if (imageCount >= 2) {
+			return (
+				<div className="my-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+					{children}
+				</div>
+			);
+		}
+
+		return <p className="text-muted-foreground mb-4 leading-7">{children}</p>;
+	},
 	ul: ({ children }) => (
 		<ul className="text-muted-foreground mb-5 ml-6 list-disc space-y-2">
 			{children}
@@ -71,14 +76,24 @@ const components: Components = {
 	strong: ({ children }) => (
 		<strong className="text-foreground font-semibold">{children}</strong>
 	),
-	img: ({ src, alt }) => (
-		<img
-			src={src}
-			alt={alt || ""}
-			className="mx-auto my-6 w-full max-w-xl rounded-xl border"
-			loading="lazy"
-		/>
-	),
+	img: ({ src, alt }) => {
+		return (
+			<div className="my-6">
+				<img
+					src={src}
+					alt={alt || ""}
+					className="mx-auto w-full max-w-xl rounded-xl border"
+					loading="lazy"
+				/>
+
+				{alt && (
+					<p className="text-muted-foreground mt-2 text-center text-sm">
+						{alt}
+					</p>
+				)}
+			</div>
+		);
+	},
 };
 
 function RouteComponent() {
