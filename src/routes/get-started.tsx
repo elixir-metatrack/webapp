@@ -1,24 +1,137 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import { BookOpen, ChevronRight, ClipboardList, Menu, X } from "lucide-react";
+import {
+	BookOpen,
+	ChevronLeft,
+	ChevronRight,
+	ClipboardList,
+	Menu,
+	X,
+} from "lucide-react";
 
 import beforeYouStart from "@/content/get-started/01-before-you-start.md?raw";
+import login from "@/content/get-started/02-login.md?raw";
 
 export const Route = createFileRoute("/get-started")({
 	component: RouteComponent,
 });
 
 const sections = [
-	{ id: "before-you-start", title: "Before you start" },
-	{ id: "login", title: "Log in to Metatrack" },
-	{ id: "create-project", title: "Create a project" },
-	{ id: "register-samples", title: "Register samples" },
-	{ id: "manage-metadata", title: "Manage sample metadata" },
-	{ id: "upload-data", title: "Upload sequencing data" },
-	{ id: "collaborators", title: "Invite collaborators" },
-	{ id: "share-archive", title: "Share and archive" },
+	{
+		id: "before-you-start",
+		title: "Before you start",
+		content: beforeYouStart,
+	},
+	{
+		id: "login",
+		title: "Log in to MetaTrack",
+		content: login,
+	},
+	{
+		id: "create-project",
+		title: "Create a project",
+		content: "",
+	},
+	{
+		id: "register-samples",
+		title: "Register samples",
+		content: "",
+	},
+	{
+		id: "manage-metadata",
+		title: "Manage sample metadata",
+		content: "",
+	},
+	{
+		id: "upload-data",
+		title: "Upload sequencing data",
+		content: "",
+	},
+	{
+		id: "collaborators",
+		title: "Invite collaborators",
+		content: "",
+	},
+	{
+		id: "share-archive",
+		title: "Share and archive",
+		content: "",
+	},
 ];
+
+type MarkdownImageProps = {
+	src?: string;
+	alt?: string;
+};
+
+function MarkdownImage({ src, alt }: MarkdownImageProps) {
+	const [isExpanded, setIsExpanded] = useState(false);
+
+	useEffect(() => {
+		if (!isExpanded) return;
+
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				setIsExpanded(false);
+			}
+		};
+
+		document.addEventListener("keydown", handleKeyDown);
+
+		return () => {
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [isExpanded]);
+
+	if (!src) return null;
+
+	return (
+		<>
+			<figure className="my-6">
+				<img
+					src={src}
+					alt={alt || ""}
+					onClick={() => setIsExpanded(true)}
+					className="mx-auto w-full max-w-xl cursor-zoom-in rounded-xl border transition-opacity hover:opacity-90"
+					loading="lazy"
+				/>
+
+				{alt && (
+					<figcaption className="text-muted-foreground mt-2 text-center text-sm">
+						{alt}
+					</figcaption>
+				)}
+			</figure>
+
+			{isExpanded && (
+				<div
+					role="dialog"
+					aria-modal="true"
+					aria-label={alt || "Expanded image"}
+					className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+					onClick={() => setIsExpanded(false)}
+				>
+					<button
+						type="button"
+						onClick={() => setIsExpanded(false)}
+						aria-label="Close expanded image"
+						className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+					>
+						<X className="size-6" />
+					</button>
+
+					<img
+						src={src}
+						alt={alt || ""}
+						className="max-h-[90vh] max-w-[95vw] rounded-lg object-contain shadow-2xl"
+						onClick={(event) => event.stopPropagation()}
+					/>
+				</div>
+			)}
+		</>
+	);
+}
 
 const components: Components = {
 	h1: ({ children }) => (
@@ -76,28 +189,16 @@ const components: Components = {
 	strong: ({ children }) => (
 		<strong className="text-foreground font-semibold">{children}</strong>
 	),
-	img: ({ src, alt }) => {
-		return (
-			<div className="my-6">
-				<img
-					src={src}
-					alt={alt || ""}
-					className="mx-auto w-full max-w-xl rounded-xl border"
-					loading="lazy"
-				/>
-
-				{alt && (
-					<p className="text-muted-foreground mt-2 text-center text-sm">
-						{alt}
-					</p>
-				)}
-			</div>
-		);
-	},
+	img: MarkdownImage,
 };
 
 function RouteComponent() {
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+
+	const activeSection = sections[activeSectionIndex];
+	const previousSection = sections[activeSectionIndex - 1];
+	const nextSection = sections[activeSectionIndex + 1];
 
 	return (
 		<div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -147,22 +248,27 @@ function RouteComponent() {
 
 							<nav className="space-y-1">
 								{sections.map((section, index) => {
-									const isActive = index === 0;
+									const isActive = index === activeSectionIndex;
 
 									return (
-										<div
+										<button
 											key={section.id}
-											className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${
+											onClick={() => {
+												setActiveSectionIndex(index);
+												setSidebarOpen(false);
+											}}
+											className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
 												isActive
 													? "bg-primary/10 text-primary font-medium"
-													: "text-muted-foreground"
+													: "text-muted-foreground hover:bg-muted"
 											}`}
 										>
 											<span className="text-xs opacity-70">
 												{String(index + 1).padStart(2, "0")}
 											</span>
+
 											{section.title}
-										</div>
+										</button>
 									);
 								})}
 							</nav>
@@ -202,24 +308,39 @@ function RouteComponent() {
 					{/* Markdown content */}
 					<article className="max-w-none">
 						<ReactMarkdown components={components}>
-							{beforeYouStart}
+							{activeSection.content}
 						</ReactMarkdown>
 					</article>
 
 					{/* Next chapter */}
-					<div className="mt-12 flex justify-end border-t pt-6">
-						<div className="text-right">
-							<span className="text-muted-foreground mb-2 block text-xs">
-								NEXT SECTION
-							</span>
+					<div className="mt-12 flex items-center justify-between border-t pt-6">
+						{previousSection ? (
 							<button
-								disabled
-								className="inline-flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium opacity-50"
+								onClick={() => setActiveSectionIndex(activeSectionIndex - 1)}
+								className="hover:bg-muted inline-flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium"
 							>
-								Log in to Metatrack
-								<ChevronRight className="size-4" />
+								<ChevronLeft className="size-4" />
+								{previousSection.title}
 							</button>
-						</div>
+						) : (
+							<div />
+						)}
+
+						{nextSection && (
+							<div className="text-right">
+								<span className="text-muted-foreground mb-2 block text-xs">
+									NEXT SECTION
+								</span>
+
+								<button
+									onClick={() => setActiveSectionIndex(activeSectionIndex + 1)}
+									className="hover:bg-muted inline-flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium"
+								>
+									{nextSection.title}
+									<ChevronRight className="size-4" />
+								</button>
+							</div>
+						)}
 					</div>
 				</main>
 			</div>
