@@ -131,12 +131,15 @@ export function ProjectsDataTable({
 	const columns: ColumnDef<Project>[] = [
 		{
 			accessorKey: "name",
+			size: 250,
+			minSize: 250,
+			maxSize: 250,
 			header: ({ column }) => (
 				<DataTableColumnHeader column={column} title="Title" className="pl-9" />
 			),
 			cell: ({ row }) => (
 				<div
-					className="flex items-center gap-2"
+					className="flex w-full min-w-0 items-center gap-2 overflow-hidden"
 					style={{ paddingLeft: `${row.depth * 1.5}rem` }}
 				>
 					{row.getCanExpand() ? (
@@ -144,8 +147,6 @@ export function ProjectsDataTable({
 							variant="ghost"
 							size="icon"
 							className="size-7 shrink-0"
-							aria-label={`${row.getIsExpanded() ? "Collapse" : "Expand"} ${row.original.name}`}
-							aria-expanded={row.getIsExpanded()}
 							onClick={(event) => {
 								event.stopPropagation();
 								row.toggleExpanded();
@@ -159,18 +160,24 @@ export function ProjectsDataTable({
 							/>
 						</Button>
 					) : (
-						<span className="size-7 shrink-0" aria-hidden="true" />
+						<span className="size-7 shrink-0" />
 					)}
-					{row.original.parentProjectId != null && (
-						<GitBranch
-							className="text-muted-foreground size-4 shrink-0"
-							aria-hidden="true"
-						/>
-					)}
-					<span className="font-medium">{row.getValue("name")}</span>
 
 					{row.original.parentProjectId != null && (
-						<Badge variant="secondary">Sub-project</Badge>
+						<GitBranch className="text-muted-foreground size-4 shrink-0" />
+					)}
+
+					<span
+						className="min-w-0 flex-1 truncate font-medium"
+						title={row.original.name}
+					>
+						{row.original.name}
+					</span>
+
+					{row.original.parentProjectId != null && (
+						<Badge variant="secondary" className="shrink-0">
+							Sub-project
+						</Badge>
 					)}
 				</div>
 			),
@@ -192,10 +199,20 @@ export function ProjectsDataTable({
 		},
 		{
 			accessorKey: "description",
+			size: 300,
+			minSize: 300,
+			maxSize: 300,
 			header: ({ column }) => (
 				<DataTableColumnHeader column={column} title="Description" />
 			),
-			cell: ({ row }) => row.getValue("description") || "-",
+			cell: ({ row }) => (
+				<div
+					className="max-w-[300px] truncate"
+					title={row.original.description || ""}
+				>
+					{row.original.description || "-"}
+				</div>
+			),
 		},
 		{
 			accessorKey: "sampleCount",
@@ -351,7 +368,7 @@ export function ProjectsDataTable({
 			</div>
 
 			<div className="rounded-md border">
-				<Table>
+				<Table className="w-full table-fixed">
 					<TableHeader className="bg-muted sticky top-0">
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
