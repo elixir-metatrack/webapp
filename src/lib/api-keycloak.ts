@@ -170,19 +170,43 @@ export async function apiPublic<T = unknown>(
 // Projects
 // ============================================================
 
-export async function downloadProjectIsaJson(projectId: string): Promise<void> {
+// Without sampleNames the whole visible project is exported, otherwise only these samples.
+export async function downloadProjectIsaJson(
+	projectId: string,
+	sampleNames?: string[]
+): Promise<void> {
 	const response = await fetch(
 		`${API_URL}/projects/${encodeURIComponent(projectId)}/exports/isa-json`,
-		{ headers: { Authorization: `Bearer ${keycloak.token}` } }
+		sampleNames
+			? {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${keycloak.token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ sampleNames }),
+				}
+			: { headers: { Authorization: `Bearer ${keycloak.token}` } }
 	);
 	if (!response.ok) {
-		throw new Error(`ISA-JSON export failed (HTTP ${response.status})`);
+		// 422: the export refuses to guess (e.g. ambiguous read files); show the reasons.
+		const body = await Promise.resolve()
+			.then(() => response.json())
+			.catch(() => null);
+		const problems = Array.isArray(body?.problems) ? body.problems : [];
+		throw new Error(
+			problems.length > 0
+				? `${body.message}: ${problems.join("; ")}`
+				: `ISA-JSON export failed (HTTP ${response.status})`
+		);
 	}
 	// Download the original bytes: parsing numbers in JavaScript can lose decimal precision.
 	const url = URL.createObjectURL(await response.blob());
 	const link = document.createElement("a");
 	link.href = url;
-	link.download = `project-${projectId}-isa.json`;
+	link.download = sampleNames
+		? `project-${projectId}-selection-isa.json`
+		: `project-${projectId}-isa.json`;
 	document.body.appendChild(link);
 	try {
 		link.click();
@@ -190,6 +214,54 @@ export async function downloadProjectIsaJson(projectId: string): Promise<void> {
 		link.remove();
 		setTimeout(() => URL.revokeObjectURL(url), 1000);
 	}
+}
+
+export interface IsaImportReport {
+	committed: boolean;
+	study: string | null;
+	studies: { identifier: string | null; title: string | null }[];
+	samples: string[];
+	newFields: { key: string; label: string; type: string }[];
+	assays: { name: string; samples: number; files: number }[];
+	ignored: string[];
+	errors: {
+		item: string | null;
+		field: string | null;
+		value: string | null;
+		message: string;
+	}[];
+}
+
+// Without commit the server only returns a preview; a commit with errors writes nothing (HTTP 422).
+export async function importProjectIsaJson(
+	projectId: string,
+	document: string,
+	options: { study?: string; commit: boolean }
+): Promise<IsaImportReport> {
+	const params = new URLSearchParams({ commit: String(options.commit) });
+	if (options.study) params.set("study", options.study);
+	const response = await fetch(
+		`${API_URL}/projects/${encodeURIComponent(projectId)}/imports/isa-json?${params}`,
+		{
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${keycloak.token}`,
+				"Content-Type": "application/json",
+			},
+			body: document,
+		}
+	);
+	if (response.ok || response.status === 422) {
+		return (await response.json()) as IsaImportReport;
+	}
+	const detail = await Promise.resolve()
+		.then(() => response.text())
+		.catch(() => "");
+	throw new Error(
+		response.status === 403
+			? "You need editor access to import into this project"
+			: `ISA-JSON import failed (HTTP ${response.status})${detail ? `: ${detail.slice(0, 300)}` : ""}`
+	);
 }
 
 export async function getProjects() {

@@ -1,17 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Braces, Download, FileSpreadsheet, FileText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { exportExcelData } from "@/lib/api-keycloak";
+import { downloadProjectIsaJson, exportExcelData } from "@/lib/api-keycloak";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 interface ExportSamplesButtonProps {
@@ -46,6 +47,25 @@ export function ExportSamplesButton({
 		}
 	};
 
+	// ISA-JSON exports the selected samples, otherwise the whole visible project (table filters are ignored).
+	const downloadIsaJson = async () => {
+		setLoading(true);
+
+		try {
+			await downloadProjectIsaJson(
+				projectId,
+				selected ? sampleNames : undefined
+			);
+			toastSuccess("ISA-JSON export downloaded");
+		} catch (error) {
+			toastError(
+				error instanceof Error ? error.message : "ISA-JSON export failed"
+			);
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	const label = selected
 		? `Download selected samples (${sampleNames.length})`
 		: "Download all samples";
@@ -71,6 +91,21 @@ export function ExportSamplesButton({
 				<DropdownMenuItem disabled={loading} onSelect={downloadExcel}>
 					<FileSpreadsheet className="mr-2 h-4 w-4" />
 					Excel (.xlsx)
+				</DropdownMenuItem>
+
+				<DropdownMenuSeparator />
+
+				<DropdownMenuItem disabled={loading} onSelect={downloadIsaJson}>
+					<Braces className="mr-2 h-4 w-4" />
+					<div className="flex flex-col">
+						<span>ISA-JSON (.json)</span>
+						<span className="text-muted-foreground text-xs">
+							{selected
+								? `Only the ${sampleNames.length} selected samples · partial study`
+								: "Whole project · ignores table filters"}
+						</span>
+						<span className="text-muted-foreground text-xs">Experimental</span>
+					</div>
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>

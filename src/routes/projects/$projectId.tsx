@@ -19,6 +19,7 @@ import { UploadTableDialog } from "@/components/dashboard/upload-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { formatDateToYMD, NON_VIEWED_COLUMNS } from "@/lib/utils";
 import { DownloadTemplateButton } from "@/components/dashboard/download-template-button";
+import { ImportIsaJsonDialog } from "@/components/dashboard/import-isa-json-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { AssayTable } from "@/components/dashboard/assayTable";
@@ -43,7 +44,6 @@ import {
 import { IconMicroscope, IconTestPipe, IconSitemap } from "@tabler/icons-react";
 import { useUser } from "#/hooks/use-user";
 import { VocabulariesDialog } from "#/components/vocabulariesDialog";
-import { ExportIsaJsonButton } from "@/components/dashboard/export-isa-json-button";
 
 export const Route = createFileRoute("/projects/$projectId")({
 	component: RouteComponent,
@@ -376,8 +376,6 @@ function RouteComponent() {
 					</div>
 				</Card>
 
-				<ExportIsaJsonButton projectId={projectId} />
-
 				<EditProjectDialog
 					project={project}
 					open={editDialogOpen}
@@ -435,6 +433,9 @@ function RouteComponent() {
 								<div className="flex flex-wrap justify-end gap-2 py-8">
 									<DownloadTemplateButton type="sample" />
 									<UploadTableDialog projectId={projectId} />
+									{!project.parentProjectId && (
+										<ImportIsaJsonDialog projectId={projectId} />
+									)}
 								</div>
 								<DataTable
 									data={samples}

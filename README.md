@@ -262,15 +262,10 @@ You can learn more about all of the offerings from TanStack in the [TanStack doc
 
 For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
 
-## ISA-JSON exploration
+## ISA-JSON (experimental)
 
-Open a project and use **Export ISA-JSON** below the project details to download all
-metadata visible in that project, including its samples, custom fields and assays.
-This experimental export is independent of table filters and selection. It requires
-the matching `explore/isa-json` API branch and existing project access.
-
-For a synthetic dataset, run `python3 scripts/seed-isa-demo.py` from `api-server`
-with the local API and Keycloak running, then open the project URL printed by the script.
-The seed preserves other projects and passwords. The export is not yet validated for
-repository submission; mapping and MARS findings are in the API repository at
-`docs/isa-json-exploration.md`.
+The table download menu has an **ISA-JSON (.json)** entry: with samples selected it exports those samples
+with their experiments and files, otherwise the whole project (table filters are ignored).
+**Import ISA-JSON** in the samples tab shows a preview and imports after confirmation.
+Both need the `explore/isa-json` API branch; mapping and local setup are in the API repository at
+`docs/isa-json.md`.
