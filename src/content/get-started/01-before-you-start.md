@@ -32,11 +32,11 @@ Before accessing **Metatrack**, make sure you have the following:
 
 You need access to a valid [FEIDE](https://www.feide.no) account to authenticate and log in to **Metatrack**.
 
-![Login Page](/public/get-started/before-you-start/login-page.png)
+![Login Page](/get-started/before-you-start/login-page.png)
 
 If you do not have a FEIDE account, you can also create an account directly through the MetaTrack registration page by selecting the Register option.
 
-![Login Page](/public/get-started/before-you-start/login-page-highlight.png) ![Register Page](/public/get-started/before-you-start/register-page.png)
+![Login Page](/get-started/before-you-start/login-page-highlight.png) ![Register Page](/get-started/before-you-start/register-page.png)
 
 During registration, you will be asked to provide:
 
