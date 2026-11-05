@@ -44,6 +44,10 @@ export interface Sample {
 	county: string | null;
 	commune: string | null;
 	hospitalHealthInstitution: string | null;
+	projectAccession: string | null;
+	sampleAccession: string | null;
+	secondaryAccession: string | null;
+	studyAccession?: string | null;
 
 	createdOn: string | null; // Date
 	modifiedOn: string | null; // Date
@@ -88,10 +92,23 @@ export type MeResponse = {
 
 export type Member = {
 	memberId: string;
-	role: string;
+	role: "VIEWER" | "EDITOR" | "ADMIN" | "OWNER";
 	username?: string | null;
 	email?: string | null;
 };
+
+export interface RealmUser {
+	userId: string;
+	firstName: string;
+	lastName: string;
+	displayName: string;
+	email: string;
+}
+
+export interface SearchRealmUsersResponse {
+	users: RealmUser[];
+	hasMore: boolean;
+}
 
 export interface Project {
 	id?: string;
@@ -106,6 +123,7 @@ export interface Project {
 	dataOwningOrganization?: string;
 	detailedDescription?: string;
 	comments?: string;
+	role?: "VIEWER" | "EDITOR" | "ADMIN" | "OWNER";
 }
 
 export type InvitationRole = "VIEWER" | "EDITOR" | "ADMIN";
@@ -184,6 +202,8 @@ export interface Assay {
 	insertSize?: number | null;
 	createdOn?: string | null;
 	modifiedOn?: string | null;
+	experimentAccession?: string | null;
+	runAccession?: string | null;
 	files?: SampleFile[];
 }
 

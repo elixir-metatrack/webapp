@@ -8,65 +8,60 @@ interface CheckItemProps {
 
 const checkItems: Array<CheckItemProps> = [
 	{
-		title: "Collaborative metadata management",
-		description: "Invite collaborators into your project",
+		title: "Discover unpublished data",
+		description:
+			"Discover microbial datasets before formal publication through searchable metadata, facilitating early data discovery and research collaboration.",
 	},
 	{
-		title: "Access controlled system",
-		description: "Login with your FEIDE user",
+		title: "Rich metadata management",
+		description:
+			"Organise, manage and enrich contextual metadata linked to microbial datasets throughout the research data lifecycle.",
 	},
 	{
 		title: "User-friendly interface",
-		description: "Easy to add and edit metadata connected to your data",
+		description:
+			"Easily register, manage and share datasets and associated metadata through an intuitive web-based interface.",
+	},
+	{
+		title: "Standardised and FAIR data",
+		description:
+			"Support FAIR data practices through structured metadata, international standards and integration with public data archives.",
+	},
+	{
+		title: "Controlled data access",
+		description:
+			"Securely manage access to datasets and metadata through user authentication, permissions and controlled sharing.",
 	},
 	{
 		title: "Support and training",
-		description: "Through ELIXIR Norway support desk",
-	},
-	{
-		title: "Directly connected with data brokering service",
-		description: "To public archives",
-	},
-	{
-		title: "Ensures standardised and FAIR data",
-		description: "Following international best practices",
-	},
-	{
-		title: "Facilitates early data discovery",
-		description: "Share selected metadata even before formal publication",
-	},
-	{
-		title: "Integrated with national infrastructure",
-		description: "Align with Norwegian and European data policies",
-	},
-	{
-		title: "Enables reproducible science",
-		description: "Structured metadata ensures transparency and traceability",
+		description:
+			"Access guidance, training and technical support through the ELIXIR Norway support desk.",
 	},
 ];
 
 export default function What() {
 	return (
 		<>
-			<div className="max-w-6xl space-y-4 text-justify text-xl leading-relaxed lg:mx-auto lg:py-4">
-				<h5>
-					MetaTrack is a web-based platform for managing, sharing, and exploring
-					life-science data and associated metadata. It provides a secure and
-					user-friendly environment where researchers can organise datasets,
-					capture contextual information, and collaborate efficiently across
-					projects and institutions.
-				</h5>
-				<h5>
-					By structuring data and metadata in a consistent and interoperable
-					way, MetaTrack supports better data stewardship throughout the
-					research lifecycle and helps ensure that datasets are
-					publication-ready for submission to public repositories.
-				</h5>
-			</div>
+			<h3 className="max-w-6xl text-justify text-xl leading-relaxed lg:mx-auto lg:py-4">
+				The <strong>Norwegian Microbial Data Platform (NMDP)</strong> provides a
+				national infrastructure for discovering, managing, sharing and reusing
+				microbial data. Through its integrated{" "}
+				<a
+					href="https://metatrack.no"
+					target="_blank"
+					rel="noopener noreferrer"
+					className="text-blue-500 hover:underline"
+				>
+					MetaTrack
+				</a>{" "}
+				tool, researchers can manage datasets and contextual metadata,
+				collaborate across institutions and prepare data for publication in
+				public archives.
+			</h3>
 
 			<section className="mx-auto max-w-7xl px-6 py-12">
 				<h3 className="mb-4 text-center text-xl font-semibold">
-					What MetaTrack Offers
+					What NMDP Offers
 				</h3>
 
 				<div className="grid grid-cols-3 gap-4 bg-gray-100 p-2">

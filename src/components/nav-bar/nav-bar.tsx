@@ -6,6 +6,7 @@ import { Button } from "../ui/button";
 import { AuthContext } from "@/providers/auth-context";
 import { LogosModeToggle } from "../logos-mode-toggle";
 import { MetatrackLogo } from "../logos-metatrack-toogle";
+import { NMDPLogo } from "../logos-nmdp-toogle";
 
 type NavItem = { pageUrl: string; pageName: string };
 const NavItems: NavItem[] = [
@@ -34,14 +35,7 @@ export function NavBar() {
 							<MetatrackLogo width={250} height={65.55} />
 						</Link>
 						<a href="https://www.microbial-data-platform.no">
-							<div className="flex flex-col justify-center">
-								<h1 className="animate-fade-in text-4xl font-bold lg:text-2xl">
-									Norwegian Microbial Data Platform
-								</h1>
-								<h4 className="animate-fade-in text-lg lg:text-base">
-									Manage, share and archive data
-								</h4>
-							</div>
+							<NMDPLogo width={250} height={65.55} />
 						</a>
 					</div>
 				</div>

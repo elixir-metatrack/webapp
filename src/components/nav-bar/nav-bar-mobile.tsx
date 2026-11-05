@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AuthContext } from "@/providers/auth-context";
 import { MetatrackLogo } from "../logos-metatrack-toogle";
+import { LogosModeToggle } from "../logos-mode-toggle";
+import { NMDPLogo } from "../logos-nmdp-toogle";
 
 type NavItem = {
 	pageUrl: string;
@@ -51,7 +53,7 @@ export function NavBarMobile() {
 	const { isAuthenticated, login, logout } = useContext(AuthContext);
 
 	return (
-		<nav className="flex w-full items-center justify-between px-4 py-3">
+		<nav className="flex w-full items-center justify-between space-x-4 px-2 py-3">
 			<Sheet open={open} onOpenChange={setOpen}>
 				<SheetTrigger asChild>
 					<HamburgerButton open={open} />
@@ -109,9 +111,15 @@ export function NavBarMobile() {
 				</SheetContent>
 			</Sheet>
 
-			<Link to="/" className="flex items-center">
-				<MetatrackLogo className="w-36 sm:w-40" />
+			<a href="https://elixir.no">
+				<LogosModeToggle width={100} className="opacity-100" />
+			</a>
+			<Link to="/">
+				<MetatrackLogo width={250} height={65.55} />
 			</Link>
+			<a href="https://www.microbial-data-platform.no">
+				<NMDPLogo width={150} height={65.55} />
+			</a>
 
 			<ModeToggle />
 		</nav>

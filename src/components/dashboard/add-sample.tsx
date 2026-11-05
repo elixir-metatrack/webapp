@@ -67,6 +67,10 @@ type SampleForm = {
 	county: string;
 	commune: string;
 	hospitalHealthInstitution: string;
+	projectAccession: string;
+	sampleAccession: string;
+	secondaryAccession: string;
+	studyAccession: string;
 };
 
 type FieldConfig = {
@@ -359,6 +363,30 @@ const fields: FieldConfig[] = [
 		placeholder: "Hospital or health institution",
 		advanced: true,
 	},
+	{
+		key: "projectAccession",
+		label: "Project Accession",
+		placeholder: "Project Accession Number",
+		advanced: true,
+	},
+	{
+		key: "studyAccession",
+		label: "Study Accession",
+		placeholder: "Study Accession Number",
+		advanced: true,
+	},
+	{
+		key: "sampleAccession",
+		label: "Sample Accession",
+		placeholder: "Sample Accession Number",
+		advanced: true,
+	},
+	{
+		key: "secondaryAccession",
+		label: "Secondary Accession",
+		placeholder: "Secondary Accession Number",
+		advanced: true,
+	},
 ];
 
 function RenderField({
@@ -463,6 +491,10 @@ export function AddSampleDialog({ projectId }: AddSampleDialogProps) {
 		county: "",
 		commune: "",
 		hospitalHealthInstitution: "",
+		projectAccession: "",
+		sampleAccession: "",
+		secondaryAccession: "",
+		studyAccession: "",
 	});
 
 	const updateField = (key: keyof SampleForm, value: string) => {

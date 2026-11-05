@@ -13,13 +13,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { deleteAssay, updateAssay } from "@/lib/api-keycloak";
+import { updateAssay } from "@/lib/api-keycloak";
 import type { Assay } from "@/lib/types";
 import { SquarePen } from "lucide-react";
 import { toastError, toastSuccess } from "#/lib/toast";
 import { VocabularyCombobox } from "../vocabulary-combobox";
 import { useVocabularies } from "#/hooks/use-vocabularies";
 import { FormField } from "../form-field";
+import { DeleteAlertButton } from "../delete-alert-button";
 
 const fields = [
 	{
@@ -68,6 +69,16 @@ const fields = [
 		placeholder: "Insert size",
 		numeric: true,
 	},
+	{
+		key: "experimentAccession",
+		label: "Experiment Accession",
+		placeholder: "Experiment Accession Number",
+	},
+	{
+		key: "runAccession",
+		label: "Run Accession",
+		placeholder: "Run Accession Number",
+	},
 ] as const;
 
 interface EditAssayDialogProps {
@@ -92,6 +103,8 @@ export function EditAssayDialog({
 		librarySelection: assay.librarySelection ?? "",
 		libraryLayout: assay.libraryLayout ?? "",
 		insertSize: assay.insertSize ?? 0,
+		experimentAccession: assay.experimentAccession ?? "",
+		runAccession: assay.runAccession ?? "",
 	});
 
 	const queryClient = useQueryClient();
@@ -114,17 +127,6 @@ export function EditAssayDialog({
 		},
 		onError: (err: Error) =>
 			toastError(err?.message ?? "Failed to update experiment"),
-	});
-
-	const deleteMutation = useMutation({
-		mutationFn: () => deleteAssay(projectId, assay.id),
-		onSuccess: () => {
-			toastSuccess("Experiment deleted successfully!");
-			queryClient.invalidateQueries({ queryKey: ["assays", projectId] });
-			setOpen(false);
-		},
-		onError: (err: Error) =>
-			toastError(err?.message ?? "Failed to delete experiment"),
 	});
 
 	const handleChange = (key: keyof typeof form, value: string | number) => {
@@ -191,13 +193,13 @@ export function EditAssayDialog({
 								Shared experiments can only be deleted in the parent project.
 							</p>
 						) : (
-							<Button
-								variant="destructive"
-								onClick={() => deleteMutation.mutate()}
-								disabled={deleteMutation.isPending}
-							>
-								{deleteMutation.isPending ? "Deleting..." : "Delete Experiment"}
-							</Button>
+							<DeleteAlertButton
+								projectId={projectId}
+								item={{ id: assay.id, name: assay.name }}
+								entityName="assay"
+								insideDropdown={false}
+								onDeleted={() => setOpen(false)}
+							/>
 						)}
 
 						<div className="flex gap-2">

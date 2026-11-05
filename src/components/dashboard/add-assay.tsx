@@ -32,6 +32,8 @@ type AssayForm = {
 	librarySelection: string;
 	libraryLayout: string;
 	insertSize: number;
+	experimentAccession: string;
+	runAccession: string;
 };
 
 type FieldConfig = {
@@ -115,6 +117,22 @@ const fields: FieldConfig[] = [
 			"The size (The distance between paired reads) of the DNA fragment that is sequenced in bp. A typical example for Nextseq is 500 or 550. MiSeq system are 50, 150, 250 and 300 bp.",
 		advanced: true,
 	},
+	{
+		key: "experimentAccession",
+		label: "Experiment Accession",
+		placeholder: "Experiment Accession Number",
+		tooltip:
+			"The experiment accession number. Holds metadata that describe the methods used to sequence the sample. Created when data  has been submitted to an archive such as ENA (for example ERX123456)",
+		advanced: true,
+	},
+	{
+		key: "runAccession",
+		label: "Run Accession",
+		placeholder: "Run Accession Number",
+		tooltip:
+			"Alternative experiment accession number. Created when data  has been submitted to an archive such as ENA (for example ERR123456). Direct link to downloadable files in the archive",
+		advanced: true,
+	},
 ];
 
 function RenderField({
@@ -176,6 +194,8 @@ export function AddAssayDialog({ projectId }: AddAssayDialogProps) {
 		librarySelection: "",
 		libraryLayout: "",
 		insertSize: 0,
+		experimentAccession: "",
+		runAccession: "",
 	});
 
 	const updateField = (key: keyof AssayForm, value: string | number) => {

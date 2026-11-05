@@ -49,6 +49,8 @@ import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
 import { useQueries } from "@tanstack/react-query";
 import { getProjectStorageStatistics } from "#/lib/api-keycloak";
+import { formatStorage } from "#/lib/data/project-metrics";
+import { PROJECT_ROLES, type ProjectRole } from "#/lib/data/roles";
 
 interface DataTableProps {
 	projects: Project[];
@@ -58,12 +60,12 @@ interface DataTableProps {
 }
 
 const COLUMN_TOOLTIPS: Record<string, string> = {
-	name: "Title of the sample.",
+	name: "Short title for the project.",
 	description:
 		"Description of the sample (example: Staphylococcus aureus isolated from blood culture.)",
 	sampleCount: "Number of samples associated with the project.",
 	experimentFiles:
-		"Number of files(PE or SE fastq) associated with the project.",
+		"Number of files(PE or SE fastq) and total storage used by the project.",
 	createdOn: "Date of creation",
 	modifiedOn: "Last modification date",
 };
@@ -166,11 +168,27 @@ export function ProjectsDataTable({
 						/>
 					)}
 					<span className="font-medium">{row.getValue("name")}</span>
+
 					{row.original.parentProjectId != null && (
 						<Badge variant="secondary">Sub-project</Badge>
 					)}
 				</div>
 			),
+		},
+		{
+			accessorKey: "role",
+			header: "Role",
+			cell: ({ row }) => {
+				const role = row.original.role;
+
+				if (!role) return null;
+
+				return (
+					<Badge className={cn(PROJECT_ROLES[role].color)}>
+						{PROJECT_ROLES[role].label}
+					</Badge>
+				);
+			},
 		},
 		{
 			accessorKey: "description",
@@ -210,7 +228,14 @@ export function ProjectsDataTable({
 				if (query?.isPending) return "Loading...";
 				if (query?.isError) return "-";
 
-				return query?.data?.fileCount ?? 0;
+				const fileCount = query?.data?.fileCount ?? 0;
+				const totalBytes = query?.data?.totalBytes ?? 0;
+
+				return (
+					<span>
+						{fileCount} ({formatStorage(totalBytes).label})
+					</span>
+				);
 			},
 		},
 

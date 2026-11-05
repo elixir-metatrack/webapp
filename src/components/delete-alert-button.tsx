@@ -16,6 +16,7 @@ import {
 	deleteSelectedSamples,
 	deleteProjectFile,
 	deleteSamplesFromAssay,
+	deleteAssay,
 } from "@/lib/api-keycloak";
 import { toastError, toastSuccess } from "#/lib/toast";
 import { DropdownMenuItem } from "./ui/dropdown-menu";
@@ -25,7 +26,7 @@ interface DeleteAlertButtonProps {
 	projectId?: string;
 	assayId?: string;
 	item: { id: string; name?: string } | { id: string; name?: string }[];
-	entityName?: "sample" | "project" | "fastq" | "assay";
+	entityName?: "sample" | "project" | "fastq" | "assayTable" | "assay";
 	onDeleted?: (deletedIds: string[]) => void;
 	insideDropdown?: boolean;
 }
@@ -84,8 +85,6 @@ export const DeleteAlertButton = ({
 					return item.name;
 				});
 
-				console.log(projectId, assayId, sampleNames);
-
 				await deleteSamplesFromAssay(projectId, assayId, sampleNames);
 
 				onDeleted?.(sampleNames);
@@ -136,6 +135,41 @@ export const DeleteAlertButton = ({
 				}
 
 				return;
+			}
+			if (entityName === "assayTable") {
+				if (!projectId || !itemsToDelete.length) {
+					throw new Error("Project ID and assay ID are required.");
+				}
+
+				const results = await Promise.allSettled(
+					itemsToDelete.map((item) => deleteAssay(projectId, item.id))
+				);
+
+				const success = itemsToDelete
+					.filter((_, index) => results[index].status === "fulfilled")
+					.map((item) => item.id);
+
+				const failed = results.length - success.length;
+
+				if (success.length > 0) {
+					onDeleted?.(success);
+
+					await queryClient.invalidateQueries({
+						queryKey: ["assays", String(projectId)],
+					});
+
+					await queryClient.invalidateQueries({
+						queryKey: ["assaySamples"],
+					});
+
+					toastSuccess(`${success.length} assay(s) deleted successfully!`);
+				}
+
+				if (failed > 0) {
+					toastError(`${failed} assay(s) could not be deleted.`);
+				}
+
+				return;
 			} else if (entityName === "project") {
 				await deleteProject(projectId!);
 				onDeleted?.([projectId!]);
@@ -167,10 +201,16 @@ export const DeleteAlertButton = ({
 		</DropdownMenuItem>
 	) : (
 		<Button
-			variant={entityName === "fastq" ? "destructive" : "ghost"}
+			variant={
+				["fastq", "assayTable"].includes(entityName ?? "")
+					? "destructive"
+					: "ghost"
+			}
 			size="sm"
 			className={
-				entityName === "fastq" ? "" : "text-red-500 hover:text-red-500"
+				["fastq", "assayTable"].includes(entityName ?? "")
+					? ""
+					: "text-red-500 hover:text-red-500"
 			}
 		>
 			<Trash2 className="mr-2 size-4" />

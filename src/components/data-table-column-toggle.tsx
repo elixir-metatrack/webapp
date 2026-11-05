@@ -2,12 +2,23 @@
 
 import { useMemo, useState } from "react";
 import type { Table } from "@tanstack/react-table";
-import { Check, Columns3, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import {
+	Check,
+	Columns3,
+	Loader2,
+	Pencil,
+	Plus,
+	Search,
+	Trash2,
+} from "lucide-react";
 
 import {
 	createSampleMetadataField,
 	deleteSampleMetadataField,
 	getSampleMetadataFields,
+	getSampleVocabulary,
+	updateSampleMetadataField,
+	updateSampleVocabulary,
 } from "@/lib/api-keycloak";
 import type { SampleMetadataField, SampleMetadataFieldType } from "@/lib/types";
 
@@ -46,7 +57,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { toastError, toastSuccess } from "#/lib/toast";
-import { VocabulariesDialog } from "./vocabulariesDialog";
+import { Vocabularies } from "./dashboard/Vocabularies";
+import { VocabularyEditor } from "./vocabulary-editor";
 
 function toSnakeCase(value: string): string {
 	return value
@@ -86,11 +98,28 @@ export function DataTableViewOptions<TData>({
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 	const [newColumnLabel, setNewColumnLabel] = useState("");
 	const [newColumnTooltip, setNewColumnTooltip] = useState("");
+	const [newColumnTerms, setNewColumnTerms] = useState<string[]>([]);
+	const [editColumnTerms, setEditColumnTerms] = useState<string[]>([]);
 
 	const [newColumnType, setNewColumnType] =
 		useState<SampleMetadataFieldType>("TEXT");
 
 	const [creatingColumn, setCreatingColumn] = useState(false);
+
+	// ============================================================
+	// Edit custom column
+	// ============================================================
+
+	const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+	const [columnToEdit, setColumnToEdit] = useState<SampleMetadataField | null>(
+		null
+	);
+
+	const [editColumnLabel, setEditColumnLabel] = useState("");
+	const [editColumnTooltip, setEditColumnTooltip] = useState("");
+
+	const [updatingColumn, setUpdatingColumn] = useState(false);
 
 	// ============================================================
 	// Delete custom column
@@ -260,6 +289,8 @@ export function DataTableViewOptions<TData>({
 				type: newColumnType,
 			});
 
+			await updateSampleVocabulary(projectId, field.key, newColumnTerms);
+
 			await queryClient.invalidateQueries({
 				queryKey: ["sample-metadata-fields", projectId],
 			});
@@ -268,6 +299,7 @@ export function DataTableViewOptions<TData>({
 			setNewColumnTooltip("");
 			setNewColumnType("TEXT");
 			setCreateDialogOpen(false);
+			setNewColumnTerms([]);
 
 			toastSuccess(`Custom column "${field.label}" created`);
 		} catch (error) {
@@ -281,6 +313,82 @@ export function DataTableViewOptions<TData>({
 			toastError(message);
 		} finally {
 			setCreatingColumn(false);
+		}
+	};
+
+	// ============================================================
+	// Edit custom column
+	// ============================================================
+
+	const openEditDialog = async (field: SampleMetadataField) => {
+		setColumnToEdit(field);
+		setEditColumnLabel(field.label);
+		setEditColumnTooltip(field.tooltip ?? "");
+		setEditColumnTerms([]);
+
+		if (field.type === "TEXT") {
+			try {
+				const vocabulary = await getSampleVocabulary(projectId!, field.key);
+
+				setEditColumnTerms(vocabulary.terms ?? []);
+			} catch (error) {
+				console.error("Failed to load vocabulary:", error);
+				setEditColumnTerms([]);
+			}
+		}
+
+		setEditDialogOpen(true);
+	};
+
+	const handleEditCustomColumn = async () => {
+		if (!columnToEdit || !projectId) {
+			return;
+		}
+
+		const label = editColumnLabel.trim();
+
+		if (!label) {
+			toastError("Column label is required");
+			return;
+		}
+
+		try {
+			setUpdatingColumn(true);
+
+			const updatedField = await updateSampleMetadataField(
+				projectId,
+				columnToEdit.id,
+				{
+					label,
+					tooltip: editColumnTooltip.trim(),
+				}
+			);
+
+			await updateSampleVocabulary(
+				projectId,
+				updatedField.key,
+				editColumnTerms
+			);
+
+			await queryClient.invalidateQueries({
+				queryKey: ["sample-metadata-fields", projectId],
+			});
+
+			toastSuccess(`Custom column "${updatedField.label}" updated`);
+
+			setEditDialogOpen(false);
+			setColumnToEdit(null);
+		} catch (error) {
+			console.error("Failed to update custom column:", error);
+
+			const message =
+				error instanceof Error
+					? error.message
+					: "Failed to update custom column";
+
+			toastError(message);
+		} finally {
+			setUpdatingColumn(false);
 		}
 	};
 
@@ -516,13 +624,6 @@ export function DataTableViewOptions<TData>({
 														Add custom field
 													</Button>
 												</DialogTrigger>
-
-												<VocabulariesDialog
-													projectId={projectId!}
-													dataType="sample"
-													isSystemAdmin={false}
-													disable={customColumns.length === 0}
-												/>
 											</div>
 
 											<DialogContent className="sm:max-w-[500px]">
@@ -597,6 +698,25 @@ export function DataTableViewOptions<TData>({
 															</SelectContent>
 														</Select>
 													</div>
+
+													<Separator />
+
+													<div className="space-y-3">
+														<div>
+															<h4 className="text-sm font-medium">
+																Control vocabulary
+															</h4>
+															<p className="text-muted-foreground text-xs">
+																Define the allowed values for this field.
+															</p>
+														</div>
+
+														<VocabularyEditor
+															terms={newColumnTerms}
+															onTermsChange={setNewColumnTerms}
+															fieldKey={newColumnLabel}
+														/>
+													</div>
 												</div>
 
 												<DialogFooter>
@@ -648,9 +768,9 @@ export function DataTableViewOptions<TData>({
 														return (
 															<div
 																key={field.id}
-																className="flex items-center gap-3 rounded-md px-3 py-2 text-sm"
+																className="flex items-center gap-2 rounded-md px-3 py-2 text-sm"
 															>
-																<span className="flex-1 truncate">
+																<span className="min-w-0 flex-1 truncate">
 																	{field.label}
 																</span>
 
@@ -658,9 +778,20 @@ export function DataTableViewOptions<TData>({
 																	variant="ghost"
 																	size="icon"
 																	className="h-8 w-8 shrink-0"
-																	onClick={() => openDeleteDialog(field)}
+																	onClick={() => openEditDialog(field)}
+																	title="Edit custom field"
 																>
-																	<Trash2 className="h-4 w-4" />
+																	<Pencil className="h-4 w-4" />
+																</Button>
+
+																<Button
+																	variant="ghost"
+																	size="icon"
+																	className="h-8 w-8 shrink-0"
+																	onClick={() => openDeleteDialog(field)}
+																	title="Remove custom field"
+																>
+																	<Trash2 className="h-4 w-4 text-red-500" />
 																</Button>
 															</div>
 														);
@@ -702,6 +833,22 @@ export function DataTableViewOptions<TData>({
 															{visible && (
 																<Check className="h-4 w-4 shrink-0" />
 															)}
+
+															<Tooltip>
+																<TooltipTrigger asChild>
+																	<Button
+																		variant="ghost"
+																		size="icon"
+																		className="h-8 w-8 shrink-0"
+																		onClick={() => openEditDialog(field)}
+																	>
+																		<Pencil className="h-4 w-4" />
+																	</Button>
+																</TooltipTrigger>
+																<TooltipContent>
+																	<p>Edit custom field</p>
+																</TooltipContent>
+															</Tooltip>
 
 															<Tooltip>
 																<TooltipTrigger asChild>
@@ -765,6 +912,129 @@ export function DataTableViewOptions<TData>({
 							)}
 						</div>
 					</div>
+				</DialogContent>
+			</Dialog>
+
+			{/* ====================================================== */}
+			{/* Edit custom column dialog */}
+			{/* ====================================================== */}
+
+			<Dialog
+				open={editDialogOpen}
+				onOpenChange={(open) => {
+					if (!updatingColumn) {
+						setEditDialogOpen(open);
+
+						if (!open) {
+							setColumnToEdit(null);
+							setEditColumnLabel("");
+							setEditColumnTooltip("");
+							setEditColumnTerms([]);
+						}
+					}
+				}}
+			>
+				<DialogContent className="sm:max-w-[500px]">
+					<DialogHeader>
+						<DialogTitle>Edit custom field</DialogTitle>
+
+						<DialogDescription>
+							Update the label and helper text of this custom metadata field.
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="space-y-5">
+						<div className="space-y-2">
+							<Label htmlFor="edit-custom-column-label">Label</Label>
+
+							<Input
+								id="edit-custom-column-label"
+								placeholder="e.g. Sequencing Platform"
+								value={editColumnLabel}
+								onChange={(event) => setEditColumnLabel(event.target.value)}
+								disabled={updatingColumn}
+							/>
+
+							<p className="text-muted-foreground text-xs">
+								This is the name displayed in the table.
+							</p>
+						</div>
+
+						<div className="space-y-2">
+							<Label htmlFor="edit-custom-column-tooltip">Tooltip</Label>
+
+							<Input
+								id="edit-custom-column-tooltip"
+								placeholder="e.g. Description of Field"
+								value={editColumnTooltip}
+								onChange={(event) => setEditColumnTooltip(event.target.value)}
+								disabled={updatingColumn}
+							/>
+
+							<p className="text-muted-foreground text-xs">
+								This is the help text for the metadata column.
+							</p>
+						</div>
+
+						{columnToEdit && (
+							<>
+								<Separator />
+
+								<div className="space-y-3">
+									<div>
+										<h4 className="text-sm font-medium">Control vocabulary</h4>
+
+										<p className="text-muted-foreground text-xs">
+											Define the allowed values for this field.
+										</p>
+									</div>
+
+									<VocabularyEditor
+										terms={editColumnTerms}
+										onTermsChange={setEditColumnTerms}
+										fieldKey={columnToEdit.key}
+									/>
+								</div>
+							</>
+						)}
+
+						{columnToEdit && (
+							<div className="text-muted-foreground bg-muted space-y-1 rounded-md p-3 text-xs">
+								<p>Field key: {columnToEdit.key}</p>
+								<p>Field type: {columnToEdit.type}</p>
+								<p>These properties cannot be changed.</p>
+							</div>
+						)}
+					</div>
+
+					<DialogFooter>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => setEditDialogOpen(false)}
+							disabled={updatingColumn}
+						>
+							Cancel
+						</Button>
+
+						<Button
+							type="button"
+							onClick={handleEditCustomColumn}
+							disabled={updatingColumn || !editColumnLabel.trim()}
+						>
+							{updatingColumn ? (
+								<>
+									<Loader2 className="animate-spin" />
+									Saving...
+								</>
+							) : (
+								<>
+									<Check />
+									Save changes
+								</>
+							)}
+						</Button>
+					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 

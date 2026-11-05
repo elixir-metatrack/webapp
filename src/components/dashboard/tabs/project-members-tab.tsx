@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +25,7 @@ import {
 	removeProjectMember,
 	resendProjectInvitation,
 	revokeProjectInvitation,
+	searchRealmUsers,
 	updateProjectMember,
 } from "@/lib/api-keycloak";
 import type {
@@ -32,6 +33,7 @@ import type {
 	Member,
 	Project,
 	ProjectInvitation,
+	RealmUser,
 } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -75,6 +77,14 @@ import {
 	PopoverTrigger,
 } from "#/components/ui/popover";
 import { RoleBadge } from "#/components/role-badge";
+import {
+	Combobox,
+	ComboboxContent,
+	ComboboxEmpty,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxList,
+} from "#/components/ui/combobox";
 
 function InfoTooltip({ content }: { content: React.ReactNode }) {
 	return (
@@ -100,8 +110,6 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 
 	const [openAdd, setOpenAdd] = useState(false);
 	const [openInvite, setOpenInvite] = useState(false);
-
-	const [memberId, setMemberId] = useState("");
 	const [email, setEmail] = useState("");
 	const [role, setRole] = useState("VIEWER");
 	const [editingMember, setEditingMember] = useState<Member | null>(null);
@@ -111,6 +119,9 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 
 	const [invitationPage, setInvitationPage] = useState(0);
 	const invitationPageSize = 10;
+	const [searchTerm, setSearchTerm] = useState("");
+	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+	const [selectedUser, setSelectedUser] = useState<RealmUser | null>(null);
 
 	const {
 		data: invitationsPage,
@@ -135,6 +146,14 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 		(invitation) => invitation.status === "PENDING"
 	);
 
+	useEffect(() => {
+		const timeout = setTimeout(() => {
+			setDebouncedSearchTerm(searchTerm.trim());
+		}, 300);
+
+		return () => clearTimeout(timeout);
+	}, [searchTerm]);
+
 	/* ------------------ GET MEMBERS ------------------ */
 
 	const { data: members = [] } = useQuery({
@@ -142,18 +161,43 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 		queryFn: () => getAllProjectMembers(project.id!),
 	});
 
+	/* ---------------- SEARCH MEMBERS ---------------- */
+
+	const { data: userSearchResults, isFetching: isSearchingUsers } = useQuery({
+		queryKey: ["realm-user-search", debouncedSearchTerm],
+		queryFn: () => searchRealmUsers(debouncedSearchTerm),
+		enabled: openAdd && debouncedSearchTerm.length >= 2,
+	});
+
+	const availableUsers = (userSearchResults?.users ?? []).filter(
+		(user) => !members.some((member) => member.memberId === user.userId)
+	);
+
 	/* ------------------ ADD MEMBER ------------------ */
 
 	const addMutation = useMutation({
-		mutationFn: () => addProjectMember(project.id!, memberId, role),
+		mutationFn: () => {
+			if (!selectedUser) {
+				throw new Error("Please select a user");
+			}
+
+			return addProjectMember(project.id!, selectedUser.userId, role);
+		},
+
 		onSuccess: () => {
 			toastSuccess("Member added");
+
 			queryClient.invalidateQueries({
 				queryKey: ["projectMembers", project.id],
 			});
+
 			setOpenAdd(false);
-			setMemberId("");
+			setSelectedUser(null);
+			setSearchTerm("");
+			setDebouncedSearchTerm("");
+			setRole("VIEWER");
 		},
+
 		onError: (err: unknown) =>
 			toastError((err as Error)?.message || "Error adding member"),
 	});
@@ -391,7 +435,7 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 										{member.email ?? member.username ?? member.memberId}
 									</p>
 
-									<RoleBadge role="OWNER" />
+									<RoleBadge role={member.role} />
 								</div>
 
 								<DropdownMenu>
@@ -448,12 +492,63 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 
 								<div className="space-y-4">
 									<div className="space-y-2">
-										<label className="text-sm font-medium">User ID</label>
-										<Input
-											placeholder="user ID"
-											value={memberId}
-											onChange={(e) => setMemberId(e.target.value)}
-										/>
+										<label htmlFor="member-search">Search user</label>
+
+										<Combobox<RealmUser>
+											items={availableUsers}
+											value={selectedUser}
+											onValueChange={(user) => {
+												setSelectedUser(user);
+											}}
+											itemToStringLabel={(user) => user.displayName}
+											filter={null}
+										>
+											<ComboboxInput
+												id="member-search"
+												placeholder="Search by name or email..."
+												showTrigger
+												showClear
+												onChange={(event) => {
+													setSearchTerm(event.target.value);
+												}}
+											/>
+
+											<ComboboxContent
+												onWheel={(e) => e.stopPropagation()}
+												className="pointer-events-auto"
+											>
+												{searchTerm.trim().length < 2 ? (
+													<ComboboxEmpty>
+														Enter at least 2 characters to search.
+													</ComboboxEmpty>
+												) : isSearchingUsers ? (
+													<div className="text-muted-foreground p-3 text-center text-sm">
+														Searching users...
+													</div>
+												) : availableUsers.length === 0 ? (
+													<ComboboxEmpty>No users found.</ComboboxEmpty>
+												) : (
+													<ComboboxList>
+														{(user) => (
+															<ComboboxItem key={user.userId} value={user}>
+																<div className="flex flex-col">
+																	<span>{user.displayName}</span>
+																	<span className="text-muted-foreground text-xs">
+																		{user.email}
+																	</span>
+																</div>
+															</ComboboxItem>
+														)}
+													</ComboboxList>
+												)}
+											</ComboboxContent>
+										</Combobox>
+
+										{userSearchResults?.hasMore && (
+											<p className="text-muted-foreground text-xs">
+												Showing the first 20 matches. Refine your search.
+											</p>
+										)}
 									</div>
 
 									<div className="space-y-2">
@@ -503,9 +598,9 @@ export function ProjectMembersTab({ project }: { project: Project }) {
 								<DialogFooter>
 									<Button
 										onClick={() => addMutation.mutate()}
-										disabled={!memberId || addMutation.isPending}
+										disabled={!selectedUser || addMutation.isPending}
 									>
-										Add member
+										{addMutation.isPending ? "Adding..." : "Add member"}
 									</Button>
 								</DialogFooter>
 							</DialogContent>
