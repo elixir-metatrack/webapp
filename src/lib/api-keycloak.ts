@@ -37,6 +37,7 @@ import {
 	getWorksheetHeaders,
 	getWorksheetPath,
 	normalizeHeader,
+	prepareExcelForUpload,
 } from "./data/template-utils";
 
 // ============================================================
@@ -497,8 +498,10 @@ export async function uploadSamplesheet(
 	projectId: string,
 	file: File
 ): Promise<unknown> {
+	const preparedFile = await prepareExcelForUpload(file);
+
 	const formData = new FormData();
-	formData.append("file", file);
+	formData.append("file", preparedFile);
 
 	return api(`projects/${projectId}/samples/samplesheet`, {
 		method: "POST",
@@ -738,8 +741,10 @@ export async function uploadExperiments(
 	assayId: string,
 	file: File
 ): Promise<void> {
+	const preparedFile = await prepareExcelForUpload(file);
+
 	const formData = new FormData();
-	formData.append("file", file);
+	formData.append("file", preparedFile);
 
 	await api(`projects/${projectId}/assays/${assayId}/experiments`, {
 		method: "POST",

@@ -301,3 +301,229 @@ export async function ensureVocabularySheet(
 		vocabularyPath,
 	};
 }
+
+const XLSX_MIME =
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+const CONTENT_TYPES_NS =
+	"http://schemas.openxmlformats.org/package/2006/content-types";
+
+function serializeXml(document: Document): string {
+	return new XMLSerializer().serializeToString(document);
+}
+
+function removeVocabularyDefinedNames(workbook: Document): Set<string> {
+	const removedNames = new Set<string>();
+
+	const definedNames = Array.from(
+		workbook.getElementsByTagNameNS(MAIN_NS, "definedName")
+	);
+
+	for (const definedName of definedNames) {
+		const name = definedName.getAttribute("name");
+
+		if (!name?.startsWith("vocab_")) continue;
+
+		removedNames.add(name);
+		definedName.parentNode?.removeChild(definedName);
+	}
+
+	const container = workbook.getElementsByTagNameNS(MAIN_NS, "definedNames")[0];
+
+	if (container && container.children.length === 0) {
+		container.parentNode?.removeChild(container);
+	}
+
+	return removedNames;
+}
+
+function removeVocabularyValidations(
+	worksheetXml: string,
+	removedNames: Set<string>
+): string {
+	const document = parseXml(worksheetXml);
+
+	const containers = Array.from(
+		document.getElementsByTagNameNS(MAIN_NS, "dataValidations")
+	);
+
+	for (const container of containers) {
+		const validations = Array.from(
+			container.getElementsByTagNameNS(MAIN_NS, "dataValidation")
+		);
+
+		for (const validation of validations) {
+			if (validation.getAttribute("type") !== "list") {
+				continue;
+			}
+
+			const formula = validation
+				.getElementsByTagNameNS(MAIN_NS, "formula1")[0]
+				?.textContent?.trim();
+
+			if (!formula) continue;
+
+			const rangeName = formula.replace(/^=/, "");
+
+			if (removedNames.has(rangeName) || rangeName.startsWith("vocab_")) {
+				validation.parentNode?.removeChild(validation);
+			}
+		}
+
+		const remaining = container.getElementsByTagNameNS(
+			MAIN_NS,
+			"dataValidation"
+		).length;
+
+		if (remaining === 0) {
+			container.parentNode?.removeChild(container);
+		} else {
+			container.setAttribute("count", String(remaining));
+		}
+	}
+
+	return serializeXml(document);
+}
+
+export async function prepareExcelForUpload(file: File): Promise<File> {
+	// CSV and other file formats remain unchanged.
+	if (!file.name.toLowerCase().endsWith(".xlsx")) {
+		return file;
+	}
+
+	const zip = await JSZip.loadAsync(file);
+
+	const workbookFile = zip.file("xl/workbook.xml");
+	const relationshipsFile = zip.file("xl/_rels/workbook.xml.rels");
+
+	if (!workbookFile || !relationshipsFile) {
+		throw new Error("Invalid Excel workbook structure");
+	}
+
+	const workbookXml = await workbookFile.async("string");
+	const relationshipsXml = await relationshipsFile.async("string");
+
+	const vocabularyPath = getWorksheetPath(
+		workbookXml,
+		relationshipsXml,
+		"Vocabularies"
+	);
+
+	// No extra worksheet: send the original file.
+	if (!vocabularyPath) {
+		return file;
+	}
+
+	const workbook = parseXml(workbookXml);
+	const relationships = parseXml(relationshipsXml);
+
+	const vocabularySheet = Array.from(
+		workbook.getElementsByTagNameNS(MAIN_NS, "sheet")
+	).find((sheet) => sheet.getAttribute("name") === "Vocabularies");
+
+	if (!vocabularySheet) {
+		return file;
+	}
+
+	const relationshipId = vocabularySheet.getAttributeNS(REL_NS, "id");
+
+	if (!relationshipId) {
+		throw new Error("Vocabulary relationship ID not found");
+	}
+
+	const relationship = Array.from(
+		relationships.getElementsByTagNameNS(PACKAGE_REL_NS, "Relationship")
+	).find((item) => item.getAttribute("Id") === relationshipId);
+
+	if (!relationship) {
+		throw new Error("Vocabulary relationship not found");
+	}
+
+	// 1. Remove the worksheet declaration.
+	vocabularySheet.parentNode?.removeChild(vocabularySheet);
+
+	// 2. Remove its workbook relationship.
+	relationship.parentNode?.removeChild(relationship);
+
+	// 3. Remove vocabulary-specific named ranges.
+	const removedNames = removeVocabularyDefinedNames(workbook);
+
+	// 4. Remove dropdowns referencing those named ranges.
+	const mainSheetName = Array.from(
+		workbook.getElementsByTagNameNS(MAIN_NS, "sheet")
+	).some((sheet) => sheet.getAttribute("name") === "Samples")
+		? "Samples"
+		: "Experiments";
+
+	const mainPath = getWorksheetPath(
+		serializeXml(workbook),
+		serializeXml(relationships),
+		mainSheetName
+	);
+
+	if (!mainPath) {
+		throw new Error(`Main worksheet "${mainSheetName}" not found`);
+	}
+
+	const mainFile = zip.file(mainPath);
+
+	if (!mainFile) {
+		throw new Error("Main worksheet file not found");
+	}
+
+	const mainXml = await mainFile.async("string");
+
+	zip.file(mainPath, removeVocabularyValidations(mainXml, removedNames));
+
+	// 5. Remove the vocabulary worksheet XML.
+	zip.remove(vocabularyPath);
+
+	// Remove worksheet-specific relationships if present.
+	const vocabularyFilename = vocabularyPath.split("/").pop();
+
+	if (vocabularyFilename) {
+		const worksheetDirectory = vocabularyPath.slice(
+			0,
+			vocabularyPath.lastIndexOf("/")
+		);
+
+		zip.remove(`${worksheetDirectory}/_rels/${vocabularyFilename}.rels`);
+	}
+
+	// 6. Remove its Content Types entry.
+	const contentTypesFile = zip.file("[Content_Types].xml");
+
+	if (!contentTypesFile) {
+		throw new Error("Missing Content_Types.xml");
+	}
+
+	const contentTypes = parseXml(await contentTypesFile.async("string"));
+
+	const overrides = Array.from(
+		contentTypes.getElementsByTagNameNS(CONTENT_TYPES_NS, "Override")
+	);
+
+	for (const override of overrides) {
+		if (override.getAttribute("PartName") === `/${vocabularyPath}`) {
+			override.parentNode?.removeChild(override);
+		}
+	}
+
+	zip.file("[Content_Types].xml", serializeXml(contentTypes));
+
+	// 7. Save the updated workbook and relationships.
+	zip.file("xl/workbook.xml", serializeXml(workbook));
+
+	zip.file("xl/_rels/workbook.xml.rels", serializeXml(relationships));
+
+	const blob = await zip.generateAsync({
+		type: "blob",
+		compression: "DEFLATE",
+		mimeType: XLSX_MIME,
+	});
+
+	return new File([blob], file.name, {
+		type: XLSX_MIME,
+		lastModified: file.lastModified,
+	});
+}
