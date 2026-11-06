@@ -24,8 +24,20 @@ import type {
 	TemplateType,
 	Vocabulary,
 } from "./types";
+import JSZip from "jszip";
 import { API_URL, API_BASE_URL } from "./config";
 import { getApiErrorMessage } from "./utils";
+import {
+	addDefinedNames,
+	addValidations,
+	ensureVocabularySheet,
+	escapeXml,
+	FIELD_ALIASES,
+	getSharedStrings,
+	getWorksheetHeaders,
+	getWorksheetPath,
+	normalizeHeader,
+} from "./data/template-utils";
 
 // ============================================================
 // API
@@ -938,10 +950,166 @@ export async function downloadTemplate(type: TemplateType): Promise<void> {
 	downloadBlob(await res.blob(), filename);
 }
 
-export async function downloadExcelTemplate(type: TemplateType): Promise<void> {
-	const res = await fetch(`${API_URL}/templates/excel/${type}`);
-	if (!res.ok) throw new Error("Failed to download Excel template");
-	downloadBlob(await res.blob(), `${type}-v1.xlsx`);
+export async function downloadExcelTemplate(
+	type: TemplateType,
+	vocabularyMap: Map<string, string[]>
+): Promise<void> {
+	const response = await fetch(`${API_URL}/templates/excel/${type}`);
+
+	if (!response.ok) {
+		throw new Error("Failed to download Excel template");
+	}
+
+	const zip = await JSZip.loadAsync(await response.blob());
+
+	const workbookFile = zip.file("xl/workbook.xml");
+	const relationshipsFile = zip.file("xl/_rels/workbook.xml.rels");
+	const sharedStringsFile = zip.file("xl/sharedStrings.xml");
+
+	if (!workbookFile || !relationshipsFile || !sharedStringsFile) {
+		throw new Error("Invalid Excel template structure");
+	}
+
+	let workbookXml = await workbookFile.async("string");
+	let relationshipsXml = await relationshipsFile.async("string");
+
+	const sharedStrings = getSharedStrings(
+		await sharedStringsFile.async("string")
+	);
+
+	const isExperiment = type.startsWith("experiment");
+
+	const mainSheetName = isExperiment ? "Experiments" : "Samples";
+
+	const mainPath = getWorksheetPath(
+		workbookXml,
+		relationshipsXml,
+		mainSheetName
+	);
+
+	if (!mainPath) {
+		throw new Error(`Missing ${mainSheetName} worksheet`);
+	}
+
+	const mainFile = zip.file(mainPath);
+
+	if (!mainFile) {
+		throw new Error(`Missing worksheet file: ${mainPath}`);
+	}
+
+	let mainXml = await mainFile.async("string");
+
+	const headers = getWorksheetHeaders(mainXml, sharedStrings, 2);
+
+	const result = await ensureVocabularySheet(
+		zip,
+		workbookXml,
+		relationshipsXml
+	);
+
+	workbookXml = result.workbookXml;
+	relationshipsXml = result.relationshipsXml;
+
+	const vocabularyPath = result.vocabularyPath;
+
+	const vocabularyFile = zip.file(vocabularyPath);
+
+	if (!vocabularyFile) {
+		throw new Error("Vocabulary worksheet not found");
+	}
+
+	let vocabularyXml = await vocabularyFile.async("string");
+
+	const rows: string[] = [
+		`<row r="1">` +
+			`<c r="A1" t="inlineStr"><is><t>field_key</t></is></c>` +
+			`<c r="B1" t="inlineStr"><is><t>value</t></is></c>` +
+			`</row>`,
+	];
+
+	const definedNames: string[] = [];
+	const validations: string[] = [];
+
+	let currentRow = 2;
+
+	for (const [fieldKey, terms] of vocabularyMap) {
+		if (!terms.length) continue;
+
+		const normalizedKey = normalizeHeader(FIELD_ALIASES[fieldKey] ?? fieldKey);
+
+		const column = headers.get(normalizedKey);
+
+		// Ignore vocabularies that have no matching template column.
+		if (!column) continue;
+
+		const startRow = currentRow;
+
+		for (const term of terms) {
+			rows.push(
+				`<row r="${currentRow}">` +
+					`<c r="A${currentRow}" t="inlineStr">` +
+					`<is><t>${escapeXml(fieldKey)}</t></is>` +
+					`</c>` +
+					`<c r="B${currentRow}" t="inlineStr">` +
+					`<is><t>${escapeXml(term)}</t></is>` +
+					`</c>` +
+					`</row>`
+			);
+
+			currentRow++;
+		}
+
+		const endRow = currentRow - 1;
+
+		// Prefix prevents collisions with Excel cell references
+		// and other existing workbook names.
+		const rangeName = `vocab_${normalizeHeader(fieldKey)}`;
+
+		definedNames.push(
+			`<definedName name="${escapeXml(rangeName)}">` +
+				`'Vocabularies'!$B$${startRow}:$B$${endRow}` +
+				`</definedName>`
+		);
+
+		validations.push(
+			`<dataValidation type="list" ` +
+				`allowBlank="1" ` +
+				`showErrorMessage="1" ` +
+				`sqref="${column}3:${column}1000">` +
+				`<formula1>${escapeXml(rangeName)}</formula1>` +
+				`</dataValidation>`
+		);
+	}
+
+	const lastRow = Math.max(1, currentRow - 1);
+
+	vocabularyXml = vocabularyXml.replace(
+		/<sheetData(?:\s[^>]*)?(?:\/>|>[\s\S]*?<\/sheetData>)/,
+		`<sheetData>${rows.join("")}</sheetData>`
+	);
+
+	vocabularyXml = vocabularyXml.replace(
+		/<dimension\b[^>]*\/>/,
+		`<dimension ref="A1:B${lastRow}"/>`
+	);
+
+	workbookXml = addDefinedNames(workbookXml, definedNames);
+
+	mainXml = addValidations(mainXml, validations);
+
+	zip.file(mainPath, mainXml);
+	zip.file(vocabularyPath, vocabularyXml);
+	zip.file("xl/workbook.xml", workbookXml);
+	zip.file("xl/_rels/workbook.xml.rels", relationshipsXml);
+
+	const outputBlob = await zip.generateAsync({
+		type: "blob",
+		compression: "DEFLATE",
+		mimeType:
+			"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+	});
+
+	downloadBlob(outputBlob, `${type}-v1.xlsx`);
 }
 
 export async function exportExcelData(

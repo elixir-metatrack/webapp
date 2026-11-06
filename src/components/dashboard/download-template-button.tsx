@@ -24,27 +24,16 @@ import {
 import { downloadExcelTemplate, downloadTemplate } from "@/lib/api-keycloak";
 import type { TemplateType } from "@/lib/types";
 import { toastError, toastSuccess } from "#/lib/toast";
+import { useVocabularies } from "@/hooks/use-vocabularies";
 
 interface DownloadTemplateButtonProps {
 	type: "sample" | "experiment";
 }
 
 const SAMPLE_TEMPLATES = [
-	{
-		type: "sample",
-		label: "Sample",
-		icon: FileSpreadsheet,
-	},
-	{
-		type: "sample_extended",
-		label: "Sample Extended",
-		icon: Files,
-	},
-	{
-		type: "sample_virus",
-		label: "Sample Virus",
-		icon: Virus,
-	},
+	{ type: "sample", label: "Sample", icon: FileSpreadsheet },
+	{ type: "sample_extended", label: "Sample Extended", icon: Files },
+	{ type: "sample_virus", label: "Sample Virus", icon: Virus },
 ] satisfies {
 	type: TemplateType;
 	label: string;
@@ -52,11 +41,7 @@ const SAMPLE_TEMPLATES = [
 }[];
 
 const EXPERIMENT_TEMPLATES = [
-	{
-		type: "experiment_PE",
-		label: "Experiment Paired-End",
-		icon: Files,
-	},
+	{ type: "experiment_PE", label: "Experiment Paired-End", icon: Files },
 	{
 		type: "experiment_SE",
 		label: "Experiment Single-End",
@@ -71,6 +56,10 @@ const EXPERIMENT_TEMPLATES = [
 export function DownloadTemplateButton({ type }: DownloadTemplateButtonProps) {
 	const [loading, setLoading] = useState(false);
 
+	const { vocabularyMap } = useVocabularies(
+		type === "sample" ? "sample" : "assay"
+	);
+
 	const handleDownload = async (
 		templateType: TemplateType,
 		format: "csv" | "xlsx"
@@ -79,7 +68,7 @@ export function DownloadTemplateButton({ type }: DownloadTemplateButtonProps) {
 			setLoading(true);
 
 			if (format === "xlsx") {
-				await downloadExcelTemplate(templateType);
+				await downloadExcelTemplate(templateType, vocabularyMap);
 			} else {
 				await downloadTemplate(templateType);
 			}
