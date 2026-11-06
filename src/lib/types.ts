@@ -194,6 +194,8 @@ export interface Assay {
 	name: string;
 	studyAccession?: string | null;
 	instrumentModel?: string | null;
+	sequencingPlatform?: string | null;
+	sequencingLaboratory?: string | null;
 	libraryName?: string | null;
 	librarySource?: string | null;
 	libraryStrategy?: string | null;

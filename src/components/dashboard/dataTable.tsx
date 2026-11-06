@@ -162,6 +162,8 @@ const COLUMN_NAMES: Record<string, string> = {
 	sampleName: "Sample Name",
 	studyAccession: "Study Accession",
 	instrumentModel: "Instrument Model",
+	sequencingPlatform: "Sequencing Platform",
+	sequencingLaboratory: "Sequencing Laboratory",
 	libraryName: "Library Name",
 	librarySource: "Library Source",
 	libraryStrategy: "LibraryStrategy",
