@@ -363,8 +363,6 @@ export function DataTable<T extends object>({
 
 		let failed = 0;
 
-		console.log("filesToDownload:", filesToDownload);
-
 		for (const file of filesToDownload) {
 			try {
 				const { url } = await requestPresignedDownload({
@@ -1008,9 +1006,6 @@ export function DataTable<T extends object>({
 			toastSuccess(`${succeeded} file(s) deleted successfully.`);
 		}
 	};
-
-	console.log("ASSAY ID:", assay?.id);
-	console.log("SAMPLE ID:", selectedRows as { id: string }[]);
 
 	return (
 		<div className="space-y-4">
