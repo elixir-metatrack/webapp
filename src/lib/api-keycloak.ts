@@ -1004,7 +1004,7 @@ export async function downloadExcelTemplate(
 
 	let mainXml = await mainFile.async("string");
 
-	const headers = getWorksheetHeaders(mainXml, sharedStrings, 2);
+	const headers = getWorksheetHeaders(mainXml, sharedStrings, 1);
 
 	const result = await ensureVocabularySheet(
 		zip,
@@ -1080,7 +1080,7 @@ export async function downloadExcelTemplate(
 			`<dataValidation type="list" ` +
 				`allowBlank="1" ` +
 				`showErrorMessage="1" ` +
-				`sqref="${column}3:${column}1000">` +
+				`sqref="${column}2:${column}1000">` +
 				`<formula1>${escapeXml(rangeName)}</formula1>` +
 				`</dataValidation>`
 		);
