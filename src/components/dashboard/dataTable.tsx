@@ -1524,8 +1524,14 @@ function TableCellViewer({
 									{vocabularyTerms.length > 0 ? (
 										<VocabularyCombobox
 											name={field}
-											value={formattedValue}
+											value={currentValue}
 											terms={vocabularyTerms}
+											onChange={(newValue) =>
+												setFormValues((prev) => ({
+													...prev,
+													[field]: newValue,
+												}))
+											}
 										/>
 									) : (
 										<InputGroup>
@@ -1595,8 +1601,14 @@ function TableCellViewer({
 										{vocabularyTerms.length > 0 ? (
 											<VocabularyCombobox
 												name={inputKey}
-												value={originalValue}
+												value={currentValue}
 												terms={vocabularyTerms}
+												onChange={(newValue) =>
+													setFormValues((prev) => ({
+														...prev,
+														[inputKey]: newValue,
+													}))
+												}
 											/>
 										) : (
 											<InputGroup>
