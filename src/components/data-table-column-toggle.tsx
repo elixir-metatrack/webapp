@@ -291,9 +291,14 @@ export function DataTableViewOptions<TData>({
 
 			await updateSampleVocabulary(projectId, field.key, newColumnTerms);
 
-			await queryClient.invalidateQueries({
-				queryKey: ["sample-metadata-fields", projectId],
-			});
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: ["sample-metadata-fields", projectId],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: ["vocabularies"],
+				}),
+			]);
 
 			setNewColumnLabel("");
 			setNewColumnTooltip("");
@@ -370,9 +375,14 @@ export function DataTableViewOptions<TData>({
 				editColumnTerms
 			);
 
-			await queryClient.invalidateQueries({
-				queryKey: ["sample-metadata-fields", projectId],
-			});
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: ["sample-metadata-fields", projectId],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: ["vocabularies"],
+				}),
+			]);
 
 			toastSuccess(`Custom column "${updatedField.label}" updated`);
 

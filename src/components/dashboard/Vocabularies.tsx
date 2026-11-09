@@ -232,16 +232,22 @@ export function Vocabularies({
 			return updateGlobalAssayVocabulary(selectedField, editedTerms);
 		},
 
-		onSuccess: () => {
+		onSuccess: async () => {
 			toastSuccess("Vocabulary updated successfully");
 
-			queryClient.invalidateQueries({
-				queryKey: vocabularyListQueryKey,
-			});
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: vocabularyListQueryKey,
+				}),
 
-			queryClient.invalidateQueries({
-				queryKey: vocabularyQueryKey,
-			});
+				queryClient.invalidateQueries({
+					queryKey: vocabularyQueryKey,
+				}),
+
+				queryClient.invalidateQueries({
+					queryKey: ["vocabularies"],
+				}),
+			]);
 
 			setIsEditOpen(false);
 		},
