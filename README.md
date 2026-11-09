@@ -268,4 +268,4 @@ The table download menu has an **ISA-JSON (.json)** entry: with samples selected
 with their experiments and files, otherwise the whole project (table filters are ignored).
 **Import ISA-JSON** in the samples tab shows a preview and imports after confirmation.
 Both need the `explore/isa-json` API branch; mapping and local setup are in the API repository at
-`docs/isa-json.md`.
+`docs/isa-json/` (spec, diagrams, scripts).
