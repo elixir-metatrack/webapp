@@ -22,7 +22,7 @@ With **Metatrack**, you can:
 - **Manage sequencing data:** Associate sequencing experiments and files with registered samples.
 - **Collaborate:** Invite other researchers and manage their access permissions.
 
-![example_workflow](/get-started/before-you-start/example-workflow.png)
+![Example Workflow](/get-started/before-you-start/example-workflow.png)
 
 ## Requirements
 
@@ -31,6 +31,28 @@ Before accessing **Metatrack**, make sure you have the following:
 ### 1. An institutional FEIDE account
 
 You need access to a valid [FEIDE](https://www.feide.no) account to authenticate and log in to **Metatrack**.
+
+![Login Page](/get-started/before-you-start/login-page.png)
+
+If you do not have a FEIDE account, you can also create an account directly through the MetaTrack registration page by selecting the Register option.
+
+![Login Page](/get-started/before-you-start/login-page-highlight.png) ![Register Page](/get-started/before-you-start/register-page.png)
+
+During registration, you will be asked to provide:
+
+Email: Your email address (required).
+
+First Name: Your first name.
+
+Last Name: Your last name.
+
+ORCID: Your ORCID identifier (optional).
+
+Country: Your country (optional).
+
+Institution: Your affiliated institution (optional).
+
+Once you have completed the registration form, click Register to submit your information.
 
 If you do not have a FEIDE account, contact your institution's IT support for assistance.
 

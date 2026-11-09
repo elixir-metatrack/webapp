@@ -61,6 +61,7 @@ import type {
 import {
 	ASSAY_NUMBER_FIELDS,
 	DATE_FIELDS,
+	downloadFile,
 	formatDateToYMD,
 	getColumnOrder,
 	NON_EDITABLE_COLUMNS,
@@ -161,6 +162,8 @@ const COLUMN_NAMES: Record<string, string> = {
 	sampleName: "Sample Name",
 	studyAccession: "Study Accession",
 	instrumentModel: "Instrument Model",
+	sequencingPlatform: "Sequencing Platform",
+	sequencingLaboratory: "Sequencing Laboratory",
 	libraryName: "Library Name",
 	librarySource: "Library Source",
 	libraryStrategy: "LibraryStrategy",
@@ -362,8 +365,6 @@ export function DataTable<T extends object>({
 
 		let failed = 0;
 
-		console.log("filesToDownload:", filesToDownload);
-
 		for (const file of filesToDownload) {
 			try {
 				const { url } = await requestPresignedDownload({
@@ -373,7 +374,7 @@ export function DataTable<T extends object>({
 					fileName: file.fileName,
 				});
 
-				window.open(url, "_blank", "noopener,noreferrer");
+				await downloadFile(url, file.fileName);
 			} catch {
 				failed++;
 			}
@@ -1008,9 +1009,6 @@ export function DataTable<T extends object>({
 		}
 	};
 
-	console.log("ASSAY ID:", assay?.id);
-	console.log("SAMPLE ID:", selectedRows as { id: string }[]);
-
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-center space-x-2 lg:flex">
@@ -1526,8 +1524,14 @@ function TableCellViewer({
 									{vocabularyTerms.length > 0 ? (
 										<VocabularyCombobox
 											name={field}
-											value={formattedValue}
+											value={currentValue}
 											terms={vocabularyTerms}
+											onChange={(newValue) =>
+												setFormValues((prev) => ({
+													...prev,
+													[field]: newValue,
+												}))
+											}
 										/>
 									) : (
 										<InputGroup>
@@ -1597,8 +1601,14 @@ function TableCellViewer({
 										{vocabularyTerms.length > 0 ? (
 											<VocabularyCombobox
 												name={inputKey}
-												value={originalValue}
+												value={currentValue}
 												terms={vocabularyTerms}
+												onChange={(newValue) =>
+													setFormValues((prev) => ({
+														...prev,
+														[inputKey]: newValue,
+													}))
+												}
 											/>
 										) : (
 											<InputGroup>

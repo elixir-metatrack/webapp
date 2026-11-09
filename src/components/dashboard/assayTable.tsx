@@ -47,6 +47,8 @@ export function AssayTable({ assay, project }: AssayTableProps) {
 					name: sample.name ?? "Unknown",
 					studyAccession: assay.studyAccession,
 					instrumentModel: assay.instrumentModel,
+					sequencingPlatform: assay.sequencingPlatform,
+					sequencingLaboratory: assay.sequencingLaboratory,
 					libraryName: assay.libraryName,
 					librarySource: assay.librarySource,
 					libraryStrategy: assay.libraryStrategy,
