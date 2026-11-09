@@ -94,6 +94,8 @@ import {
 } from "../ui/input-group";
 import { FastqFloatingActions } from "./fastq-floating-actions";
 import { ExportSamplesButton } from "./export-samples-button";
+import { AccessionLink } from "../accession-link";
+import { DownloadEnaRunsButton } from "./download-ena-runs-button";
 
 interface DataTableProps<T extends object> {
 	data: T[];
@@ -409,6 +411,19 @@ export function DataTable<T extends object>({
 						meta: {
 							label: getColumnNewName(String(key)),
 						},
+						cell: ({ getValue }) => {
+							const value = getValue();
+
+							if (value == null) return "";
+
+							const text = String(value);
+
+							if (String(key).toLowerCase().includes("accession")) {
+								return <AccessionLink accession={text} />;
+							}
+
+							return text;
+						},
 					}));
 
 	const customColumns: ColumnDef<T>[] =
@@ -717,6 +732,16 @@ export function DataTable<T extends object>({
 	});
 
 	const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
+	const selectedRunAccessions = [
+		...new Set(
+			selectedRows
+				.map((row) => (row as { runAccession?: string }).runAccession)
+				.filter(
+					(value): value is string =>
+						typeof value === "string" && /^(ERR|SRR|DRR)\d+$/i.test(value)
+				)
+		),
+	];
 	const hasSelection = selectedRows.length > 0;
 	// Export across all pages, keeping the current filter even when rows are selected.
 	const exportRows = hasSelection
@@ -1063,6 +1088,10 @@ export function DataTable<T extends object>({
 									<X />
 								</Button>
 							</div>
+
+							{dataType === "assay" && selectedRunAccessions.length > 0 && (
+								<DownloadEnaRunsButton runAccessions={selectedRunAccessions} />
+							)}
 
 							{!project?.parentProjectId && (
 								<>
