@@ -52,18 +52,37 @@ export function UploadTableDialog({
 			setPartialImport(error instanceof TableImportError);
 			toastError("Import could not be completed. See the details below.");
 		},
-		onSettled: () => {
-			// A failed import can still save valid rows and vocabulary definitions.
-			// Refresh every scope because parent and sub-project views share these records.
-			queryClient.invalidateQueries({ queryKey: ["samples"] });
-			if (assayId) {
-				queryClient.invalidateQueries({ queryKey: ["assays"] });
-				queryClient.invalidateQueries({ queryKey: ["assaySamples", assayId] });
-			} else {
+		onSettled: async () => {
+			const queries = [
 				queryClient.invalidateQueries({
-					queryKey: ["sample-vocabularies"],
-				});
+					queryKey: ["samples"],
+				}),
+			];
+
+			if (assayId) {
+				queries.push(
+					queryClient.invalidateQueries({
+						queryKey: ["assays"],
+					}),
+					queryClient.invalidateQueries({
+						queryKey: ["assaySamples", assayId],
+					})
+				);
+			} else {
+				queries.push(
+					queryClient.invalidateQueries({
+						queryKey: ["sample-metadata-fields"],
+					}),
+					queryClient.invalidateQueries({
+						queryKey: ["sample-vocabularies"],
+					}),
+					queryClient.invalidateQueries({
+						queryKey: ["vocabularies"],
+					})
+				);
 			}
+
+			await Promise.all(queries);
 		},
 	});
 

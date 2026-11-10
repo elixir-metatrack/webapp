@@ -69,11 +69,10 @@ export function AddProjectDialog() {
 	const mutation = useMutation({
 		mutationFn: createInvestigation,
 
-		onSuccess: (newProject) => {
-			queryClient.setQueryData(["projects"], (old: Project[] = []) => [
-				newProject,
-				...old,
-			]);
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: ["projects"],
+			});
 
 			resetForm();
 			setOpen(false);

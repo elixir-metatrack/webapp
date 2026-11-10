@@ -55,9 +55,21 @@ export const DeleteAlertButton = ({
 
 				if (success.length > 0) {
 					onDeleted?.(success);
-					queryClient.invalidateQueries({
-						queryKey: ["samples"],
-					});
+
+					await Promise.all([
+						queryClient.invalidateQueries({
+							queryKey: ["samples"],
+						}),
+						queryClient.invalidateQueries({
+							queryKey: ["sample-metadata-fields"],
+						}),
+						queryClient.invalidateQueries({
+							queryKey: ["sample-vocabularies"],
+						}),
+						queryClient.invalidateQueries({
+							queryKey: ["vocabularies"],
+						}),
+					]);
 				}
 
 				if (failed.length > 0) {
