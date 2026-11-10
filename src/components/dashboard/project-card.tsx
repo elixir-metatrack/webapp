@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 import { useQueries } from "@tanstack/react-query";
 import { getProjectStorageStatistics } from "#/lib/api-keycloak";
 import { formatStorage } from "#/lib/data/project-metrics";
-import { PROJECT_ROLES, type ProjectRole } from "#/lib/data/roles";
+import { PROJECT_ROLES } from "#/lib/data/roles";
 
 interface DataTableProps {
 	projects: Project[];
@@ -61,6 +61,7 @@ interface DataTableProps {
 
 const COLUMN_TOOLTIPS: Record<string, string> = {
 	name: "Short title for the project.",
+	role: "Your role in the project. This determines what actions you can perform.",
 	description:
 		"Description of the sample (example: Staphylococcus aureus isolated from blood culture.)",
 	sampleCount: "Number of samples associated with the project.",
