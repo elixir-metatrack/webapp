@@ -57,7 +57,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { toastError, toastSuccess } from "#/lib/toast";
-import { Vocabularies } from "./dashboard/Vocabularies";
 import { VocabularyEditor } from "./vocabulary-editor";
 
 function toSnakeCase(value: string): string {
