@@ -13,6 +13,7 @@ import {
 	SelectValue,
 } from "./ui/select";
 import { Button } from "./ui/button";
+import { useEffect, useState } from "react";
 
 interface DataTablePaginationProps<TData> {
 	table: Table<TData>;
@@ -23,6 +24,18 @@ export function DataTablePagination<TData>({
 	table,
 	pageSizeLabel = "Rows per page",
 }: DataTablePaginationProps<TData>) {
+	const [selectedPageSize, setSelectedPageSize] = useState(
+		String(table.getState().pagination.pageSize)
+	);
+
+	const totalRows = table.getFilteredRowModel().rows.length;
+
+	useEffect(() => {
+		if (selectedPageSize === "all") {
+			table.setPageSize(Math.max(1, totalRows));
+		}
+	}, [selectedPageSize, totalRows, table]);
+
 	return (
 		<div className="flex items-center justify-between px-2">
 			<div className="text-muted-foreground flex-1 text-sm">
@@ -33,20 +46,27 @@ export function DataTablePagination<TData>({
 				<div className="flex items-center space-x-2">
 					<p className="text-sm font-medium">{pageSizeLabel}</p>
 					<Select
-						value={`${table.getState().pagination.pageSize}`}
+						value={selectedPageSize}
 						onValueChange={(value) => {
-							table.setPageSize(Number(value));
+							setSelectedPageSize(value);
+
+							table.setPageSize(
+								value === "all" ? Math.max(1, totalRows) : Number(value)
+							);
 						}}
 					>
-						<SelectTrigger className="h-8 w-[70px]">
-							<SelectValue placeholder={table.getState().pagination.pageSize} />
+						<SelectTrigger className="h-8 w-[100px]">
+							<SelectValue />
 						</SelectTrigger>
+
 						<SelectContent side="top">
-							{[15, 20, 25, 30, 40, 50].map((pageSize) => (
-								<SelectItem key={pageSize} value={`${pageSize}`}>
-									{pageSize}
+							{[15, 20, 25, 30, 40, 50].map((size) => (
+								<SelectItem key={size} value={String(size)}>
+									{size}
 								</SelectItem>
 							))}
+
+							<SelectItem value="all">All ({totalRows})</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
