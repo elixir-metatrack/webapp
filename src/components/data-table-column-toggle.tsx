@@ -58,6 +58,7 @@ import { COLUMN_TOOLTIPS } from "#/lib/data/column_tooltips";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { toastError, toastSuccess } from "#/lib/toast";
 import { VocabularyEditor } from "./vocabulary-editor";
+import { ButtonGroup } from "./ui/button-group";
 
 function toSnakeCase(value: string): string {
 	return value
@@ -566,9 +567,8 @@ export function DataTableViewOptions<TData>({
 												const visible = column.getIsVisible();
 
 												return (
-													<button
+													<ButtonGroup
 														key={column.id}
-														type="button"
 														className="hover:bg-muted flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm"
 														onClick={() => column.toggleVisibility(!visible)}
 													>
@@ -595,7 +595,7 @@ export function DataTableViewOptions<TData>({
 														</Tooltip>
 
 														{visible && <Check className="h-4 w-4 shrink-0" />}
-													</button>
+													</ButtonGroup>
 												);
 											})}
 										</div>
@@ -809,15 +809,17 @@ export function DataTableViewOptions<TData>({
 													const visible = column.getIsVisible();
 
 													return (
-														<div
+														<ButtonGroup
 															key={field.id}
-															className="hover:bg-muted flex items-center gap-3 rounded-md px-3 py-2 text-sm"
+															className="hover:bg-muted flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm"
+															onClick={() => column.toggleVisibility(!visible)}
 														>
 															<Checkbox
 																checked={visible}
 																onCheckedChange={(value) =>
 																	column.toggleVisibility(!!value)
 																}
+																onClick={(event) => event.stopPropagation()}
 															/>
 
 															<Tooltip>
@@ -833,7 +835,6 @@ export function DataTableViewOptions<TData>({
 																>
 																	<div className="flex flex-col">
 																		<span>Helper text: {field.tooltip}</span>
-																		<br />
 																		<span>Field Type: {field.type}</span>
 																	</div>
 																</TooltipContent>
@@ -849,11 +850,15 @@ export function DataTableViewOptions<TData>({
 																		variant="ghost"
 																		size="icon"
 																		className="h-8 w-8 shrink-0"
-																		onClick={() => openEditDialog(field)}
+																		onClick={(event) => {
+																			event.stopPropagation();
+																			openEditDialog(field);
+																		}}
 																	>
 																		<Pencil className="h-4 w-4" />
 																	</Button>
 																</TooltipTrigger>
+
 																<TooltipContent>
 																	<p>Edit custom field</p>
 																</TooltipContent>
@@ -865,7 +870,10 @@ export function DataTableViewOptions<TData>({
 																		variant="ghost"
 																		size="icon"
 																		className="h-8 w-8 shrink-0"
-																		onClick={() => openDeleteDialog(field)}
+																		onClick={(event) => {
+																			event.stopPropagation();
+																			openDeleteDialog(field);
+																		}}
 																	>
 																		<Trash2 className="h-4 w-4 text-red-500" />
 																	</Button>
@@ -875,7 +883,7 @@ export function DataTableViewOptions<TData>({
 																	<p>Remove this custom field</p>
 																</TooltipContent>
 															</Tooltip>
-														</div>
+														</ButtonGroup>
 													);
 												})}
 											</div>
