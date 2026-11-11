@@ -96,6 +96,8 @@ import { FastqFloatingActions } from "./fastq-floating-actions";
 import { ExportSamplesButton } from "./export-samples-button";
 import { AccessionLink } from "../accession-link";
 import { DownloadEnaRunsButton } from "./download-ena-runs-button";
+import type { ColumnOrderState } from "@tanstack/react-table";
+import { usePersistentColumnOrder } from "@/hooks/use-persistent-column-order";
 
 interface DataTableProps<T extends object> {
 	data: T[];
@@ -273,11 +275,32 @@ export function DataTable<T extends object>({
 	]);
 	const [globalFilter, setGlobalFilter] = React.useState("");
 
-	const initialColumnOrder = getColumnOrder(dataType);
-
 	const queryClient = useQueryClient();
 
 	const { getTerms } = useVocabularies(dataType ?? "sample", project?.id);
+
+	const columnOrderStorageKey = [
+		"metatrack:column-order",
+		project?.id,
+		dataType,
+		dataType === "assay" ? assay?.id : undefined,
+	]
+		.filter((value) => value !== undefined && value !== null)
+		.join(":");
+
+	const defaultColumnOrder = React.useMemo<ColumnOrderState>(
+		() => [
+			"select",
+			...getColumnOrder(dataType),
+			...(dataType === "assay" ? ["files"] : []),
+		],
+		[dataType]
+	);
+
+	const [columnOrder, setColumnOrder] = usePersistentColumnOrder(
+		columnOrderStorageKey,
+		defaultColumnOrder
+	);
 
 	React.useEffect(() => {
 		setSelectedFastqFiles(new Set());
@@ -397,7 +420,7 @@ export function DataTable<T extends object>({
 		enrichedData.length === 0
 			? []
 			: (Object.keys(enrichedData[0]) as Array<keyof T>)
-					.filter((key) => key !== "files")
+					.filter((key) => key !== "files" && key !== "customMetadata")
 					.map((key) => ({
 						id: String(key),
 						accessorKey: String(key),
@@ -454,19 +477,7 @@ export function DataTable<T extends object>({
 
 	const allDataColumns = [...autoColumns, ...customColumns];
 
-	const orderedColumns: ColumnDef<T>[] =
-		allDataColumns.length === 0
-			? []
-			: initialColumnOrder.length === 0
-				? allDataColumns
-				: ([
-						...initialColumnOrder
-							.map((id) => allDataColumns.find((col) => col.id === id))
-							.filter(Boolean),
-						...customColumns.filter(
-							(col) => !initialColumnOrder.includes(String(col.id))
-						),
-					] as ColumnDef<T>[]);
+	const orderedColumns = allDataColumns;
 
 	const enhancedColumns: ColumnDef<T>[] = (() => {
 		const selectionColumn: ColumnDef<T> = {
@@ -717,6 +728,7 @@ export function DataTable<T extends object>({
 			sorting,
 			globalFilter,
 			columnVisibility,
+			columnOrder,
 			pagination,
 		},
 		autoResetPageIndex: false,
@@ -729,6 +741,7 @@ export function DataTable<T extends object>({
 		getPaginationRowModel: getPaginationRowModel(),
 		enableRowSelection: true,
 		onColumnVisibilityChange: setColumnVisibility,
+		onColumnOrderChange: setColumnOrder,
 	});
 
 	const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);

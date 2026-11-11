@@ -59,6 +59,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { toastError, toastSuccess } from "#/lib/toast";
 import { VocabularyEditor } from "./vocabulary-editor";
 import { ButtonGroup } from "./ui/button-group";
+import {
+	closestCenter,
+	DndContext,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors,
+	type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+	sortableKeyboardCoordinates,
+	arrayMove,
+	SortableContext,
+	verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { SortableColumnItem } from "./sortable-column-item";
 
 function toSnakeCase(value: string): string {
 	return value
@@ -140,7 +156,7 @@ export function DataTableViewOptions<TData>({
 		customColumns.filter((field) => !field.archived).map((field) => field.key)
 	);
 
-	const columns = table.getAllColumns().filter((column) => {
+	const columns = table.getAllLeafColumns().filter((column) => {
 		if (!column.getCanHide()) {
 			return false;
 		}
@@ -189,21 +205,17 @@ export function DataTableViewOptions<TData>({
 		return table.getColumn(field.key);
 	};
 
-	const availableCustomColumns = useMemo(() => {
-		if (dataType !== "sample") {
-			return [];
-		}
+	const availableCustomColumns = customColumns
+		.filter((field) => {
+			if (dataType !== "sample" || field.archived) return false;
 
-		return customColumns.filter((field) => {
-			if (field.archived) {
-				return false;
-			}
+			return Boolean(table.getColumn(field.key)?.getCanHide());
+		})
+		.sort((a, b) => {
+			const order = table.getAllLeafColumns().map((column) => column.id);
 
-			const column = table.getColumn(field.key);
-
-			return Boolean(column?.getCanHide());
+			return order.indexOf(a.key) - order.indexOf(b.key);
 		});
-	}, [customColumns, table, dataType]);
 
 	const filteredCustomColumns = useMemo(() => {
 		const value = search.toLowerCase().trim();
@@ -463,6 +475,42 @@ export function DataTableViewOptions<TData>({
 	};
 
 	// ============================================================
+	// Order columns
+	// ============================================================
+
+	const sensors = useSensors(
+		useSensor(PointerSensor, {
+			activationConstraint: {
+				distance: 5,
+			},
+		}),
+		useSensor(KeyboardSensor, {
+			coordinateGetter: sortableKeyboardCoordinates,
+		})
+	);
+
+	const orderedColumns = table
+		.getAllLeafColumns()
+		.filter((column) => !["select", "actions"].includes(column.id));
+
+	const orderedColumnIds = orderedColumns.map((column) => column.id);
+
+	const handleDragEnd = (event: DragEndEvent) => {
+		const { active, over } = event;
+
+		if (!over || active.id === over.id) return;
+
+		const oldIndex = orderedColumnIds.indexOf(String(active.id));
+		const newIndex = orderedColumnIds.indexOf(String(over.id));
+
+		if (oldIndex === -1 || newIndex === -1) return;
+
+		const newOrder = arrayMove(orderedColumnIds, oldIndex, newIndex);
+
+		table.setColumnOrder(["select", ...newOrder]);
+	};
+
+	// ============================================================
 	// Render
 	// ============================================================
 
@@ -536,398 +584,443 @@ export function DataTableViewOptions<TData>({
 						<Separator />
 
 						{/* Columns */}
+						<DndContext
+							sensors={sensors}
+							collisionDetection={closestCenter}
+							onDragEnd={handleDragEnd}
+						>
+							<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+								{/* ================================================== */}
+								{/* Available columns */}
+								{/* ================================================== */}
 
-						<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-							{/* ================================================== */}
-							{/* Available columns */}
-							{/* ================================================== */}
-
-							<div className="space-y-3">
-								<div>
-									<h4 className="font-medium">Available columns</h4>
-
-									<p className="text-muted-foreground text-sm">
-										Select the standard columns you want to display.
-									</p>
-								</div>
-
-								<div className="h-[450px] overflow-y-auto rounded-md border p-2">
-									{filteredColumns.length > 0 ? (
-										<div className="space-y-1">
-											{filteredColumns.map((column) => {
-												const label = String(
-													(
-														column.columnDef.meta as
-															| { label?: string }
-															| undefined
-													)?.label ?? column.id
-												);
-
-												const tooltip = COLUMN_TOOLTIPS[column.id];
-												const visible = column.getIsVisible();
-
-												return (
-													<ButtonGroup
-														key={column.id}
-														className="hover:bg-muted flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm"
-														onClick={() => column.toggleVisibility(!visible)}
-													>
-														<Checkbox
-															checked={visible}
-															onCheckedChange={(value) =>
-																column.toggleVisibility(!!value)
-															}
-															onClick={(event) => event.stopPropagation()}
-														/>
-
-														<Tooltip>
-															<TooltipTrigger asChild>
-																<span className="flex-1 cursor-help truncate">
-																	{label}
-																</span>
-															</TooltipTrigger>
-
-															{tooltip && (
-																<TooltipContent side="right">
-																	<p className="max-w-sm">{tooltip}</p>
-																</TooltipContent>
-															)}
-														</Tooltip>
-
-														{visible && <Check className="h-4 w-4 shrink-0" />}
-													</ButtonGroup>
-												);
-											})}
-										</div>
-									) : (
-										<div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-											No columns found.
-										</div>
-									)}
-								</div>
-							</div>
-
-							{/* ================================================== */}
-							{/* Custom columns */}
-							{/* ================================================== */}
-
-							{dataType === "sample" && (
 								<div className="space-y-3">
-									<div className="flex items-start justify-between gap-4">
-										<div>
-											<h4 className="font-medium">Custom columns</h4>
+									<div>
+										<h4 className="font-medium">Available columns</h4>
 
-											<p className="text-muted-foreground text-sm">
-												Create and manage custom metadata columns.
-											</p>
-										</div>
-
-										<Dialog
-											open={createDialogOpen}
-											onOpenChange={handleCreateDialogChange}
-										>
-											<div className="flex items-center gap-2">
-												<DialogTrigger asChild>
-													<Button type="button" variant="outline" size="sm">
-														<Plus />
-														Add custom field
-													</Button>
-												</DialogTrigger>
-											</div>
-
-											<DialogContent className="sm:max-w-[500px]">
-												<DialogHeader>
-													<DialogTitle>Add custom column</DialogTitle>
-
-													<DialogDescription>
-														Create a custom metadata field for samples in this
-														project.
-													</DialogDescription>
-												</DialogHeader>
-
-												<div className="space-y-5">
-													<div className="space-y-2">
-														<Label htmlFor="custom-column-label">Label</Label>
-
-														<Input
-															id="custom-column-label"
-															placeholder="e.g. Sequencing Platform"
-															value={newColumnLabel}
-															onChange={(event) =>
-																setNewColumnLabel(event.target.value)
-															}
-															disabled={creatingColumn}
-														/>
-
-														<p className="text-muted-foreground text-xs">
-															This is the name that will be displayed in the
-															table.
-														</p>
-													</div>
-
-													<div className="space-y-2">
-														<Label htmlFor="custom-column-label">Tooltip</Label>
-
-														<Input
-															id="custom-column-tooltip"
-															placeholder="e.g. Description of Field"
-															value={newColumnTooltip}
-															onChange={(event) =>
-																setNewColumnTooltip(event.target.value)
-															}
-															disabled={creatingColumn}
-														/>
-
-														<p className="text-muted-foreground text-xs">
-															This is the help text for the new metadata column.
-														</p>
-													</div>
-
-													<div className="space-y-2">
-														<Label htmlFor="custom-column-type">Type</Label>
-
-														<Select
-															value={newColumnType}
-															onValueChange={(value) =>
-																setNewColumnType(
-																	value as SampleMetadataFieldType
-																)
-															}
-															disabled={creatingColumn}
-														>
-															<SelectTrigger id="custom-column-type">
-																<SelectValue placeholder="Select a type" />
-															</SelectTrigger>
-
-															<SelectContent>
-																<SelectItem value="TEXT">Text</SelectItem>
-																<SelectItem value="NUMBER">Number</SelectItem>
-																<SelectItem value="BOOLEAN">Boolean</SelectItem>
-																<SelectItem value="DATE">Date</SelectItem>
-															</SelectContent>
-														</Select>
-													</div>
-
-													<Separator />
-
-													<div className="space-y-3">
-														<div>
-															<h4 className="text-sm font-medium">
-																Control vocabulary
-															</h4>
-															<p className="text-muted-foreground text-xs">
-																Define the allowed values for this field.
-															</p>
-														</div>
-
-														<VocabularyEditor
-															terms={newColumnTerms}
-															onTermsChange={setNewColumnTerms}
-															fieldKey={newColumnLabel}
-														/>
-													</div>
-												</div>
-
-												<DialogFooter>
-													<Button
-														type="button"
-														variant="outline"
-														onClick={() => handleCreateDialogChange(false)}
-														disabled={creatingColumn}
-													>
-														Cancel
-													</Button>
-
-													<Button
-														type="button"
-														onClick={handleCreateCustomColumn}
-														disabled={creatingColumn || !newColumnLabel.trim()}
-													>
-														{creatingColumn ? (
-															<>
-																<Loader2 className="animate-spin" />
-																Creating...
-															</>
-														) : (
-															<>
-																<Plus />
-																Create column
-															</>
-														)}
-													</Button>
-												</DialogFooter>
-											</DialogContent>
-										</Dialog>
+										<p className="text-muted-foreground text-sm">
+											Select the standard columns you want to display.
+										</p>
 									</div>
 
-									{/* Custom columns list */}
-
 									<div className="h-[450px] overflow-y-auto rounded-md border p-2">
-										{loadingCustomColumns ? (
-											<div className="text-muted-foreground flex h-full items-center justify-center gap-2 text-sm">
-												<Loader2 className="h-4 w-4 animate-spin" />
-												Loading custom columns...
-											</div>
-										) : filteredCustomColumns.length > 0 ? (
-											<div className="space-y-1">
-												{filteredCustomColumns.map((field) => {
-													const column = getCustomTableColumn(field);
-
-													if (!column) {
-														return (
-															<div
-																key={field.id}
-																className="flex items-center gap-2 rounded-md px-3 py-2 text-sm"
-															>
-																<span className="min-w-0 flex-1 truncate">
-																	{field.label}
-																</span>
-
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	className="h-8 w-8 shrink-0"
-																	onClick={() => openEditDialog(field)}
-																	title="Edit custom field"
-																>
-																	<Pencil className="h-4 w-4" />
-																</Button>
-
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	className="h-8 w-8 shrink-0"
-																	onClick={() => openDeleteDialog(field)}
-																	title="Remove custom field"
-																>
-																	<Trash2 className="h-4 w-4 text-red-500" />
-																</Button>
-															</div>
+										{filteredColumns.length > 0 ? (
+											<SortableContext
+												items={filteredColumns.map((column) => column.id)}
+												strategy={verticalListSortingStrategy}
+											>
+												<div className="space-y-1">
+													{filteredColumns.map((column) => {
+														const label = String(
+															(
+																column.columnDef.meta as
+																	| { label?: string }
+																	| undefined
+															)?.label ?? column.id
 														);
-													}
 
-													const visible = column.getIsVisible();
+														const tooltip = COLUMN_TOOLTIPS[column.id];
+														const visible = column.getIsVisible();
 
-													return (
-														<ButtonGroup
-															key={field.id}
-															className="hover:bg-muted flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm"
-															onClick={() => column.toggleVisibility(!visible)}
-														>
-															<Checkbox
-																checked={visible}
-																onCheckedChange={(value) =>
-																	column.toggleVisibility(!!value)
-																}
-																onClick={(event) => event.stopPropagation()}
-															/>
-
-															<Tooltip>
-																<TooltipTrigger asChild>
-																	<span className="min-w-0 flex-1 cursor-help truncate text-left">
-																		{field.label}
-																	</span>
-																</TooltipTrigger>
-
-																<TooltipContent
-																	side="right"
-																	className="max-w-sm"
+														return (
+															<SortableColumnItem
+																key={column.id}
+																id={column.id}
+															>
+																<ButtonGroup
+																	key={column.id}
+																	className="hover:bg-muted flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm"
+																	onClick={() =>
+																		column.toggleVisibility(!visible)
+																	}
 																>
-																	<div className="flex flex-col">
-																		<span>Helper text: {field.tooltip}</span>
-																		<span>Field Type: {field.type}</span>
-																	</div>
-																</TooltipContent>
-															</Tooltip>
+																	<Checkbox
+																		checked={visible}
+																		onCheckedChange={(value) =>
+																			column.toggleVisibility(!!value)
+																		}
+																		onClick={(event) => event.stopPropagation()}
+																	/>
 
-															{visible && (
-																<Check className="h-4 w-4 shrink-0" />
-															)}
+																	<Tooltip>
+																		<TooltipTrigger asChild>
+																			<span className="flex-1 cursor-help truncate">
+																				{label}
+																			</span>
+																		</TooltipTrigger>
 
-															<Tooltip>
-																<TooltipTrigger asChild>
-																	<Button
-																		variant="ghost"
-																		size="icon"
-																		className="h-8 w-8 shrink-0"
-																		onClick={(event) => {
-																			event.stopPropagation();
-																			openEditDialog(field);
-																		}}
-																	>
-																		<Pencil className="h-4 w-4" />
-																	</Button>
-																</TooltipTrigger>
+																		{tooltip && (
+																			<TooltipContent side="right">
+																				<p className="max-w-sm">{tooltip}</p>
+																			</TooltipContent>
+																		)}
+																	</Tooltip>
 
-																<TooltipContent>
-																	<p>Edit custom field</p>
-																</TooltipContent>
-															</Tooltip>
-
-															<Tooltip>
-																<TooltipTrigger asChild>
-																	<Button
-																		variant="ghost"
-																		size="icon"
-																		className="h-8 w-8 shrink-0"
-																		onClick={(event) => {
-																			event.stopPropagation();
-																			openDeleteDialog(field);
-																		}}
-																	>
-																		<Trash2 className="h-4 w-4 text-red-500" />
-																	</Button>
-																</TooltipTrigger>
-
-																<TooltipContent>
-																	<p>Remove this custom field</p>
-																</TooltipContent>
-															</Tooltip>
-														</ButtonGroup>
-													);
-												})}
-											</div>
-										) : customColumns.length > 0 ? (
-											<div className="text-muted-foreground flex h-full flex-col items-center justify-center px-6 text-center text-sm">
-												<Columns3 className="mb-2 h-8 w-8" />
-
-												<p className="font-medium">
-													Custom columns are not available in this table
-												</p>
-
-												<p className="mt-1 text-xs">
-													The metadata fields exist in the project, but their
-													corresponding table columns have not been registered
-													yet.
-												</p>
-											</div>
+																	{visible && (
+																		<Check className="h-4 w-4 shrink-0" />
+																	)}
+																</ButtonGroup>
+															</SortableColumnItem>
+														);
+													})}
+												</div>
+											</SortableContext>
 										) : (
-											<div className="text-muted-foreground flex h-full flex-col items-center justify-center px-6 text-center">
-												<Columns3 className="mb-2 h-8 w-8" />
-
-												<p className="text-sm font-medium">No custom columns</p>
-
-												<p className="mt-1 text-xs">
-													Create a custom metadata column to add it to your
-													samples.
-												</p>
-
-												<Button
-													type="button"
-													variant="outline"
-													size="sm"
-													className="mt-4"
-													onClick={() => setCreateDialogOpen(true)}
-												>
-													<Plus />
-													Add custom column
-												</Button>
+											<div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+												No columns found.
 											</div>
 										)}
 									</div>
 								</div>
-							)}
-						</div>
+
+								{/* ================================================== */}
+								{/* Custom columns */}
+								{/* ================================================== */}
+
+								{dataType === "sample" && (
+									<div className="space-y-3">
+										<div className="flex items-start justify-between gap-4">
+											<div>
+												<h4 className="font-medium">Custom columns</h4>
+
+												<p className="text-muted-foreground text-sm">
+													Create and manage custom metadata columns.
+												</p>
+											</div>
+
+											<Dialog
+												open={createDialogOpen}
+												onOpenChange={handleCreateDialogChange}
+											>
+												<div className="flex items-center gap-2">
+													<DialogTrigger asChild>
+														<Button type="button" variant="outline" size="sm">
+															<Plus />
+															Add custom field
+														</Button>
+													</DialogTrigger>
+												</div>
+
+												<DialogContent className="sm:max-w-[500px]">
+													<DialogHeader>
+														<DialogTitle>Add custom column</DialogTitle>
+
+														<DialogDescription>
+															Create a custom metadata field for samples in this
+															project.
+														</DialogDescription>
+													</DialogHeader>
+
+													<div className="space-y-5">
+														<div className="space-y-2">
+															<Label htmlFor="custom-column-label">Label</Label>
+
+															<Input
+																id="custom-column-label"
+																placeholder="e.g. Sequencing Platform"
+																value={newColumnLabel}
+																onChange={(event) =>
+																	setNewColumnLabel(event.target.value)
+																}
+																disabled={creatingColumn}
+															/>
+
+															<p className="text-muted-foreground text-xs">
+																This is the name that will be displayed in the
+																table.
+															</p>
+														</div>
+
+														<div className="space-y-2">
+															<Label htmlFor="custom-column-label">
+																Tooltip
+															</Label>
+
+															<Input
+																id="custom-column-tooltip"
+																placeholder="e.g. Description of Field"
+																value={newColumnTooltip}
+																onChange={(event) =>
+																	setNewColumnTooltip(event.target.value)
+																}
+																disabled={creatingColumn}
+															/>
+
+															<p className="text-muted-foreground text-xs">
+																This is the help text for the new metadata
+																column.
+															</p>
+														</div>
+
+														<div className="space-y-2">
+															<Label htmlFor="custom-column-type">Type</Label>
+
+															<Select
+																value={newColumnType}
+																onValueChange={(value) =>
+																	setNewColumnType(
+																		value as SampleMetadataFieldType
+																	)
+																}
+																disabled={creatingColumn}
+															>
+																<SelectTrigger id="custom-column-type">
+																	<SelectValue placeholder="Select a type" />
+																</SelectTrigger>
+
+																<SelectContent>
+																	<SelectItem value="TEXT">Text</SelectItem>
+																	<SelectItem value="NUMBER">Number</SelectItem>
+																	<SelectItem value="BOOLEAN">
+																		Boolean
+																	</SelectItem>
+																	<SelectItem value="DATE">Date</SelectItem>
+																</SelectContent>
+															</Select>
+														</div>
+
+														<Separator />
+
+														<div className="space-y-3">
+															<div>
+																<h4 className="text-sm font-medium">
+																	Control vocabulary
+																</h4>
+																<p className="text-muted-foreground text-xs">
+																	Define the allowed values for this field.
+																</p>
+															</div>
+
+															<VocabularyEditor
+																terms={newColumnTerms}
+																onTermsChange={setNewColumnTerms}
+																fieldKey={newColumnLabel}
+															/>
+														</div>
+													</div>
+
+													<DialogFooter>
+														<Button
+															type="button"
+															variant="outline"
+															onClick={() => handleCreateDialogChange(false)}
+															disabled={creatingColumn}
+														>
+															Cancel
+														</Button>
+
+														<Button
+															type="button"
+															onClick={handleCreateCustomColumn}
+															disabled={
+																creatingColumn || !newColumnLabel.trim()
+															}
+														>
+															{creatingColumn ? (
+																<>
+																	<Loader2 className="animate-spin" />
+																	Creating...
+																</>
+															) : (
+																<>
+																	<Plus />
+																	Create column
+																</>
+															)}
+														</Button>
+													</DialogFooter>
+												</DialogContent>
+											</Dialog>
+										</div>
+
+										{/* Custom columns list */}
+
+										<div className="h-[450px] overflow-y-auto rounded-md border p-2">
+											{loadingCustomColumns ? (
+												<div className="text-muted-foreground flex h-full items-center justify-center gap-2 text-sm">
+													<Loader2 className="h-4 w-4 animate-spin" />
+													Loading custom columns...
+												</div>
+											) : filteredCustomColumns.length > 0 ? (
+												<SortableContext
+													items={filteredCustomColumns.map(
+														(field) => field.key
+													)}
+													strategy={verticalListSortingStrategy}
+												>
+													<div className="space-y-1">
+														{filteredCustomColumns.map((field) => {
+															const column = getCustomTableColumn(field);
+
+															if (!column) {
+																return (
+																	<div
+																		key={field.id}
+																		className="flex items-center gap-2 rounded-md px-3 py-2 text-sm"
+																	>
+																		<span className="min-w-0 flex-1 truncate">
+																			{field.label}
+																		</span>
+
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			className="h-8 w-8 shrink-0"
+																			onClick={() => openEditDialog(field)}
+																			title="Edit custom field"
+																		>
+																			<Pencil className="h-4 w-4" />
+																		</Button>
+
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			className="h-8 w-8 shrink-0"
+																			onClick={() => openDeleteDialog(field)}
+																			title="Remove custom field"
+																		>
+																			<Trash2 className="h-4 w-4 text-red-500" />
+																		</Button>
+																	</div>
+																);
+															}
+
+															const visible = column.getIsVisible();
+
+															return (
+																<SortableColumnItem
+																	key={field.key}
+																	id={field.key}
+																>
+																	<ButtonGroup
+																		className="hover:bg-muted flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm"
+																		onClick={() =>
+																			column.toggleVisibility(!visible)
+																		}
+																	>
+																		<Checkbox
+																			checked={visible}
+																			onCheckedChange={(value) =>
+																				column.toggleVisibility(!!value)
+																			}
+																			onClick={(event) =>
+																				event.stopPropagation()
+																			}
+																		/>
+
+																		<Tooltip>
+																			<TooltipTrigger asChild>
+																				<span className="min-w-0 flex-1 cursor-help truncate text-left">
+																					{field.label}
+																				</span>
+																			</TooltipTrigger>
+
+																			<TooltipContent
+																				side="right"
+																				className="max-w-sm"
+																			>
+																				<div className="flex flex-col">
+																					<span>
+																						Helper text: {field.tooltip}
+																					</span>
+																					<span>Field Type: {field.type}</span>
+																				</div>
+																			</TooltipContent>
+																		</Tooltip>
+
+																		{visible && (
+																			<Check className="h-4 w-4 shrink-0" />
+																		)}
+
+																		<Tooltip>
+																			<TooltipTrigger asChild>
+																				<Button
+																					variant="ghost"
+																					size="icon"
+																					className="h-8 w-8 shrink-0"
+																					onClick={(event) => {
+																						event.stopPropagation();
+																						openEditDialog(field);
+																					}}
+																				>
+																					<Pencil className="h-4 w-4" />
+																				</Button>
+																			</TooltipTrigger>
+
+																			<TooltipContent>
+																				<p>Edit custom field</p>
+																			</TooltipContent>
+																		</Tooltip>
+
+																		<Tooltip>
+																			<TooltipTrigger asChild>
+																				<Button
+																					variant="ghost"
+																					size="icon"
+																					className="h-8 w-8 shrink-0"
+																					onClick={(event) => {
+																						event.stopPropagation();
+																						openDeleteDialog(field);
+																					}}
+																				>
+																					<Trash2 className="h-4 w-4 text-red-500" />
+																				</Button>
+																			</TooltipTrigger>
+
+																			<TooltipContent>
+																				<p>Remove this custom field</p>
+																			</TooltipContent>
+																		</Tooltip>
+																	</ButtonGroup>
+																</SortableColumnItem>
+															);
+														})}
+													</div>
+												</SortableContext>
+											) : customColumns.length > 0 ? (
+												<div className="text-muted-foreground flex h-full flex-col items-center justify-center px-6 text-center text-sm">
+													<Columns3 className="mb-2 h-8 w-8" />
+
+													<p className="font-medium">
+														Custom columns are not available in this table
+													</p>
+
+													<p className="mt-1 text-xs">
+														The metadata fields exist in the project, but their
+														corresponding table columns have not been registered
+														yet.
+													</p>
+												</div>
+											) : (
+												<div className="text-muted-foreground flex h-full flex-col items-center justify-center px-6 text-center">
+													<Columns3 className="mb-2 h-8 w-8" />
+
+													<p className="text-sm font-medium">
+														No custom columns
+													</p>
+
+													<p className="mt-1 text-xs">
+														Create a custom metadata column to add it to your
+														samples.
+													</p>
+
+													<Button
+														type="button"
+														variant="outline"
+														size="sm"
+														className="mt-4"
+														onClick={() => setCreateDialogOpen(true)}
+													>
+														<Plus />
+														Add custom column
+													</Button>
+												</div>
+											)}
+										</div>
+									</div>
+								)}
+							</div>
+						</DndContext>
 					</div>
 				</DialogContent>
 			</Dialog>
